@@ -1,0 +1,701 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleType {
+  FACULTY
+  HOD
+  REVIEWER
+  ADMIN
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum FPGPStatus {
+  DRAFT
+  ACTIVE
+  REVIEWED
+}
+
+enum ProjectType {
+  MINI
+  MAJOR
+}
+
+enum CourseLevel {
+  BTECH
+  MTECH
+}
+
+enum PublicationIndex {
+  SCI
+  WOS
+  SCOPUS
+  NONE
+}
+
+enum PatentStatus {
+  FILED
+  PUBLISHED
+  GRANTED
+}
+
+enum ProjectStatus {
+  APPLIED
+  ONGOING
+  COMPLETED
+}
+
+enum ReviewerRole {
+  HOD
+  REVIEWER
+}
+
+enum Scope {
+  NATIONAL
+  INTERNATIONAL
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  employeeCode          String    @unique
+  name                  String
+  email                 String    @unique
+  passwordHash          String
+  dob                   DateTime?
+  dateOfJoining         DateTime?
+  designation           String?
+  ratifiedDesignation   String?
+  lastPromotionDate     DateTime?
+  departmentId          String?
+  payBand               String?
+  gradePay              String?
+  grossPay              Float?
+  educationalQuals      String?
+  specialization        String?
+  periodOfServiceYears  Int?
+  periodOfServiceMonths Int?
+  expBeforeTeaching     Float?
+  expBeforeIndustrial   Float?
+  expBeforeResearch     Float?
+  phone                 String?
+  contactAddress        String?
+  isActive              Boolean   @default(true)
+  emailOptIn            Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  department       Department?           @relation(fields: [departmentId], references: [id])
+  userRoles        UserRole[]
+  appraisals       AppraisalSubmission[]
+  fpgpPlans        FPGPPlan[]
+  fpgpHodSigned    FPGPPlan[]   @relation("HoDSigner")
+  reviewsGiven     AppraisalReview[]
+  fpgpReviewsGiven FPGPReview[]
+  auditLogs        AuditLog[]
+  emails           EmailNotification[]
+  passwordOtp      PasswordOtp?
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  users         User[]
+  userRoles     UserRole[]
+  academicYears AcademicYearDept[]
+}
+
+model UserRole {
+  id           String    @id @default(uuid())
+  userId       String
+  role         RoleType
+  departmentId String?
+  assignedBy   String
+  assignedAt   DateTime  @default(now())
+  isActive     Boolean   @default(true)
+
+  user       User        @relation(fields: [userId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  @@unique([userId, role, departmentId])
+}
+
+model AcademicYear {
+  id             String   @id @default(uuid())
+  label          String   @unique
+  startDate      DateTime
+  endDate        DateTime
+  submissionOpen Boolean  @default(false)
+  maxSubmissions Int      @default(4)
+  createdAt      DateTime @default(now())
+
+  deptSettings AcademicYearDept[]
+  appraisals   AppraisalSubmission[]
+}
+
+model AcademicYearDept {
+  id             String  @id @default(uuid())
+  academicYearId String
+  departmentId   String
+  submissionOpen Boolean @default(false)
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  department   Department   @relation(fields: [departmentId], references: [id])
+
+  @@unique([academicYearId, departmentId])
+}
+
+model AppraisalSubmission {
+  id               String           @id @default(uuid())
+  userId           String
+  academicYearId   String
+  submissionNumber Int
+  status           SubmissionStatus @default(DRAFT)
+  submittedAt      DateTime?
+  withdrawnAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  clLeaves           Int?
+  elLeaves           Int?
+  hplLeaves          Int?
+  odLeaves           Int?
+  otherLeaves        String?
+  higherQualAcquired String?
+
+  user         User         @relation(fields: [userId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  cat1Courses        Cat1Course[]
+  cat1Projects       Cat1Project[]
+  cat1EContent       Cat1EContent[]
+  cat1ICT            Cat1ICT[]
+  cat2Journals       Cat2Journal[]
+  cat2Conferences    Cat2Conference[]
+  cat2BookChapters   Cat2BookChapter[]
+  cat2Books          Cat2Book[]
+  cat2Citations      Cat2Citations?
+  cat2Patents        Cat2Patent[]
+  cat2Projects       Cat2Project[]
+  cat2Consultancy    Cat2Consultancy[]
+  cat2Guidance       Cat2Guidance[]
+  cat2ResearchGroups Cat2ResearchGroup[]
+  cat2Linkages       Cat2Linkage[]
+  cat2Startups       Cat2Startup[]
+  cat3AdvQual        Cat3AdvQual?
+  cat3Organised      Cat3OrganisedProgram[]
+  cat3ResourcePerson Cat3ResourcePerson[]
+  cat3Editorial      Cat3Editorial[]
+  cat3Training       Cat3Training[]
+  cat3IntlTravel     Cat3IntlTravel[]
+  cat4AdminResp      Cat4AdminResp[]
+  cat4StudentAct     Cat4StudentActivity[]
+  cat5Memberships    Cat5Membership[]
+  cat5Awards         Cat5Award[]
+  cat5Differentiators Cat5Differentiator[]
+  cat5Internships    Cat5Internship[]
+
+  review       AppraisalReview?
+
+  @@unique([userId, academicYearId, submissionNumber])
+}
+
+model Cat1Course {
+  id                String      @id @default(uuid())
+  submissionId      String
+  courseName        String
+  level             CourseLevel
+  yearSem           String
+  novelPedagogyUsed Boolean     @default(false)
+  periodPlanned     Int
+  periodsConducted  Int
+  avgAttendance     Float
+  feedbackScore     Float
+  passPercentage    Float
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat1Project {
+  id           String      @id @default(uuid())
+  submissionId String
+  course       CourseLevel
+  projectType  ProjectType
+  count        Int
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat1EContent {
+  id           String  @id @default(uuid())
+  submissionId String
+  courseName   String
+  contentName  String
+  nature       String
+  evidenceFile String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat1ICT {
+  id           String  @id @default(uuid())
+  submissionId String
+  courseName   String
+  platform     String
+  natureOfUse  String
+  evidenceFile String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Journal {
+  id             String           @id @default(uuid())
+  submissionId   String
+  title          String
+  journalName    String
+  authors        String
+  authorPosition String
+  volume         String?
+  issueNo        String?
+  pageNos        String?
+  dateOfPub      DateTime?
+  issn           String?
+  doi            String?
+  impactFactor   Float?
+  indexed        PublicationIndex @default(NONE)
+  quartile       String?
+  proofFile      String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Conference {
+  id             String           @id @default(uuid())
+  submissionId   String
+  title          String
+  conferenceName String
+  authors        String
+  authorPosition String
+  dateOfPub      DateTime?
+  issn           String?
+  doi            String?
+  indexed        PublicationIndex @default(NONE)
+  proofFile      String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2BookChapter {
+  id             String @id @default(uuid())
+  submissionId   String
+  title          String
+  authors        String
+  authorPosition String
+  publisher      String?
+  isbn           String?
+  chapterNo      String?
+  isEdited       Boolean @default(false)
+  scope          Scope   @default(INTERNATIONAL)
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Book {
+  id           String  @id @default(uuid())
+  submissionId String
+  title        String
+  authors      String
+  publisher    String?
+  isbn         String?
+  isEdited     Boolean @default(false)
+  scope        Scope   @default(INTERNATIONAL)
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Citations {
+  id                String @id @default(uuid())
+  submissionId      String @unique
+  scopusCount       Int    @default(0)
+  wosCount          Int    @default(0)
+  hIndex            Int    @default(0)
+  pubsWithCitations Int    @default(0)
+  totalPubsTillDate Int    @default(0)
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Patent {
+  id            String       @id @default(uuid())
+  submissionId  String
+  title         String
+  country       String
+  inventors     String
+  appNumber     String?
+  status        PatentStatus
+  dateOfPub     DateTime?
+  dateOfGrant   DateTime?
+  validDuration String?
+  proofFile     String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Project {
+  id                  String        @id @default(uuid())
+  submissionId        String
+  title               String
+  fundingAgency       String
+  amountLakhs         Float
+  role                String
+  status              ProjectStatus
+  durationPeriod      String?
+  dateOfApplication   DateTime?
+  proofFile           String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Consultancy {
+  id           String @id @default(uuid())
+  submissionId String
+  name         String
+  agency       String
+  amountLakhs  Float
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Guidance {
+  id           String  @id @default(uuid())
+  submissionId String
+  studentName  String
+  university   String
+  thesisTitle  String
+  isGuide      Boolean @default(true)
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2ResearchGroup {
+  id           String @id @default(uuid())
+  submissionId String
+  groupName    String
+  size         Int
+  outcome      String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Linkage {
+  id            String @id @default(uuid())
+  submissionId  String
+  instituteName String
+  contactPerson String
+  outcome       String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat2Startup {
+  id           String @id @default(uuid())
+  submissionId String
+  groupName    String
+  activity     String
+  outcome      String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat3AdvQual {
+  id               String  @id @default(uuid())
+  submissionId     String  @unique
+  pursuingPostDoc  Boolean @default(false)
+  phdStatus        String?
+  pursuingPGDegree Boolean @default(false)
+  pursuingPGDiploma Boolean @default(false)
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat3OrganisedProgram {
+  id           String @id @default(uuid())
+  submissionId String
+  title        String
+  period       String
+  sponsor      String?
+  status       String
+  scope        Scope
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat3ResourcePerson {
+  id           String @id @default(uuid())
+  submissionId String
+  programType  String
+  programName  String
+  topic        String
+  duration     String
+  venue        String
+  organisedBy  String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat3Editorial {
+  id              String @id @default(uuid())
+  submissionId    String
+  natureOfContrib String
+  orgOrJournal    String
+  scope           Scope
+  dateDuration    String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat3Training {
+  id           String @id @default(uuid())
+  submissionId String
+  name         String
+  period       String
+  durationDays Int
+  proofFile    String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat3IntlTravel {
+  id           String @id @default(uuid())
+  submissionId String
+  purpose      String
+  placeOrUniv  String
+  outcome      String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat4AdminResp {
+  id             String @id @default(uuid())
+  submissionId   String
+  responsibility String
+  level          String
+  workInvolved   String
+  period         String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat4StudentActivity {
+  id           String @id @default(uuid())
+  submissionId String
+  activityName String
+  period       String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat5Membership {
+  id           String @id @default(uuid())
+  submissionId String
+  association  String
+  status       String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat5Award {
+  id           String @id @default(uuid())
+  submissionId String
+  awardType    String
+  organization String
+  level        String
+  proofFile    String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat5Differentiator {
+  id           String @id @default(uuid())
+  submissionId String
+  name         String
+  role         String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Cat5Internship {
+  id                String @id @default(uuid())
+  submissionId      String
+  industryOrInst    String
+  studentBatch      String
+  internshipDetails String
+  period            String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model AppraisalReview {
+  id           String       @id @default(uuid())
+  submissionId String       @unique
+  reviewerId   String
+  reviewerRole ReviewerRole
+
+  cat1Score Float?
+  cat2Score Float?
+  cat3Score Float?
+  cat4Score Float?
+  cat5Score Float?
+
+  cat6Punctuality     Float?
+  cat6Professionalism Float?
+  cat6Willingness     Float?
+  cat6Cordiality      Float?
+  cat6Classroom       Float?
+
+  totalScore Float?
+  grandTotal Float?
+
+  teachingComment      String?
+  researchComment      String?
+  developmentComment   String?
+  governanceComment    String?
+  supplementaryComment String?
+  overallComment       String?
+
+  status     SubmissionStatus
+  reviewedAt DateTime         @default(now())
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer   User                @relation(fields: [reviewerId], references: [id])
+}
+
+model FPGPPlan {
+  id             String     @id @default(uuid())
+  userId         String
+  academicYearId String
+  status         FPGPStatus @default(DRAFT)
+
+  // Profile snapshot at create
+  designationSnap     String?
+  departmentSnap      String?
+  dateOfJoiningSnap   DateTime?
+  totalExperienceSnap Float?
+
+  // Digital ack signatures
+  facultySignedAt DateTime?
+  hodSignedAt     DateTime?
+  hodSignedBy     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id])
+  subsections FPGPSubsection[]
+  reviews     FPGPReview[]
+  hodSigner   User?            @relation("HoDSigner", fields: [hodSignedBy], references: [id])
+
+  @@unique([userId, academicYearId])
+}
+
+model FPGPSubsection {
+  id         String  @id @default(uuid())
+  fpgpId     String
+  subsection String
+
+  sem1Text   String?
+  sem2Text   String?
+  extraText1 String?
+  extraText2 String?
+  extraText3 String?
+  rows       Json?
+
+  fpgpPlan FPGPPlan @relation(fields: [fpgpId], references: [id], onDelete: Cascade)
+
+  @@unique([fpgpId, subsection])
+}
+
+model FPGPReview {
+  id           String       @id @default(uuid())
+  fpgpId       String
+  reviewerId   String
+  reviewerRole ReviewerRole
+  comments     String
+  reviewedAt   DateTime     @default(now())
+
+  fpgpPlan FPGPPlan @relation(fields: [fpgpId], references: [id], onDelete: Cascade)
+  reviewer User     @relation(fields: [reviewerId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model PasswordOtp {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model EmailNotification {
+  id         String      @id @default(uuid())
+  toUserId   String
+  toEmail    String
+  subject    String
+  template   String
+  payload    Json
+  status     EmailStatus @default(PENDING)
+  sentAt     DateTime?
+  error      String?
+  attempts   Int         @default(0)
+  dedupeKey  String?     @unique
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  toUser User @relation(fields: [toUserId], references: [id])
+
+  @@index([status])
+  @@index([toUserId])
+  @@index([createdAt])
+}

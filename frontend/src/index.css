@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens (VNRVJIET brand × Enterprise Gateway pattern) ──
+   Tailwind v4 picks up CSS vars and generates utilities:
+     bg-primary-600 · text-accent-500 · font-serif · rounded-md
+   Style: Data-Dense Dashboard | Typography: EB Garamond + Lato
+*/
+@theme {
+  /* Institutional navy primary (slightly warmer than corporate slate) */
+  --color-primary-50:  #f0f4f9;
+  --color-primary-100: #dae3ee;
+  --color-primary-200: #b9c8db;
+  --color-primary-300: #93a8c4;
+  --color-primary-400: #5a78a2;
+  --color-primary-500: #2d5481;
+  --color-primary-600: #1e3a5f;
+  --color-primary-700: #152843;
+  --color-primary-800: #0f1d31;
+  --color-primary-900: #0a131f;
+
+  /* VNRVJIET saffron/gold accent (matches logo monogram) */
+  --color-accent-50:  #fdf6e4;
+  --color-accent-100: #faeac0;
+  --color-accent-200: #f5d680;
+  --color-accent-400: #f5b820;
+  --color-accent-500: #e9a93a;
+  --color-accent-600: #b07a05;
+  --color-accent-700: #8a5f04;
+
+  /* Surface (paper, off-white — softer than pure white) */
+  --color-surface-base:   #f8fafc;
+  --color-surface-card:   #ffffff;
+  --color-surface-border: #e2e8f0;
+  --color-surface-muted:  #f1f5f9;
+
+  /* Ink (text) — high contrast slate for WCAG AA */
+  --color-ink-primary:   #0f172a;
+  --color-ink-secondary: #334155;
+  --color-ink-muted:     #64748b;
+  --color-ink-subtle:    #94a3b8;
+
+  /* Semantic status colors */
+  --color-success-500: #059669;
+  --color-warning-500: #d97706;
+  --color-danger-500:  #dc2626;
+  --color-info-500:    #0369a1;
+
+  /* Typography */
+  --font-sans:  "Lato", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "EB Garamond", Georgia, "Times New Roman", serif;
+  --font-mono:  ui-monospace, Consolas, monospace;
+
+  /* Tighter radii — institutional formal look */
+  --radius-xs:  2px;
+  --radius-sm:  3px;
+  --radius-md:  6px;
+  --radius-lg:  8px;
+  --radius-xl:  12px;
+
+  /* Elevations — subtle, professional */
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 10px 15px -3px rgb(15 23 42 / 0.08), 0 4px 6px -4px rgb(15 23 42 / 0.04);
+}
+
+/* ─── Base styles ─────────────────────────────────────────────── */
+:root {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-ink-primary);
+  background: var(--color-surface-base);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--color-surface-base);
+  color: var(--color-ink-primary);
+}
+
+/* Serif headings — formal, authoritative */
+h1, h2, h3, h4 {
+  font-family: var(--font-serif);
+  color: var(--color-ink-primary);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+h1 { font-size: 1.875rem; }  /* 30px */
+h2 { font-size: 1.5rem; }    /* 24px */
+h3 { font-size: 1.25rem; }   /* 20px */
+h4 { font-size: 1.125rem; }  /* 18px */
+
+p { margin: 0; }
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+/* Form controls inherit body font */
+:where(input, select, textarea, button) {
+  font-family: inherit;
+}
+
+/* Focus ring — WCAG visible, brand color */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Selection highlight in brand color */
+::selection {
+  background: var(--color-accent-200);
+  color: var(--color-ink-primary);
+}
+
+/* ─── Print stylesheets ───────────────────────────────────────────
+   Strip chrome (header/sidebar/footer/buttons), force light bg,
+   show institute header above content, break long forms cleanly.
+*/
+@media print {
+  /* Hide app chrome */
+  header,
+  aside,
+  footer,
+  nav,
+  .no-print,
+  button,
+  [role="navigation"],
+  .sticky {
+    display: none !important;
+  }
+
+  /* Reset layout */
+  body, html {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+  }
+
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  main > div {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Cards print flat */
+  .bg-surface-card,
+  [class*="border-surface-border"] {
+    background: #fff !important;
+    border: 1px solid #999 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  /* Headings: bold black serif */
+  h1, h2, h3, h4 {
+    color: #000 !important;
+    page-break-after: avoid;
+  }
+
+  /* Tables: black borders, no zebra */
+  table {
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  thead {
+    background: #ddd !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  thead th {
+    background: #ddd !important;
+    color: #000 !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #999 !important;
+    padding: 4pt 6pt !important;
+  }
+
+  /* Status badges: outlined only */
+  [class*="bg-emerald-"],
+  [class*="bg-red-"],
+  [class*="bg-amber-"],
+  [class*="bg-primary-"],
+  [class*="bg-blue-"] {
+    background: #fff !important;
+    color: #000 !important;
+    border: 1px solid #000 !important;
+  }
+
+  /* Links underlined but no colors */
+  a {
+    color: #000 !important;
+    text-decoration: underline !important;
+  }
+
+  /* Force page breaks */
+  .print-break-before { page-break-before: always; }
+  .print-break-after  { page-break-after: always; }
+
+  /* Print only header — show institute info */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Page margins via @page */
+  @page {
+    size: A4;
+    margin: 15mm 12mm;
+  }
+}
+
+/* Hidden by default; print stylesheet shows .print-only */
+.print-only {
+  display: none;
+}
