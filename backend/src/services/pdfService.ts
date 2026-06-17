@@ -188,71 +188,86 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
     ['Course', 'Class Size', '≥75%', '<75 & ≥65%', 'Feedback', 'Grade O,A+', 'Grade A,B', 'Grade C,D'],
     (sub.cat1CourseResults ?? []).map((c: any) => [c.courseName, c.classSize, c.attnGte75, c.attnLt75Gte65, c.feedbackReceived, c.gradeOAPlus, c.gradeAB, c.gradeCD])
   )}
-  ${listTable('Student Projects Guided',
-    ['Title', 'Type', 'Students', 'Status'],
-    (sub.cat1Projects ?? []).map((p: any) => [p.title, p.projectType, p.studentCount, p.status])
+  ${listTable('1.3 Academic Projects Guided',
+    ['Course', 'Type', 'Count'],
+    (sub.cat1Projects ?? []).map((p: any) => [p.course, p.projectType, p.count])
   )}
   ${listTable('E-Content Developed',
-    ['Title', 'Platform', 'URL'],
-    (sub.cat1EContent ?? []).map((e: any) => [e.title, e.platform, e.url])
+    ['Course', 'Content', 'Nature'],
+    (sub.cat1EContent ?? []).map((e: any) => [e.courseName, e.contentName, e.nature])
   )}
   ${listTable('ICT Usage',
-    ['Course', 'Tool/Platform', 'Description'],
-    (sub.cat1ICT ?? []).map((i: any) => [i.course, i.platform, i.description])
+    ['Course', 'Platform', 'Nature of Use'],
+    (sub.cat1ICT ?? []).map((i: any) => [i.courseName, i.platform, i.natureOfUse])
   )}
 
   <h2>Cat 2 — Research &amp; Consultancy</h2>
   ${listTable('Journal Publications',
-    ['Title', 'Journal', 'Index', 'Year', 'Authors', 'Proof'],
-    (sub.cat2Journals ?? []).map((j: any) => [j.title, j.journalName, j.index, j.year, j.authors, proofCell(j.proofFile)])
+    ['Title', 'Journal', 'Index', 'Date', 'Authors', 'Proof'],
+    (sub.cat2Journals ?? []).map((j: any) => [j.title, j.journalName, j.indexed, fmtDate(j.dateOfPub), j.authors, proofCell(j.proofFile)])
   )}
   ${listTable('Conference Publications',
-    ['Title', 'Conference', 'Year', 'Index', 'Proof'],
-    (sub.cat2Conferences ?? []).map((c: any) => [c.title, c.conferenceName, c.year, c.index, proofCell(c.proofFile)])
+    ['Title', 'Conference', 'Date', 'Index', 'Proof'],
+    (sub.cat2Conferences ?? []).map((c: any) => [c.title, c.conferenceName, fmtDate(c.dateOfPub), c.indexed, proofCell(c.proofFile)])
+  )}
+  ${listTable('Books & Chapters',
+    ['Title', 'Authors', 'Publisher', 'Type'],
+    [
+      ...(sub.cat2Books ?? []).map((b: any) => [b.title, b.authors, b.publisher, b.isEdited ? 'Edited' : 'Published']),
+      ...(sub.cat2BookChapters ?? []).map((b: any) => [b.title, b.authors, b.publisher, b.isEdited ? 'Edited' : 'Published']),
+    ]
   )}
   ${listTable('Patents',
     ['Title', 'Status', 'Application No', 'Date', 'Proof'],
-    (sub.cat2Patents ?? []).map((p: any) => [p.title, p.status, p.applicationNumber, fmtDate(p.date), proofCell(p.proofFile)])
+    (sub.cat2Patents ?? []).map((p: any) => [p.title, p.status, p.appNumber, fmtDate(p.dateOfPub), proofCell(p.proofFile)])
   )}
   ${listTable('Funded Projects',
-    ['Title', 'Funding Agency', 'Amount', 'Status', 'Proof'],
-    (sub.cat2Projects ?? []).map((p: any) => [p.title, p.fundingAgency, p.amount, p.status, proofCell(p.proofFile)])
+    ['Title', 'Funding Agency', 'Amount (Lakhs)', 'Status', 'Proof'],
+    (sub.cat2Projects ?? []).map((p: any) => [p.title, p.fundingAgency, p.amountLakhs, p.status, proofCell(p.proofFile)])
   )}
   ${listTable('Consultancy',
-    ['Title', 'Client', 'Amount'],
-    (sub.cat2Consultancy ?? []).map((c: any) => [c.title, c.client, c.amount])
+    ['Name', 'Agency', 'Amount (Lakhs)'],
+    (sub.cat2Consultancy ?? []).map((c: any) => [c.name, c.agency, c.amountLakhs])
   )}
   ${listTable('Research Guidance (PhD/PG)',
-    ['Scholar', 'Level', 'Topic', 'Status'],
-    (sub.cat2Guidance ?? []).map((g: any) => [g.scholarName, g.level, g.topic, g.status])
+    ['Scholar', 'University', 'Thesis', 'Guide/Co-Guide'],
+    (sub.cat2Guidance ?? []).map((g: any) => [g.studentName, g.university, g.thesisTitle, g.isGuide ? 'Guide' : 'Co-Guide'])
+  )}
+  ${listTable('Industry Linkage',
+    ['Industry', 'Contact Person', 'Outcome'],
+    (sub.cat2IndustryLinkages ?? []).map((l: any) => [l.industryName, l.contactPerson, l.outcome])
   )}
 
   <h2>Cat 3 — Developmental Activities</h2>
-  ${listTable('Events Organized',
-    ['Title', 'Type', 'Date', 'Role'],
-    (sub.cat3Organised ?? []).map((e: any) => [e.title, e.eventType, fmtDate(e.date), e.role])
+  ${listTable('3.2 Programs Organised',
+    ['Title', 'Period', 'Sponsor', 'Status', 'Scope'],
+    (sub.cat3Organised ?? []).map((e: any) => [e.title, e.period, e.sponsor, e.status, e.scope])
   )}
-  ${listTable('Resource Person',
-    ['Event', 'Organizer', 'Date', 'Topic'],
-    (sub.cat3ResourcePerson ?? []).map((r: any) => [r.event, r.organizer, fmtDate(r.date), r.topic])
+  ${listTable('3.3 Conferences / Seminars / Workshops Attended',
+    ['Paper Title', 'Authors', 'Conference', 'Period'],
+    (sub.cat3ConferencesAttended ?? []).map((c: any) => [c.paperTitle, c.authors, c.conferenceName, c.period])
   )}
-  ${listTable('Editorial Roles',
-    ['Journal/Conf', 'Role', 'Period'],
-    (sub.cat3Editorial ?? []).map((e: any) => [e.publication, e.role, e.period])
+  ${listTable('3.4 Resource Person',
+    ['Type', 'Program', 'Topic', 'Duration', 'Venue', 'Organised By'],
+    (sub.cat3ResourcePerson ?? []).map((r: any) => [r.programType, r.programName, r.topic, r.duration, r.venue, r.organisedBy])
   )}
-  ${listTable('Training Attended',
+  ${listTable('3.4 Editorial / Review Roles',
+    ['Contribution', 'Organization / Journal', 'Scope', 'Date / Duration'],
+    (sub.cat3Editorial ?? []).map((e: any) => [e.natureOfContrib, e.orgOrJournal, e.scope, e.dateDuration])
+  )}
+  ${listTable('3.5 Training Attended',
     ['Name', 'Period', 'Duration (days)', 'Proof'],
     (sub.cat3Training ?? []).map((t: any) => [t.name, t.period, t.durationDays, proofCell(t.proofFile)])
   )}
 
   <h2>Cat 4 — Governance</h2>
   ${listTable('Administrative Responsibilities',
-    ['Role', 'Period', 'Details'],
-    (sub.cat4AdminResp ?? []).map((a: any) => [a.role, a.period, a.details])
+    ['Responsibility', 'Institute/Dept', 'Work Involved', 'Period'],
+    (sub.cat4AdminResp ?? []).map((a: any) => [a.responsibility, a.level, a.workInvolved, a.period])
   )}
   ${listTable('Student Activities',
-    ['Activity', 'Role', 'Period'],
-    (sub.cat4StudentAct ?? []).map((s: any) => [s.activity, s.role, s.period])
+    ['Activity', 'Period'],
+    (sub.cat4StudentAct ?? []).map((s: any) => [s.activityName, s.period])
   )}
 
   <h2>Cat 5 — Supplementary</h2>
