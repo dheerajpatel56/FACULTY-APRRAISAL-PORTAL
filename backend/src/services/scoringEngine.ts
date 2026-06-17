@@ -17,8 +17,10 @@ import {
   Cat2ResearchGroup,
   Cat2Linkage,
   Cat2Startup,
+  Cat2IndustryLinkage,
   Cat3AdvQual,
   Cat3OrganisedProgram,
+  Cat3ConferenceAttended,
   Cat3ResourcePerson,
   Cat3Editorial,
   Cat3Training,
@@ -34,7 +36,6 @@ import {
   PublicationIndex,
   PatentStatus,
   ProjectStatus,
-  Scope,
 } from '@prisma/client';
 
 export interface ScoreBreakdown {
@@ -56,14 +57,15 @@ export interface ScoreBreakdown {
     guidance: number;
     researchGroups: number;
     linkages: number;
+    industryLinkages: number;
     startups: number;
     total: number;
   };
   cat3: {
     advQual: number;
     organisedPrograms: number;
-    resourcePerson: number;
-    editorial: number;
+    conferencesAttended: number;
+    resourceEditorial: number;
     training: number;
     intlTravel: number;
     total: number;
@@ -101,8 +103,10 @@ type FullSubmission = AppraisalSubmission & {
   cat2ResearchGroups: Cat2ResearchGroup[];
   cat2Linkages: Cat2Linkage[];
   cat2Startups: Cat2Startup[];
+  cat2IndustryLinkages: Cat2IndustryLinkage[];
   cat3AdvQual: Cat3AdvQual | null;
   cat3Organised: Cat3OrganisedProgram[];
+  cat3ConferencesAttended: Cat3ConferenceAttended[];
   cat3ResourcePerson: Cat3ResourcePerson[];
   cat3Editorial: Cat3Editorial[];
   cat3Training: Cat3Training[];
@@ -116,7 +120,7 @@ type FullSubmission = AppraisalSubmission & {
 };
 
 function scoreCategory1(s: FullSubmission) {
-  // 1.1 Lectures (max 40)
+  // 1.1 Lectures (max 50)
   let lectures = 0;
   for (const c of s.cat1Courses) {
     const pct = (c.periodsConducted / c.periodPlanned) * 100;
@@ -124,7 +128,7 @@ function scoreCategory1(s: FullSubmission) {
     const novelty = c.novelPedagogyUsed ? 5 : 0;
     lectures += base + novelty;
   }
-  lectures = Math.min(lectures, 40);
+  lectures = Math.min(lectures, 50);
 
   // 1.2 Attendance / Feedback / Results (per course max 20, section max 80)
   let attendanceFeedback = 0;
@@ -158,53 +162,49 @@ function scoreCategory1(s: FullSubmission) {
 }
 
 function scoreCategory2(s: FullSubmission) {
-  // 2.1 Publications (max 60)
+  const INDEXED: PublicationIndex[] = [
+    PublicationIndex.ESCI, PublicationIndex.WOS, PublicationIndex.SCOPUS, PublicationIndex.ICI,
+  ];
+
+  // 2.1 Publications — journals + conferences (max 50)
+  // Indexed (ESCI/WoS/SCOPUS/ICI) = 15, other = 5.
   let publications = 0;
   for (const j of s.cat2Journals) {
-    if (([PublicationIndex.SCI, PublicationIndex.WOS, PublicationIndex.SCOPUS] as PublicationIndex[]).includes(j.indexed)) {
-      publications += 15;
-    }
+    publications += INDEXED.includes(j.indexed) ? 15 : 5;
   }
   for (const c of s.cat2Conferences) {
-    if (c.indexed !== PublicationIndex.NONE) publications += 10;
+    publications += INDEXED.includes(c.indexed) ? 15 : 5;
   }
-  for (const bc of s.cat2BookChapters) {
-    if (bc.scope === Scope.INTERNATIONAL) publications += 10;
-  }
-  publications = Math.min(publications, 60);
+  publications = Math.min(publications, 50);
 
-  // 2.2 Citations (max 5)
+  // 2.2 Citations (max 10) — from total citations
   let citations = 0;
   if (s.cat2Citations) {
-    const total = s.cat2Citations.scopusCount + s.cat2Citations.wosCount;
-    citations = total >= 101 ? 5 : total >= 51 ? 3 : total >= 11 ? 2 : total >= 3 ? 1 : 0;
+    const tc = s.cat2Citations.totalCitations;
+    citations = tc > 40 ? 10 : tc >= 21 ? 8 : tc >= 11 ? 5 : tc >= 3 ? 2 : 0;
   }
 
-  // 2.3 Books (max 10)
+  // 2.3 Books & Chapters (max 10) — Published 10, Edited 5
   let books = 0;
-  for (const b of s.cat2Books) {
-    if (b.scope === Scope.INTERNATIONAL && !b.isEdited) books += 10;
-    else if (b.scope === Scope.INTERNATIONAL && b.isEdited) books += 5;
-    else if (b.scope === Scope.NATIONAL && !b.isEdited) books += 5;
-    else books += 3;
-  }
+  for (const b of s.cat2Books) books += b.isEdited ? 5 : 10;
+  for (const bc of s.cat2BookChapters) books += bc.isEdited ? 5 : 10;
   books = Math.min(books, 10);
 
-  // 2.4 Patents (max 20)
+  // 2.4 Patents (max 10) — Granted/Published 10, Filed 5
   let patents = 0;
   for (const p of s.cat2Patents) {
-    if (p.status === PatentStatus.GRANTED) patents += 10;
-    else if (p.status === PatentStatus.PUBLISHED) patents += 5;
+    if (p.status === PatentStatus.GRANTED || p.status === PatentStatus.PUBLISHED) patents += 10;
+    else if (p.status === PatentStatus.FILED) patents += 5;
   }
-  patents = Math.min(patents, 20);
+  patents = Math.min(patents, 10);
 
-  // 2.5 Sponsored Projects (max 20)
+  // 2.5 Sponsored Projects (max 25) — Ongoing 20, Applied 5
   let sponsoredProjects = 0;
   for (const p of s.cat2Projects) {
     if (p.status === ProjectStatus.ONGOING) sponsoredProjects = Math.max(sponsoredProjects, 20);
     else if (p.status === ProjectStatus.APPLIED) sponsoredProjects = Math.max(sponsoredProjects, 5);
   }
-  sponsoredProjects = Math.min(sponsoredProjects, 20);
+  sponsoredProjects = Math.min(sponsoredProjects, 25);
 
   // 2.6 Consultancy (max 10)
   let consultancy = 0;
@@ -214,63 +214,71 @@ function scoreCategory2(s: FullSubmission) {
   }
   consultancy = Math.min(consultancy, 10);
 
-  // 2.7 Research Guidance (max 5)
+  // 2.7 Research Guidance (max 10) — Guide 10, Co-Guide 5
   let guidance = 0;
   for (const g of s.cat2Guidance) {
-    guidance += g.isGuide ? 5 : 3;
+    guidance += g.isGuide ? 10 : 5;
   }
-  guidance = Math.min(guidance, 5);
+  guidance = Math.min(guidance, 10);
 
   // 2.8 Research Groups (max 5)
   const researchGroups = s.cat2ResearchGroups.length > 0 ? 5 : 0;
 
-  // 2.9 Linkages (max 10)
+  // 2.9 Linkages — institutes (max 10)
   const linkages = Math.min(s.cat2Linkages.length * 5, 10);
 
-  // 2.10 Startups (max 5)
+  // 2.10 Industry linkage (max 10)
+  const industryLinkages = Math.min(s.cat2IndustryLinkages.length * 5, 10);
+
+  // Startups — retained extra bucket (not in form, max 5)
   const startups = Math.min(s.cat2Startups.length * 5, 5);
 
   const total = Math.min(
     publications + citations + books + patents + sponsoredProjects +
-    consultancy + guidance + researchGroups + linkages + startups,
+    consultancy + guidance + researchGroups + linkages + industryLinkages + startups,
     150
   );
-  return { publications, citations, books, patents, sponsoredProjects, consultancy, guidance, researchGroups, linkages, startups, total };
+  return { publications, citations, books, patents, sponsoredProjects, consultancy, guidance, researchGroups, linkages, industryLinkages, startups, total };
 }
 
 function scoreCategory3(s: FullSubmission) {
-  // 3.1 Advanced Qualification (max 10)
+  // 3.1 Status of Ph.D. (max 10) — take highest applicable
   let advQual = 0;
   if (s.cat3AdvQual) {
     const q = s.cat3AdvQual;
-    if (q.pursuingPostDoc || q.pursuingPGDegree || q.pursuingPGDiploma) advQual = 10;
-    else if (q.phdStatus === 'thesis_submitted') advQual = 10;
-    else if (q.phdStatus === 'pre_phd_completed') advQual = 8;
-    else if (q.phdStatus === 'coursework_completed') advQual = 5;
+    if (q.awarded) advQual = 10;
+    else if (q.thesisSubmitted) advQual = 8;
+    else if (q.registeredForPhD || q.clearedPrePhD) advQual = 5;
   }
 
   // 3.2 Organised Programs (max 20)
   const organisedPrograms = Math.min(s.cat3Organised.length * 10, 20);
 
-  // 3.3 Resource Person (max 20)
-  const resourcePerson = Math.min(s.cat3ResourcePerson.length * 10, 20);
+  // 3.3 Attending Conferences/Seminars/Workshops (max 20, 10 each)
+  const conferencesAttended = Math.min(s.cat3ConferencesAttended.length * 10, 20);
 
-  // 3.4 Editorial (max 20)
-  const editorial = Math.min(s.cat3Editorial.length * 10, 20);
+  // 3.4 Resource Person + Editorial — combined (max 20, 10 each)
+  const resourceEditorial = Math.min(
+    (s.cat3ResourcePerson.length + s.cat3Editorial.length) * 10,
+    20
+  );
 
-  // 3.5 Training (max 25)
+  // 3.5 Training (max 25) — >=5 days → 10, <5 days → 5
   let training = 0;
   for (const t of s.cat3Training) {
-    if (t.durationDays > 5) training += 10;
-    else if (t.durationDays === 5) training += 5;
+    if (t.durationDays >= 5) training += 10;
+    else training += 5;
   }
   training = Math.min(training, 25);
 
   // 3.6 International Travel (max 5)
   const intlTravel = Math.min(s.cat3IntlTravel.length * 5, 5);
 
-  const total = Math.min(advQual + organisedPrograms + resourcePerson + editorial + training + intlTravel, 100);
-  return { advQual, organisedPrograms, resourcePerson, editorial, training, intlTravel, total };
+  const total = Math.min(
+    advQual + organisedPrograms + conferencesAttended + resourceEditorial + training + intlTravel,
+    100
+  );
+  return { advQual, organisedPrograms, conferencesAttended, resourceEditorial, training, intlTravel, total };
 }
 
 function scoreCategory4(s: FullSubmission) {
@@ -289,13 +297,8 @@ function scoreCategory5(s: FullSubmission) {
   }
   memberships = Math.min(memberships, 15);
 
-  // 5.2 Awards (max 10)
-  let awards = 0;
-  for (const a of s.cat5Awards) {
-    if (a.level === 'international' || a.level === 'national') awards += 10;
-    else if (a.level === 'state') awards += 5;
-  }
-  awards = Math.min(awards, 10);
+  // 5.2 Awards (max 10) — form scores 10 per award/honor
+  const awards = Math.min(s.cat5Awards.length * 10, 10);
 
   // 5.3 Differentiators (max 20)
   let differentiators = 0;

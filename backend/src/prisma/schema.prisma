@@ -40,9 +40,10 @@ enum CourseLevel {
 }
 
 enum PublicationIndex {
-  SCI
+  ESCI
   WOS
   SCOPUS
+  ICI
   NONE
 }
 
@@ -211,8 +212,10 @@ model AppraisalSubmission {
   cat2ResearchGroups Cat2ResearchGroup[]
   cat2Linkages       Cat2Linkage[]
   cat2Startups       Cat2Startup[]
+  cat2IndustryLinkages Cat2IndustryLinkage[]
   cat3AdvQual        Cat3AdvQual?
   cat3Organised      Cat3OrganisedProgram[]
+  cat3ConferencesAttended Cat3ConferenceAttended[]
   cat3ResourcePerson Cat3ResourcePerson[]
   cat3Editorial      Cat3Editorial[]
   cat3Training       Cat3Training[]
@@ -236,6 +239,7 @@ model Cat1Course {
   level             CourseLevel
   yearSem           String
   novelPedagogyUsed Boolean     @default(false)
+  novelPedagogyMethod String?   // e.g. "Chalk and Talk", "Project Based Learning"
   periodPlanned     Int
   periodsConducted  Int
 
@@ -361,11 +365,12 @@ model Cat2Book {
 model Cat2Citations {
   id                String @id @default(uuid())
   submissionId      String @unique
-  scopusCount       Int    @default(0)
-  wosCount          Int    @default(0)
-  hIndex            Int    @default(0)
-  pubsWithCitations Int    @default(0)
-  totalPubsTillDate Int    @default(0)
+  totalPubsTillDate Int    @default(0) // No. of Publications / Books till date
+  pubsWithCitations Int    @default(0) // No. of publications/Books with Citations
+  totalCitations    Int    @default(0) // Total No. of Citations (drives the score)
+  hIndexGoogle      Int    @default(0)
+  hIndexScopus      Int    @default(0)
+  hIndexWos         Int    @default(0)
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -452,13 +457,25 @@ model Cat2Startup {
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
 
+// 2.10 Industry linkage (max 10, score 5 per linkage)
+model Cat2IndustryLinkage {
+  id            String @id @default(uuid())
+  submissionId  String
+  industryName  String
+  contactPerson String
+  outcome       String
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+// 3.1 Status of Ph.D. — Registered 5 / Cleared Pre-PhD 5 / Thesis Submitted 8 / Awarded 10
 model Cat3AdvQual {
-  id               String  @id @default(uuid())
-  submissionId     String  @unique
-  pursuingPostDoc  Boolean @default(false)
-  phdStatus        String?
-  pursuingPGDegree Boolean @default(false)
-  pursuingPGDiploma Boolean @default(false)
+  id              String  @id @default(uuid())
+  submissionId    String  @unique
+  registeredForPhD Boolean @default(false)
+  clearedPrePhD   Boolean @default(false)
+  thesisSubmitted Boolean @default(false)
+  awarded         Boolean @default(false)
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -471,6 +488,18 @@ model Cat3OrganisedProgram {
   sponsor      String?
   status       String
   scope        Scope
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+// 3.3 Attending Conferences / Seminars / Workshops (max 20, score 10 each)
+model Cat3ConferenceAttended {
+  id             String @id @default(uuid())
+  submissionId   String
+  paperTitle     String
+  authors        String
+  conferenceName String
+  period         String
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }

@@ -22,8 +22,10 @@ function emptySubmission(overrides: Record<string, any> = {}): any {
     cat2ResearchGroups: [],
     cat2Linkages: [],
     cat2Startups: [],
+    cat2IndustryLinkages: [],
     cat3AdvQual: null,
     cat3Organised: [],
+    cat3ConferencesAttended: [],
     cat3ResourcePerson: [],
     cat3Editorial: [],
     cat3Training: [],
@@ -69,11 +71,11 @@ describe('Category 1 — Teaching', () => {
     expect(mk(50)).toBe(4);
   });
 
-  it('lectures capped at 40', () => {
+  it('lectures capped at 50', () => {
     const courses = Array.from({ length: 10 }, () => ({
       periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: true,
     }));
-    expect(computeScore(emptySubmission({ cat1Courses: courses })).cat1.lectures).toBe(40);
+    expect(computeScore(emptySubmission({ cat1Courses: courses })).cat1.lectures).toBe(50);
   });
 
   it('1.2 attendance/feedback/results: A+B+C computed from raw counts', () => {
@@ -118,34 +120,51 @@ describe('Category 1 — Teaching', () => {
 });
 
 describe('Category 2 — Research', () => {
-  it('SCI/WOS/Scopus journal = 15 each', () => {
+  it('indexed journal/conf = 15, non-indexed = 5', () => {
     const s = computeScore(emptySubmission({
-      cat2Journals: [{ indexed: 'SCI' }, { indexed: 'SCOPUS' }],
+      cat2Journals: [{ indexed: 'ESCI' }, { indexed: 'SCOPUS' }, { indexed: 'NONE' }],
+      cat2Conferences: [{ indexed: 'ICI' }, { indexed: 'NONE' }],
     }));
-    expect(s.cat2.publications).toBe(30);
+    // 15 + 15 + 5 + 15 + 5 = 55, capped 50
+    expect(s.cat2.publications).toBe(50);
   });
 
-  it('publications capped at 60', () => {
-    const journals = Array.from({ length: 10 }, () => ({ indexed: 'SCI' }));
-    expect(computeScore(emptySubmission({ cat2Journals: journals })).cat2.publications).toBe(60);
+  it('publications capped at 50', () => {
+    const journals = Array.from({ length: 10 }, () => ({ indexed: 'ESCI' }));
+    expect(computeScore(emptySubmission({ cat2Journals: journals })).cat2.publications).toBe(50);
   });
 
-  it('citations tiered: >=101 → 5, >=51 → 3, >=11 → 2, >=3 → 1', () => {
-    const mk = (scopus: number, wos: number) => computeScore(emptySubmission({
-      cat2Citations: { scopusCount: scopus, wosCount: wos },
+  it('citations from totalCitations: >40→10, 21-40→8, 11-20→5, 3-10→2', () => {
+    const mk = (totalCitations: number) => computeScore(emptySubmission({
+      cat2Citations: { totalCitations },
     })).cat2.citations;
-    expect(mk(101, 0)).toBe(5);
-    expect(mk(50, 1)).toBe(3);
-    expect(mk(11, 0)).toBe(2);
-    expect(mk(3, 0)).toBe(1);
-    expect(mk(2, 0)).toBe(0);
+    expect(mk(61)).toBe(10);
+    expect(mk(30)).toBe(8);
+    expect(mk(15)).toBe(5);
+    expect(mk(5)).toBe(2);
+    expect(mk(2)).toBe(0);
   });
 
-  it('patents: granted=10, published=5, capped 20', () => {
+  it('patents: granted/published=10, filed=5, capped 10', () => {
     const s = computeScore(emptySubmission({
       cat2Patents: [{ status: 'GRANTED' }, { status: 'PUBLISHED' }, { status: 'FILED' }],
     }));
-    expect(s.cat2.patents).toBe(15);
+    // 10 + 10 + 5 = 25, capped 10
+    expect(s.cat2.patents).toBe(10);
+  });
+
+  it('guidance: guide=10, co-guide=5, capped 10', () => {
+    const s = computeScore(emptySubmission({
+      cat2Guidance: [{ isGuide: true }, { isGuide: false }],
+    }));
+    expect(s.cat2.guidance).toBe(10);
+  });
+
+  it('industry linkage: 5 each, capped 10', () => {
+    const s = computeScore(emptySubmission({
+      cat2IndustryLinkages: [{}, {}, {}],
+    }));
+    expect(s.cat2.industryLinkages).toBe(10);
   });
 
   it('sponsored projects: ongoing=20 max (not additive)', () => {
@@ -153,6 +172,36 @@ describe('Category 2 — Research', () => {
       cat2Projects: [{ status: 'ONGOING' }, { status: 'ONGOING' }],
     }));
     expect(s.cat2.sponsoredProjects).toBe(20);
+  });
+});
+
+describe('Category 3 — Faculty Development', () => {
+  it('3.1 PhD status: awarded=10, thesis=8, registered/prePhD=5', () => {
+    const mk = (q: any) => computeScore(emptySubmission({ cat3AdvQual: q })).cat3.advQual;
+    expect(mk({ awarded: true })).toBe(10);
+    expect(mk({ thesisSubmitted: true })).toBe(8);
+    expect(mk({ registeredForPhD: true })).toBe(5);
+    expect(mk({ clearedPrePhD: true })).toBe(5);
+    expect(mk({})).toBe(0);
+  });
+
+  it('3.3 attending conferences: 10 each, capped 20', () => {
+    const s = computeScore(emptySubmission({ cat3ConferencesAttended: [{}, {}, {}] }));
+    expect(s.cat3.conferencesAttended).toBe(20);
+  });
+
+  it('3.4 resource person + editorial combined, capped 20', () => {
+    const s = computeScore(emptySubmission({
+      cat3ResourcePerson: [{}, {}], cat3Editorial: [{}],
+    }));
+    expect(s.cat3.resourceEditorial).toBe(20); // (2+1)*10 = 30, cap 20
+  });
+
+  it('3.5 training: >=5 days→10, <5→5, capped 25', () => {
+    const s = computeScore(emptySubmission({
+      cat3Training: [{ durationDays: 5 }, { durationDays: 4 }],
+    }));
+    expect(s.cat3.training).toBe(15); // 10 + 5
   });
 });
 
@@ -184,6 +233,22 @@ describe('Category 5 — Supplementary', () => {
   });
 });
 
+describe('Category 5 — Supplementary', () => {
+  it('5.1 membership: national=5, international/executive=10, capped 15', () => {
+    const s = computeScore(emptySubmission({
+      cat5Memberships: [
+        { status: 'national_member' }, { status: 'international_member' }, { status: 'national_executive' },
+      ],
+    }));
+    expect(s.cat5.memberships).toBe(15); // 5 + 10 + 10 = 25, cap 15
+  });
+
+  it('5.2 awards: flat 10 each, capped 10', () => {
+    const s = computeScore(emptySubmission({ cat5Awards: [{}, {}] }));
+    expect(s.cat5.awards).toBe(10);
+  });
+});
+
 describe('selfTotal', () => {
   it('sums cat1-5 totals', () => {
     const s = computeScore(emptySubmission({
@@ -202,7 +267,7 @@ describe('selfTotal', () => {
       cat1CourseResults: Array.from({ length: 50 }, () => ({ classSize: 10, attnGte75: 10, attnLt75Gte65: 0, feedbackReceived: 5, gradeOAPlus: 10, gradeAB: 0, gradeCD: 0 })),
       cat1Projects: huge.map(() => ({ course: 'MTECH', projectType: 'MAJOR', count: 10 })),
       cat1EContent: huge, cat1ICT: huge,
-      cat2Journals: huge.map(() => ({ indexed: 'SCI' })),
+      cat2Journals: huge.map(() => ({ indexed: 'ESCI' })),
       cat4AdminResp: huge, cat4StudentAct: huge,
       cat5Memberships: huge.map(() => ({ status: 'international_member' })),
     }));

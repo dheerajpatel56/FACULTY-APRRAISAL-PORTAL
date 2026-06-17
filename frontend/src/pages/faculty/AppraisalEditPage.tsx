@@ -22,11 +22,11 @@ export default function AppraisalEditPage() {
       clLeaves: 0, elLeaves: 0, hplLeaves: 0, odLeaves: 0, otherLeaves: '', higherQualAcquired: '',
       cat1Courses: [] as any[], cat1CourseResults: [] as any[], cat1Projects: [] as any[], cat1EContent: [] as any[], cat1ICT: [] as any[],
       cat2Journals: [] as any[], cat2Conferences: [] as any[], cat2BookChapters: [] as any[],
-      cat2Books: [] as any[], cat2Citations: { scopusCount: 0, wosCount: 0, hIndex: 0, pubsWithCitations: 0, totalPubsTillDate: 0 },
+      cat2Books: [] as any[], cat2Citations: { totalPubsTillDate: 0, pubsWithCitations: 0, totalCitations: 0, hIndexGoogle: 0, hIndexScopus: 0, hIndexWos: 0 },
       cat2Patents: [] as any[], cat2Projects: [] as any[], cat2Consultancy: [] as any[],
-      cat2Guidance: [] as any[], cat2ResearchGroups: [] as any[], cat2Linkages: [] as any[], cat2Startups: [] as any[],
-      cat3AdvQual: { pursuingPostDoc: false, phdStatus: '', pursuingPGDegree: false, pursuingPGDiploma: false },
-      cat3Organised: [] as any[], cat3ResourcePerson: [] as any[], cat3Editorial: [] as any[],
+      cat2Guidance: [] as any[], cat2ResearchGroups: [] as any[], cat2Linkages: [] as any[], cat2Startups: [] as any[], cat2IndustryLinkages: [] as any[],
+      cat3AdvQual: { registeredForPhD: false, clearedPrePhD: false, thesisSubmitted: false, awarded: false },
+      cat3Organised: [] as any[], cat3ConferencesAttended: [] as any[], cat3ResourcePerson: [] as any[], cat3Editorial: [] as any[],
       cat3Training: [] as any[], cat3IntlTravel: [] as any[],
       cat4AdminResp: [] as any[], cat4StudentAct: [] as any[],
       cat5Memberships: [] as any[], cat5Awards: [] as any[], cat5Differentiators: [] as any[], cat5Internships: [] as any[],
@@ -49,7 +49,9 @@ export default function AppraisalEditPage() {
   const researchGroups = useFieldArray({ control, name: 'cat2ResearchGroups' });
   const linkages = useFieldArray({ control, name: 'cat2Linkages' });
   const startups = useFieldArray({ control, name: 'cat2Startups' });
+  const industryLinkages = useFieldArray({ control, name: 'cat2IndustryLinkages' });
   const organised = useFieldArray({ control, name: 'cat3Organised' });
+  const conferencesAttended = useFieldArray({ control, name: 'cat3ConferencesAttended' });
   const resourcePerson = useFieldArray({ control, name: 'cat3ResourcePerson' });
   const editorial = useFieldArray({ control, name: 'cat3Editorial' });
   const training = useFieldArray({ control, name: 'cat3Training' });
@@ -80,7 +82,7 @@ export default function AppraisalEditPage() {
         cat2Conferences: sub.cat2Conferences ?? [],
         cat2BookChapters: sub.cat2BookChapters ?? [],
         cat2Books: sub.cat2Books ?? [],
-        cat2Citations: sub.cat2Citations ?? { scopusCount: 0, wosCount: 0, hIndex: 0, pubsWithCitations: 0, totalPubsTillDate: 0 },
+        cat2Citations: sub.cat2Citations ?? { totalPubsTillDate: 0, pubsWithCitations: 0, totalCitations: 0, hIndexGoogle: 0, hIndexScopus: 0, hIndexWos: 0 },
         cat2Patents: sub.cat2Patents ?? [],
         cat2Projects: sub.cat2Projects ?? [],
         cat2Consultancy: sub.cat2Consultancy ?? [],
@@ -88,8 +90,10 @@ export default function AppraisalEditPage() {
         cat2ResearchGroups: sub.cat2ResearchGroups ?? [],
         cat2Linkages: sub.cat2Linkages ?? [],
         cat2Startups: sub.cat2Startups ?? [],
-        cat3AdvQual: sub.cat3AdvQual ?? { pursuingPostDoc: false, phdStatus: '', pursuingPGDegree: false, pursuingPGDiploma: false },
+        cat2IndustryLinkages: sub.cat2IndustryLinkages ?? [],
+        cat3AdvQual: sub.cat3AdvQual ?? { registeredForPhD: false, clearedPrePhD: false, thesisSubmitted: false, awarded: false },
         cat3Organised: sub.cat3Organised ?? [],
+        cat3ConferencesAttended: sub.cat3ConferencesAttended ?? [],
         cat3ResourcePerson: sub.cat3ResourcePerson ?? [],
         cat3Editorial: sub.cat3Editorial ?? [],
         cat3Training: sub.cat3Training ?? [],
@@ -319,17 +323,21 @@ export default function AppraisalEditPage() {
                       <label className={labelCls}>Periods Conducted</label>
                       <input type="number" {...register(`cat1Courses.${i}.periodsConducted`, { valueAsNumber: true })} className={inputCls} />
                     </div>
+                    <div>
+                      <label className={labelCls}>Novel Pedagogy Method</label>
+                      <input {...register(`cat1Courses.${i}.novelPedagogyMethod`)} className={inputCls} placeholder="e.g. Chalk and Talk" />
+                    </div>
                     <div className="flex items-end pb-1">
                       <label className="flex items-center gap-2 text-sm text-ink-secondary">
                         <input type="checkbox" {...register(`cat1Courses.${i}.novelPedagogyUsed`)} />
-                        Novel Pedagogy
+                        Novel Pedagogy Used
                       </label>
                     </div>
                   </div>
                   <button type="button" onClick={() => courses.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Course', () => courses.append({ courseName: '', level: 'BTECH', yearSem: '', periodPlanned: 0, periodsConducted: 0, novelPedagogyUsed: false }))}
+              {addRowBtn('Add Course', () => courses.append({ courseName: '', level: 'BTECH', yearSem: '', periodPlanned: 0, periodsConducted: 0, novelPedagogyUsed: false, novelPedagogyMethod: '' }))}
             </div>
 
             <div>
@@ -486,7 +494,7 @@ export default function AppraisalEditPage() {
                     <div>
                       <label className={labelCls}>Indexed</label>
                       <select {...register(`cat2Journals.${i}.indexed`)} className={inputCls}>
-                        <option value="SCI">SCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="NONE">None</option>
+                        <option value="ESCI">ESCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="ICI">ICI</option><option value="NONE">None</option>
                       </select>
                     </div>
                     <div><label className={labelCls}>Impact Factor</label><input type="number" step="0.01" {...register(`cat2Journals.${i}.impactFactor`, { valueAsNumber: true })} className={inputCls} /></div>
@@ -534,7 +542,7 @@ export default function AppraisalEditPage() {
                     <div>
                       <label className={labelCls}>Indexed</label>
                       <select {...register(`cat2Conferences.${i}.indexed`)} className={inputCls}>
-                        <option value="SCI">SCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="NONE">None</option>
+                        <option value="ESCI">ESCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="ICI">ICI</option><option value="NONE">None</option>
                       </select>
                     </div>
                     {proofField(`cat2Conferences.${i}.proofFile`)}
@@ -581,12 +589,14 @@ export default function AppraisalEditPage() {
 
             <div>
               <h2 className="font-semibold text-ink-primary mb-3">2.2 Citations</h2>
+              <p className="text-xs text-ink-muted mb-3">Score from Total Citations: 3–10→2, 11–20→5, 21–40→8, &gt;40→10.</p>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className={labelCls}>Scopus Count</label><input type="number" {...register('cat2Citations.scopusCount', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>WOS Count</label><input type="number" {...register('cat2Citations.wosCount', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>h-Index</label><input type="number" {...register('cat2Citations.hIndex', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>Publications with Citations</label><input type="number" {...register('cat2Citations.pubsWithCitations', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>Total Publications (till date)</label><input type="number" {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>Publications/Books (till date)</label><input type="number" {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>Publications/Books with Citations</label><input type="number" {...register('cat2Citations.pubsWithCitations', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>Total Citations</label><input type="number" {...register('cat2Citations.totalCitations', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (Google Scholar)</label><input type="number" {...register('cat2Citations.hIndexGoogle', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (Scopus)</label><input type="number" {...register('cat2Citations.hIndexScopus', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (WoS)</label><input type="number" {...register('cat2Citations.hIndexWos', { valueAsNumber: true })} className={inputCls} /></div>
               </div>
             </div>
 
@@ -732,7 +742,21 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.10 Startups / Innovation</h2>
+              <h2 className="font-semibold text-ink-primary mb-3">2.10 Industry Linkage</h2>
+              <p className="text-xs text-ink-muted mb-3">Score 5 per linkage, max 10.</p>
+              {industryLinkages.fields.map((field, i) => (
+                <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
+                  <div><label className={labelCls}>Industry Name</label><input {...register(`cat2IndustryLinkages.${i}.industryName`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Contact Person</label><input {...register(`cat2IndustryLinkages.${i}.contactPerson`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Outcome</label><input {...register(`cat2IndustryLinkages.${i}.outcome`)} className={inputCls} /></div>
+                  <button type="button" onClick={() => industryLinkages.remove(i)} className="text-red-400 text-xs">Remove</button>
+                </div>
+              ))}
+              {addRowBtn('Add Industry Linkage', () => industryLinkages.append({ industryName: '', contactPerson: '', outcome: '' }))}
+            </div>
+
+            <div>
+              <h2 className="font-semibold text-ink-primary mb-3">Startups / Innovation (supplementary)</h2>
               {startups.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Group Name</label><input {...register(`cat2Startups.${i}.groupName`)} className={inputCls} /></div>
@@ -750,21 +774,29 @@ export default function AppraisalEditPage() {
         {step === 3 && (
           <div className="space-y-6">
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.1 Advanced Qualification</h2>
+              <h2 className="font-semibold text-ink-primary mb-3">3.1 Status of Ph.D.</h2>
+              <p className="text-xs text-ink-muted mb-3">Awarded → 10, Thesis Submitted → 8, Registered / Cleared Pre-PhD → 5 (highest applies).</p>
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.pursuingPostDoc')} /> Pursuing Post-Doc</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.pursuingPGDegree')} /> Pursuing PG Degree</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.pursuingPGDiploma')} /> Pursuing PG Diploma</label>
-                <div>
-                  <label className={labelCls}>PhD Status</label>
-                  <select {...register('cat3AdvQual.phdStatus')} className={inputCls}>
-                    <option value="">None</option>
-                    <option value="coursework_completed">Coursework Completed</option>
-                    <option value="pre_phd_completed">Pre-PhD Completed</option>
-                    <option value="thesis_submitted">Thesis Submitted</option>
-                  </select>
-                </div>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.registeredForPhD')} /> Registered for Ph.D.</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.clearedPrePhD')} /> Cleared Pre-PhD Exam</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.thesisSubmitted')} /> Thesis Submitted</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.awarded')} /> Awarded</label>
               </div>
+            </div>
+
+            <div>
+              <h2 className="font-semibold text-ink-primary mb-3">3.3 Conferences / Seminars / Workshops Attended</h2>
+              <p className="text-xs text-ink-muted mb-3">Score 10 each, max 20.</p>
+              {conferencesAttended.fields.map((field, i) => (
+                <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
+                  <div><label className={labelCls}>Paper Title</label><input {...register(`cat3ConferencesAttended.${i}.paperTitle`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Authors</label><input {...register(`cat3ConferencesAttended.${i}.authors`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Conference / Seminar / Workshop</label><input {...register(`cat3ConferencesAttended.${i}.conferenceName`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Period</label><input {...register(`cat3ConferencesAttended.${i}.period`)} className={inputCls} /></div>
+                  <button type="button" onClick={() => conferencesAttended.remove(i)} className="text-red-400 text-xs">Remove</button>
+                </div>
+              ))}
+              {addRowBtn('Add Conference Attended', () => conferencesAttended.append({ paperTitle: '', authors: '', conferenceName: '', period: '' }))}
             </div>
 
             <div>
@@ -791,7 +823,7 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.3 Resource Person</h2>
+              <h2 className="font-semibold text-ink-primary mb-3">3.4 Resource Person</h2>
               {resourcePerson.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -815,7 +847,7 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.4 Editorial / Review Roles</h2>
+              <h2 className="font-semibold text-ink-primary mb-3">3.4 Editorial / Review Roles (same section, combined max 20)</h2>
               {editorial.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -1066,10 +1098,10 @@ export default function AppraisalEditPage() {
                       ['2.10 Startups', score.cat2.startups, 5],
                     ]],
                     ['Category 3 — Faculty Development', score.cat3, 100, [
-                      ['3.1 Advanced Qualification', score.cat3.advQual, 10],
+                      ['3.1 Status of Ph.D.', score.cat3.advQual, 10],
                       ['3.2 Programs Organised', score.cat3.organisedPrograms, 20],
-                      ['3.3 Resource Person', score.cat3.resourcePerson, 20],
-                      ['3.4 Editorial', score.cat3.editorial, 20],
+                      ['3.3 Conferences Attended', score.cat3.conferencesAttended, 20],
+                      ['3.4 Resource Person + Editorial', score.cat3.resourceEditorial, 20],
                       ['3.5 Training', score.cat3.training, 25],
                       ['3.6 International Travel', score.cat3.intlTravel, 5],
                     ]],

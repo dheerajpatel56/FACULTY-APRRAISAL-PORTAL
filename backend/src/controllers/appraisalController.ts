@@ -28,8 +28,10 @@ const FULL_INCLUDE = {
   cat2ResearchGroups: true,
   cat2Linkages: true,
   cat2Startups: true,
+  cat2IndustryLinkages: true,
   cat3AdvQual: true,
   cat3Organised: true,
+  cat3ConferencesAttended: true,
   cat3ResourcePerson: true,
   cat3Editorial: true,
   cat3Training: true,
@@ -271,6 +273,10 @@ export async function updateAppraisal(req: Request, res: Response) {
       await tx.cat2Startup.deleteMany({ where: { submissionId: sub.id } });
       await tx.cat2Startup.createMany({ data: categories.cat2Startups.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
     }
+    if (categories?.cat2IndustryLinkages) {
+      await tx.cat2IndustryLinkage.deleteMany({ where: { submissionId: sub.id } });
+      await tx.cat2IndustryLinkage.createMany({ data: categories.cat2IndustryLinkages.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
+    }
     if (categories?.cat3AdvQual) {
       await tx.cat3AdvQual.upsert({
         where: { submissionId: sub.id },
@@ -281,6 +287,10 @@ export async function updateAppraisal(req: Request, res: Response) {
     if (categories?.cat3Organised) {
       await tx.cat3OrganisedProgram.deleteMany({ where: { submissionId: sub.id } });
       await tx.cat3OrganisedProgram.createMany({ data: categories.cat3Organised.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
+    }
+    if (categories?.cat3ConferencesAttended) {
+      await tx.cat3ConferenceAttended.deleteMany({ where: { submissionId: sub.id } });
+      await tx.cat3ConferenceAttended.createMany({ data: categories.cat3ConferencesAttended.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
     }
     if (categories?.cat3ResourcePerson) {
       await tx.cat3ResourcePerson.deleteMany({ where: { submissionId: sub.id } });

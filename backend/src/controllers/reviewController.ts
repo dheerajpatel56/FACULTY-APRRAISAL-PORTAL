@@ -30,7 +30,8 @@ const FULL_INCLUDE = {
   cat2Journals: true, cat2Conferences: true, cat2BookChapters: true, cat2Books: true,
   cat2Citations: true, cat2Patents: true, cat2Projects: true, cat2Consultancy: true,
   cat2Guidance: true, cat2ResearchGroups: true, cat2Linkages: true, cat2Startups: true,
-  cat3AdvQual: true, cat3Organised: true, cat3ResourcePerson: true, cat3Editorial: true,
+  cat2IndustryLinkages: true,
+  cat3AdvQual: true, cat3Organised: true, cat3ConferencesAttended: true, cat3ResourcePerson: true, cat3Editorial: true,
   cat3Training: true, cat3IntlTravel: true, cat4AdminResp: true, cat4StudentAct: true,
   cat5Memberships: true, cat5Awards: true, cat5Differentiators: true, cat5Internships: true,
 };

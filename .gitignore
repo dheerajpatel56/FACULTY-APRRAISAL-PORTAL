@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Sample appraisal scrapes (contain personal data)
+V_Baby_FPAS.md
+*_FPAS.md
+
 # Build output
 dist/
 build/
