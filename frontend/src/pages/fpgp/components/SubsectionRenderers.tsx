@@ -4,6 +4,14 @@ const ta = 'w-full border border-surface-border rounded px-2 py-1 text-xs focus:
 const lbl = 'block text-xs font-medium text-ink-secondary mb-1';
 const th = 'border border-surface-border bg-surface-muted px-2 py-1.5 text-xs font-semibold text-ink-secondary text-left';
 const td = 'border border-surface-border px-2 py-1 align-top';
+const numIn = 'w-20 border border-surface-border rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500';
+
+// Quantifiable subsections that carry a numeric target reconciled vs appraisal.
+const QUANT_SUBS = new Set(['2.1', '2.2', '2.3', '2.4', '2.5', '2.6', '3.2', '3.4']);
+
+function toTarget(v: string): number | null {
+  return v === '' ? null : Number(v);
+}
 
 type SubsectionState = {
   sem1Text?: string | null;
@@ -56,8 +64,9 @@ export function FixedRowsSubsection({ def, value, onChange, readOnly }: CommonPr
   const rows: any[] = value.rows ?? [];
   const extraCols: string[] = def.extraCols ?? [];
   const goalLabel = def.goalLabel ?? 'Goal';
+  const quant = QUANT_SUBS.has(def.sub);
 
-  const updateRow = (i: number, key: string, v: string) => {
+  const updateRow = (i: number, key: string, v: any) => {
     const next = rows.map((r, idx) => idx === i ? { ...r, [key]: v } : r);
     setRows(value, onChange, next);
   };
@@ -84,6 +93,7 @@ export function FixedRowsSubsection({ def, value, onChange, readOnly }: CommonPr
             {extraCols.includes('details') && <th className={th}>Details of Expected Connects</th>}
             {extraCols.includes('outcome') && <th className={th}>Expected Outcome</th>}
             <th className={th}>{goalLabel}</th>
+            {quant && <th className={`${th} w-24`}>Target (No.)</th>}
             <th className={th}>Sem-I</th>
             <th className={th}>Sem-II</th>
           </tr>
@@ -100,6 +110,9 @@ export function FixedRowsSubsection({ def, value, onChange, readOnly }: CommonPr
                 <td className={td}><textarea disabled={readOnly} value={r.outcome ?? ''} onChange={(e) => updateRow(i, 'outcome', e.target.value)} className={ta} /></td>
               )}
               <td className={td}><textarea disabled={readOnly} value={r.goal ?? ''} onChange={(e) => updateRow(i, 'goal', e.target.value)} className={ta} /></td>
+              {quant && (
+                <td className={td}><input type="number" min="0" disabled={readOnly} value={r.targetCount ?? ''} onChange={(e) => updateRow(i, 'targetCount', toTarget(e.target.value))} className={numIn} /></td>
+              )}
               <td className={td}><textarea disabled={readOnly} value={r.sem1 ?? ''} onChange={(e) => updateRow(i, 'sem1', e.target.value)} className={ta} /></td>
               <td className={td}><textarea disabled={readOnly} value={r.sem2 ?? ''} onChange={(e) => updateRow(i, 'sem2', e.target.value)} className={ta} /></td>
             </tr>
@@ -150,12 +163,14 @@ export function PgUgRowsSubsection({ value, onChange, readOnly }: CommonProps) {
 // ─── dynamicRows (3.3, 3.4, 3.5, 3.6, 4.2) ─────────────────────
 export function DynamicRowsSubsection({ def, value, onChange, readOnly }: CommonProps) {
   const rows: any[] = value.rows ?? [];
-  const updateRow = (i: number, key: string, v: string) => {
+  const quant = QUANT_SUBS.has(def.sub);
+  const updateRow = (i: number, key: string, v: any) => {
     const next = rows.map((r, idx) => idx === i ? { ...r, [key]: v } : r);
     setRows(value, onChange, next);
   };
   const addRow = () => {
     const blank: any = { name: '', goal: '', sem1: '', sem2: '' };
+    if (quant) blank.targetCount = null;
     if (def.hasParticipation) blank.participation = '';
     setRows(value, onChange, [...rows, blank]);
   };
@@ -170,6 +185,7 @@ export function DynamicRowsSubsection({ def, value, onChange, readOnly }: Common
             <th className={th}>Name of the Activity</th>
             {def.hasParticipation && <th className={th}>Participation / Organization</th>}
             <th className={th}>Goal</th>
+            {quant && <th className={`${th} w-24`}>Target (No.)</th>}
             <th className={th}>Sem-I</th>
             <th className={th}>Sem-II</th>
             {!readOnly && <th className={`${th} w-10`}></th>}
@@ -184,6 +200,9 @@ export function DynamicRowsSubsection({ def, value, onChange, readOnly }: Common
                 <td className={td}><textarea disabled={readOnly} value={r.participation ?? ''} onChange={(e) => updateRow(i, 'participation', e.target.value)} className={ta} /></td>
               )}
               <td className={td}><textarea disabled={readOnly} value={r.goal ?? ''} onChange={(e) => updateRow(i, 'goal', e.target.value)} className={ta} /></td>
+              {quant && (
+                <td className={td}><input type="number" min="0" disabled={readOnly} value={r.targetCount ?? ''} onChange={(e) => updateRow(i, 'targetCount', toTarget(e.target.value))} className={numIn} /></td>
+              )}
               <td className={td}><textarea disabled={readOnly} value={r.sem1 ?? ''} onChange={(e) => updateRow(i, 'sem1', e.target.value)} className={ta} /></td>
               <td className={td}><textarea disabled={readOnly} value={r.sem2 ?? ''} onChange={(e) => updateRow(i, 'sem2', e.target.value)} className={ta} /></td>
               {!readOnly && (
@@ -284,11 +303,11 @@ export function PhDGuidanceSubsection({ value, onChange, readOnly }: CommonProps
 // ─── memberships (3.2) ─────────────────────────────────────────
 export function MembershipsSubsection({ def, value, onChange, readOnly }: CommonProps) {
   const rows: any[] = value.rows ?? [];
-  const updateRow = (i: number, key: string, v: string) => {
+  const updateRow = (i: number, key: string, v: any) => {
     const next = rows.map((r, idx) => idx === i ? { ...r, [key]: v } : r);
     setRows(value, onChange, next);
   };
-  const addRow = () => setRows(value, onChange, [...rows, { name: '', goal: '', sem1: '', sem2: '' }]);
+  const addRow = () => setRows(value, onChange, [...rows, { name: '', goal: '', targetCount: null, sem1: '', sem2: '' }]);
   const removeRow = (i: number) => {
     if (rows.length <= def.minRows) return;
     setRows(value, onChange, rows.filter((_, idx) => idx !== i));
@@ -314,6 +333,7 @@ export function MembershipsSubsection({ def, value, onChange, readOnly }: Common
             <th className={`${th} w-10`}>#</th>
             <th className={th}>Activity under Professional Society</th>
             <th className={th}>Goal</th>
+            <th className={`${th} w-24`}>Target (No.)</th>
             <th className={th}>Sem-I</th>
             <th className={th}>Sem-II</th>
             {!readOnly && <th className={`${th} w-10`}></th>}
@@ -325,6 +345,7 @@ export function MembershipsSubsection({ def, value, onChange, readOnly }: Common
               <td className={`${td} text-center text-xs text-ink-muted`}>{i + 1}</td>
               <td className={td}><textarea disabled={readOnly} value={r.name ?? ''} onChange={(e) => updateRow(i, 'name', e.target.value)} className={ta} placeholder="e.g. IEEE Membership" /></td>
               <td className={td}><textarea disabled={readOnly} value={r.goal ?? ''} onChange={(e) => updateRow(i, 'goal', e.target.value)} className={ta} /></td>
+              <td className={td}><input type="number" min="0" disabled={readOnly} value={r.targetCount ?? ''} onChange={(e) => updateRow(i, 'targetCount', toTarget(e.target.value))} className={numIn} /></td>
               <td className={td}><textarea disabled={readOnly} value={r.sem1 ?? ''} onChange={(e) => updateRow(i, 'sem1', e.target.value)} className={ta} /></td>
               <td className={td}><textarea disabled={readOnly} value={r.sem2 ?? ''} onChange={(e) => updateRow(i, 'sem2', e.target.value)} className={ta} /></td>
               {!readOnly && (

@@ -1,9 +1,11 @@
 # Dependencies
 node_modules/
 
-# Sample appraisal scrapes (contain personal data)
-V_Baby_FPAS.md
+# Sample appraisal/FPGP scrapes (contain personal data)
+sample_appraisal.md
+sample_fpgp.md
 *_FPAS.md
+*_FPGP.md
 
 # Build output
 dist/

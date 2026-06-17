@@ -190,14 +190,14 @@ export const FPGP_TEMPLATE: SubsectionDef[] = [
 // Initial row defaults for a fresh subsection. Used when seeding empty rows on plan create.
 export function defaultRowsFor(def: SubsectionDef): any[] {
   if (def.type === 'fixedRows') {
-    return def.rowNames.map((name) => ({ name, goal: '', sem1: '', sem2: '', ...(def.extraCols?.reduce((a, c) => ({ ...a, [c]: '' }), {}) ?? {}) }));
+    return def.rowNames.map((name) => ({ name, goal: '', targetCount: null, sem1: '', sem2: '', ...(def.extraCols?.reduce((a, c) => ({ ...a, [c]: '' }), {}) ?? {}) }));
   }
   if (def.type === 'pgUgRows') {
     const make = (group: string, name: string) => ({ group, name, area: '', outcome: '', sem1: '', sem2: '' });
     return [...def.pg.map((n) => make('PG', n)), ...def.ug.map((n) => make('UG', n))];
   }
   if (def.type === 'dynamicRows') {
-    const cols: any = { name: '', goal: '', sem1: '', sem2: '' };
+    const cols: any = { name: '', goal: '', targetCount: null, sem1: '', sem2: '' };
     if (def.hasParticipation) cols.participation = '';
     return Array.from({ length: def.defaultRows ?? 3 }, () => ({ ...cols }));
   }
@@ -205,7 +205,7 @@ export function defaultRowsFor(def: SubsectionDef): any[] {
     return Array.from({ length: 3 }, () => ({ name: '', outcome: '', sem1: '', sem2: '' }));
   }
   if (def.type === 'memberships') {
-    return Array.from({ length: def.minRows }, () => ({ name: '', goal: '', sem1: '', sem2: '' }));
+    return Array.from({ length: def.minRows }, () => ({ name: '', goal: '', targetCount: null, sem1: '', sem2: '' }));
   }
   // duoText, phdGuidance — no rows
   return [];

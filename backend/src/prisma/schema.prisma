@@ -27,6 +27,8 @@ enum FPGPStatus {
   DRAFT
   ACTIVE
   REVIEWED
+  ACCEPTED
+  NEEDS_REVIEW
 }
 
 enum ProjectType {
@@ -660,6 +662,11 @@ model FPGPPlan {
   facultySignedAt DateTime?
   hodSignedAt     DateTime?
   hodSignedBy     String?
+
+  // Year-end target reconciliation vs appraisal actuals
+  evaluatedAt  DateTime?
+  autoAccepted Boolean  @default(false)
+  achievement  Json?    // [{ subsection, key, target, achieved, met }]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

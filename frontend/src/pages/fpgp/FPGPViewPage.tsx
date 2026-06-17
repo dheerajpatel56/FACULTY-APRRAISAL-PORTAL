@@ -46,6 +46,17 @@ export default function FPGPViewPage() {
     }
   };
 
+  const evaluate = async () => {
+    if (!confirm('Run target evaluation now for this academic year? ACTIVE plans will be auto-accepted or flagged for review.')) return;
+    try {
+      const r = await fpgpApi.evaluate(plan.academicYearId);
+      toast.success(`Evaluated ${r.evaluated} of ${r.total} plan(s)`);
+      reload();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error ?? 'Evaluation failed');
+    }
+  };
+
   const hodSign = async () => {
     if (!confirm('Sign this plan as HoD? Status becomes REVIEWED.')) return;
     try {
@@ -107,6 +118,11 @@ export default function FPGPViewPage() {
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge status={plan.status} size="md" />
+            {isAdmin && (
+              <button onClick={evaluate} className="flex items-center gap-1 text-sm border border-surface-border px-3 py-1.5 rounded hover:bg-surface-muted">
+                <Stamp size={14} /> Evaluate
+              </button>
+            )}
             <button onClick={downloadPdf} className="flex items-center gap-1 text-sm border border-surface-border px-3 py-1.5 rounded hover:bg-surface-muted">
               <Download size={14} /> PDF
             </button>
@@ -131,6 +147,39 @@ export default function FPGPViewPage() {
           <div><dt className="text-xs text-ink-muted">Total Experience</dt><dd className="text-ink-primary">{plan.totalExperienceSnap != null ? `${plan.totalExperienceSnap} years` : '—'}</dd></div>
         </dl>
       </Card>
+
+      {/* Target reconciliation report */}
+      {Array.isArray(plan.achievement) && plan.achievement.length > 0 && (
+        <Card className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-ink-primary font-serif">Target Achievement (vs Appraisal)</h2>
+            <span className={`text-xs px-2 py-1 rounded font-semibold ${plan.autoAccepted ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+              {plan.autoAccepted ? 'ALL TARGETS MET — ACCEPTED' : 'TARGETS NOT FULLY MET — NEEDS REVIEW'}
+            </span>
+          </div>
+          {plan.evaluatedAt && <p className="text-xs text-ink-muted mb-3">Evaluated {new Date(plan.evaluatedAt).toLocaleString()}</p>}
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-secondary">
+                <th className="border border-surface-border bg-surface-muted px-2 py-1.5">Target</th>
+                <th className="border border-surface-border bg-surface-muted px-2 py-1.5 w-24">Planned</th>
+                <th className="border border-surface-border bg-surface-muted px-2 py-1.5 w-24">Achieved</th>
+                <th className="border border-surface-border bg-surface-muted px-2 py-1.5 w-20">Met</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plan.achievement.map((it: any) => (
+                <tr key={it.subsection}>
+                  <td className="border border-surface-border px-2 py-1">{it.subsection} — {it.label}</td>
+                  <td className="border border-surface-border px-2 py-1">{it.target}</td>
+                  <td className="border border-surface-border px-2 py-1">{it.achieved}</td>
+                  <td className={`border border-surface-border px-2 py-1 font-semibold ${it.met ? 'text-emerald-600' : 'text-red-500'}`}>{it.met ? '✔' : '✘'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       {CATEGORIES.map((cat) => {
         const subs = template.filter((t) => t.sub.startsWith(`${cat.id}.`));

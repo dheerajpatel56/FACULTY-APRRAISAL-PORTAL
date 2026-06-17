@@ -104,6 +104,7 @@ router.post('/fpgp/:id/sign', authenticate, fpgp.facultySign);
 router.post('/fpgp/:id/hod-sign', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), fpgp.hodSign);
 router.get('/fpgp/department', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), fpgp.getDepartmentPlans);
 router.post('/fpgp/:id/review', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), fpgp.addReview);
+router.post('/fpgp/evaluate', authenticate, roleGuard([RoleType.ADMIN]), fpgp.evaluatePlans);
 router.get('/fpgp/:id', authenticate, fpgp.getPlanDetail);
 
 // Reports

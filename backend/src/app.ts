@@ -8,6 +8,7 @@ import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { startEmailWorker } from './services/emailWorker';
 import { startReminderCrons } from './cron/reminders';
+import { startFpgpEvaluationCron } from './cron/fpgpEvaluation';
 import { httpLogger } from './middleware/logger';
 import { metricsMiddleware, metricsHandler } from './middleware/metrics';
 import { health, ready } from './controllers/healthController';
@@ -64,6 +65,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`Server running on port ${PORT}`);
     startEmailWorker();
     startReminderCrons();
+    startFpgpEvaluationCron();
   });
 }
 

@@ -28,6 +28,7 @@ export type EmailTemplateKey =
   | 'submission_unlocked'
   | 'draft_reminder'
   | 'fpgp_signed'
+  | 'fpgp_evaluated'
   | 'reviewer_daily_digest'
   | 'password_otp';
 

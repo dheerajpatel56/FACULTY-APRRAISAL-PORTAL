@@ -279,10 +279,10 @@ describe('selfTotal', () => {
   });
 });
 
-// End-to-end form-alignment check using the real "V. Baby" FPAS sample.
+// End-to-end form-alignment check using a real filled appraisal sample.
 // Asserts each category total matches the official form's self-appraisal
 // (Cat1 = 147: the form's own 1.3 total of 20 is mis-added; by rule = 17).
-describe('V. Baby sample — form alignment', () => {
+describe('sample appraisal — form alignment', () => {
   const sample = emptySubmission({
     // 1.1 — 6 courses, all >=90% engagement + novel pedagogy -> caps 50
     cat1Courses: [

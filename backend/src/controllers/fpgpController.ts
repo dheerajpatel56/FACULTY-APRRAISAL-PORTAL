@@ -4,6 +4,7 @@ import { RoleType, FPGPStatus, ReviewerRole } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { FPGP_TEMPLATE, defaultRowsFor } from '../services/fpgpTemplate';
 import { enqueueEmail } from '../services/emailService';
+import { triggerFpgpEvaluation } from '../cron/fpgpEvaluation';
 
 // ---- Schemas ----
 const subsectionUpdateSchema = z.object({
@@ -291,6 +292,13 @@ export async function downloadFpgpPdf(req: Request, res: Response) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename=fpgp-${code}-${yearLabel}.pdf`);
   return res.send(pdf);
+}
+
+// Admin: run target reconciliation now (same logic as quarterly cron).
+export async function evaluatePlans(req: Request, res: Response) {
+  const { academicYearId } = z.object({ academicYearId: z.string().optional() }).parse(req.body ?? {});
+  const result = await triggerFpgpEvaluation(academicYearId);
+  return res.json(result);
 }
 
 export async function addReview(req: Request, res: Response) {

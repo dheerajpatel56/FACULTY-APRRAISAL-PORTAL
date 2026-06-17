@@ -12,6 +12,8 @@ const statusStyles: Record<string, string> = {
   REVISION_REQUESTED: 'bg-orange-50 text-orange-700 border-orange-200',
   ACTIVE:             'bg-emerald-50 text-emerald-700 border-emerald-200',
   REVIEWED:           'bg-primary-50 text-primary-600 border-primary-200',
+  ACCEPTED:           'bg-emerald-50 text-emerald-700 border-emerald-200',
+  NEEDS_REVIEW:       'bg-amber-50 text-amber-700 border-amber-200',
   PENDING:            'bg-amber-50 text-amber-700 border-amber-200',
   COMPLETED:          'bg-emerald-50 text-emerald-700 border-emerald-200',
 };

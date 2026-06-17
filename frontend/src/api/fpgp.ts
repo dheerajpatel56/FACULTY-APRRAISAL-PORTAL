@@ -14,6 +14,8 @@ export const fpgpApi = {
     api.get('/fpgp/department', { params: { year } }).then((r) => r.data),
   addReview: (id: string, comments: string) =>
     api.post(`/fpgp/${id}/review`, { comments }).then((r) => r.data),
+  evaluate: (academicYearId?: string) =>
+    api.post('/fpgp/evaluate', academicYearId ? { academicYearId } : {}).then((r) => r.data),
   downloadPdf: (id: string) =>
     api.get(`/fpgp/${id}/pdf`, { responseType: 'blob' }).then((r) => r.data),
 };

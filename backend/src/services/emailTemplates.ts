@@ -10,6 +10,7 @@ export const TEMPLATE_SUBJECTS: Record<EmailTemplateKey, (p: any) => string> = {
   submission_unlocked: (p) => `Faculty Appraisal ${p.year} — Unlocked for edits`,
   draft_reminder: (p) => `Reminder — Complete your ${p.year} appraisal`,
   fpgp_signed: (p) => `FPGP ${p.year} — Reviewed by HoD`,
+  fpgp_evaluated: (p) => `FPGP ${p.year} — ${p.autoAccepted ? 'Accepted (targets met)' : 'Needs review'}`,
   reviewer_daily_digest: (p) => `Pending Reviews — ${p.pendingCount} appraisal(s)`,
   password_otp: (_p) => `VNRVJIET Faculty Portal — Password Change OTP`,
 };
@@ -130,6 +131,19 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
     <p>Dear <strong>${p.name}</strong>,</p>
     <p>Your Faculty Performance Growth Plan for <strong>${p.year}</strong> has been signed and reviewed by <strong>${p.hodName}</strong> on ${p.signedAt}.</p>
     <p>Status: <span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">REVIEWED</span></p>
+    <p style="margin-top:16px"><a href="${FRONTEND_URL}/fpgp/${p.planId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Plan</a></p>
+  `),
+
+  fpgp_evaluated: (p) => layout('FPGP Target Evaluation', `
+    <h2 style="margin:0 0 8px;color:#1e3a5f">FPGP Target Evaluation</h2>
+    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Your FPGP for <strong>${p.year}</strong> has been evaluated against your appraisal achievements.</p>
+    <p>Status: <span style="background:${p.autoAccepted ? '#d1fae5;color:#065f46' : '#fef3c7;color:#92400e'};padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${p.autoAccepted ? 'ACCEPTED' : 'NEEDS REVIEW'}</span></p>
+    ${Array.isArray(p.items) && p.items.length ? `
+      <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
+        <tr style="background:#1e3a5f;color:#fff"><th align="left" style="padding:8px">Target</th><th align="left" style="padding:8px">Planned</th><th align="left" style="padding:8px">Achieved</th><th align="left" style="padding:8px">Met</th></tr>
+        ${p.items.map((it: any, i: number) => `<tr ${i % 2 ? 'style="background:#f8fafc"' : ''}><td>${it.label}</td><td>${it.target}</td><td>${it.achieved}</td><td>${it.met ? '✔' : '✘'}</td></tr>`).join('')}
+      </table>` : ''}
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/fpgp/${p.planId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Plan</a></p>
   `),
 
