@@ -20,7 +20,7 @@ export default function AppraisalEditPage() {
   const { register, control, reset, getValues } = useForm({
     defaultValues: {
       clLeaves: 0, elLeaves: 0, hplLeaves: 0, odLeaves: 0, otherLeaves: '', higherQualAcquired: '',
-      cat1Courses: [] as any[], cat1Projects: [] as any[], cat1EContent: [] as any[], cat1ICT: [] as any[],
+      cat1Courses: [] as any[], cat1CourseResults: [] as any[], cat1Projects: [] as any[], cat1EContent: [] as any[], cat1ICT: [] as any[],
       cat2Journals: [] as any[], cat2Conferences: [] as any[], cat2BookChapters: [] as any[],
       cat2Books: [] as any[], cat2Citations: { scopusCount: 0, wosCount: 0, hIndex: 0, pubsWithCitations: 0, totalPubsTillDate: 0 },
       cat2Patents: [] as any[], cat2Projects: [] as any[], cat2Consultancy: [] as any[],
@@ -34,6 +34,7 @@ export default function AppraisalEditPage() {
   });
 
   const courses = useFieldArray({ control, name: 'cat1Courses' });
+  const courseResults = useFieldArray({ control, name: 'cat1CourseResults' });
   const projects = useFieldArray({ control, name: 'cat1Projects' });
   const eContent = useFieldArray({ control, name: 'cat1EContent' });
   const ict = useFieldArray({ control, name: 'cat1ICT' });
@@ -71,6 +72,7 @@ export default function AppraisalEditPage() {
         otherLeaves: sub.otherLeaves ?? '',
         higherQualAcquired: sub.higherQualAcquired ?? '',
         cat1Courses: sub.cat1Courses ?? [],
+        cat1CourseResults: sub.cat1CourseResults ?? [],
         cat1Projects: sub.cat1Projects ?? [],
         cat1EContent: sub.cat1EContent ?? [],
         cat1ICT: sub.cat1ICT ?? [],
@@ -289,8 +291,8 @@ export default function AppraisalEditPage() {
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">1.1 & 1.2 Courses Taught (Lectures, Attendance, Feedback, Results)</h2>
-              <p className="text-xs text-ink-muted mb-3">Per-course row scores Lectures (1.1), Attendance + Feedback + Pass% (1.2) automatically.</p>
+              <h2 className="font-semibold text-ink-primary mb-3">1.1 Courses Taught — Lectures</h2>
+              <p className="text-xs text-ink-muted mb-3">Lecture delivery score from periods conducted vs planned (+ novel pedagogy).</p>
               {courses.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-3 gap-3">
@@ -317,18 +319,6 @@ export default function AppraisalEditPage() {
                       <label className={labelCls}>Periods Conducted</label>
                       <input type="number" {...register(`cat1Courses.${i}.periodsConducted`, { valueAsNumber: true })} className={inputCls} />
                     </div>
-                    <div>
-                      <label className={labelCls}>Avg Attendance %</label>
-                      <input type="number" step="0.1" {...register(`cat1Courses.${i}.avgAttendance`, { valueAsNumber: true })} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Feedback Score (0-5)</label>
-                      <input type="number" step="0.1" {...register(`cat1Courses.${i}.feedbackScore`, { valueAsNumber: true })} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Pass %</label>
-                      <input type="number" step="0.1" {...register(`cat1Courses.${i}.passPercentage`, { valueAsNumber: true })} className={inputCls} />
-                    </div>
                     <div className="flex items-end pb-1">
                       <label className="flex items-center gap-2 text-sm text-ink-secondary">
                         <input type="checkbox" {...register(`cat1Courses.${i}.novelPedagogyUsed`)} />
@@ -339,7 +329,55 @@ export default function AppraisalEditPage() {
                   <button type="button" onClick={() => courses.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Course', () => courses.append({ courseName: '', level: 'BTECH', yearSem: '', periodPlanned: 0, periodsConducted: 0, avgAttendance: 0, feedbackScore: 0, passPercentage: 0, novelPedagogyUsed: false }))}
+              {addRowBtn('Add Course', () => courses.append({ courseName: '', level: 'BTECH', yearSem: '', periodPlanned: 0, periodsConducted: 0, novelPedagogyUsed: false }))}
+            </div>
+
+            <div>
+              <h2 className="font-semibold text-ink-primary mb-3">1.2 Courses Taught — Attendance, Feedback &amp; Results</h2>
+              <p className="text-xs text-ink-muted mb-3">
+                Per course (max 20): Attendance A = (n1·5 + n2·3)/Y (max 5), Feedback B (max 5),
+                Results C = (n3·10 + n4·8 + n5·5)/Y (max 10). Section max 80. Scores computed automatically.
+              </p>
+              {courseResults.fields.map((field, i) => (
+                <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="col-span-2">
+                      <label className={labelCls}>Name of the Course</label>
+                      <input {...register(`cat1CourseResults.${i}.courseName`)} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Class Size (Y)</label>
+                      <input type="number" {...register(`cat1CourseResults.${i}.classSize`, { valueAsNumber: true })} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Feedback Received (0-5)</label>
+                      <input type="number" step="0.01" {...register(`cat1CourseResults.${i}.feedbackReceived`, { valueAsNumber: true })} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Attendance ≥75% (n1)</label>
+                      <input type="number" {...register(`cat1CourseResults.${i}.attnGte75`, { valueAsNumber: true })} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Attendance &lt;75 &amp; ≥65% (n2)</label>
+                      <input type="number" {...register(`cat1CourseResults.${i}.attnLt75Gte65`, { valueAsNumber: true })} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Grade O, A+ (n3)</label>
+                      <input type="number" {...register(`cat1CourseResults.${i}.gradeOAPlus`, { valueAsNumber: true })} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Grade A, B (n4)</label>
+                      <input type="number" {...register(`cat1CourseResults.${i}.gradeAB`, { valueAsNumber: true })} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Grade C, D (n5)</label>
+                      <input type="number" {...register(`cat1CourseResults.${i}.gradeCD`, { valueAsNumber: true })} className={inputCls} />
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => courseResults.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
+                </div>
+              ))}
+              {addRowBtn('Add Course Result', () => courseResults.append({ courseName: '', classSize: 0, attnGte75: 0, attnLt75Gte65: 0, feedbackReceived: 0, gradeOAPlus: 0, gradeAB: 0, gradeCD: 0 }))}
             </div>
 
             <div>

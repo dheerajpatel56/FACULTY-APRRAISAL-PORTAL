@@ -180,9 +180,13 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
   ` : ''}
 
   <h2>Cat 1 — Teaching &amp; Learning</h2>
-  ${listTable('Courses Handled',
-    ['Course', 'Level', 'Year/Sem', 'Periods Planned', 'Conducted', 'Attendance %', 'Feedback', 'Pass %'],
-    (sub.cat1Courses ?? []).map((c: any) => [c.courseName, c.level, c.yearSem, c.periodPlanned, c.periodsConducted, c.avgAttendance, c.feedbackScore, c.passPercentage])
+  ${listTable('1.1 Courses Handled',
+    ['Course', 'Level', 'Year/Sem', 'Periods Planned', 'Conducted', 'Novel Pedagogy'],
+    (sub.cat1Courses ?? []).map((c: any) => [c.courseName, c.level, c.yearSem, c.periodPlanned, c.periodsConducted, c.novelPedagogyUsed ? 'Yes' : 'No'])
+  )}
+  ${listTable('1.2 Courses Taught — Attendance, Feedback, Results',
+    ['Course', 'Class Size', '≥75%', '<75 & ≥65%', 'Feedback', 'Grade O,A+', 'Grade A,B', 'Grade C,D'],
+    (sub.cat1CourseResults ?? []).map((c: any) => [c.courseName, c.classSize, c.attnGte75, c.attnLt75Gte65, c.feedbackReceived, c.gradeOAPlus, c.gradeAB, c.gradeCD])
   )}
   ${listTable('Student Projects Guided',
     ['Title', 'Type', 'Students', 'Status'],

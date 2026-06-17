@@ -89,12 +89,27 @@ export default function ReviewAppraisalPage() {
           </Card>
 
           <Card>
-            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">Courses ({submission.cat1Courses?.length ?? 0})</h2>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">1.1 Courses — Lectures ({submission.cat1Courses?.length ?? 0})</h2>
             {submission.cat1Courses?.map((c: any) => (
               <div key={c.id} className="text-xs text-ink-secondary mb-1">
-                {c.courseName} ({c.level}) — Pass: {c.passPercentage}% | Attend: {c.avgAttendance}%
+                {c.courseName} ({c.level}) — Periods: {c.periodsConducted}/{c.periodPlanned}{c.novelPedagogyUsed ? ' | Novel pedagogy' : ''}
               </div>
             ))}
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">1.2 Attendance, Feedback &amp; Results ({submission.cat1CourseResults?.length ?? 0})</h2>
+            {submission.cat1CourseResults?.map((c: any) => {
+              const Y = c.classSize || 0;
+              const A = Y ? Math.min((c.attnGte75 * 5 + c.attnLt75Gte65 * 3) / Y, 5) : 0;
+              const B = Math.min(c.feedbackReceived ?? 0, 5);
+              const C = Y ? Math.min((c.gradeOAPlus * 10 + c.gradeAB * 8 + c.gradeCD * 5) / Y, 10) : 0;
+              return (
+                <div key={c.id} className="text-xs text-ink-secondary mb-1">
+                  {c.courseName} (Y={Y}) — A: {A.toFixed(2)} | B: {B.toFixed(2)} | C: {C.toFixed(2)} | Total: {Math.min(A + B + C, 20).toFixed(2)}
+                </div>
+              );
+            })}
           </Card>
 
           <Card>

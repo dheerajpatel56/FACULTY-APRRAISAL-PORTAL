@@ -1,6 +1,7 @@
 import {
   AppraisalSubmission,
   Cat1Course,
+  Cat1CourseResults,
   Cat1Project,
   Cat1EContent,
   Cat1ICT,
@@ -84,6 +85,7 @@ export interface ScoreBreakdown {
 
 type FullSubmission = AppraisalSubmission & {
   cat1Courses: Cat1Course[];
+  cat1CourseResults: Cat1CourseResults[];
   cat1Projects: Cat1Project[];
   cat1EContent: Cat1EContent[];
   cat1ICT: Cat1ICT[];
@@ -124,12 +126,13 @@ function scoreCategory1(s: FullSubmission) {
   }
   lectures = Math.min(lectures, 40);
 
-  // 1.2 Attendance / Feedback / Results (max 80)
+  // 1.2 Attendance / Feedback / Results (per course max 20, section max 80)
   let attendanceFeedback = 0;
-  for (const c of s.cat1Courses) {
-    const A = (c.avgAttendance / 100) * 5;
-    const B = c.feedbackScore;
-    const C = (c.passPercentage / 100) * 10;
+  for (const c of s.cat1CourseResults) {
+    if (c.classSize <= 0) continue;
+    const A = Math.min((c.attnGte75 * 5 + c.attnLt75Gte65 * 3) / c.classSize, 5);
+    const B = Math.min(c.feedbackReceived, 5);
+    const C = Math.min((c.gradeOAPlus * 10 + c.gradeAB * 8 + c.gradeCD * 5) / c.classSize, 10);
     attendanceFeedback += Math.min(A + B + C, 20);
   }
   attendanceFeedback = Math.min(attendanceFeedback, 80);

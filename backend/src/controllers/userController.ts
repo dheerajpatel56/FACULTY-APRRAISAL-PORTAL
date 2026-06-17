@@ -231,8 +231,30 @@ export async function updateUser(req: Request, res: Response) {
 
 export async function deleteUser(req: Request, res: Response) {
   const { id } = req.params;
-  await prisma.user.update({ where: { id }, data: { isActive: false } });
-  return res.json({ message: 'User deactivated' });
+
+  await prisma.$transaction(async (tx) => {
+    // Reviews this user gave on OTHER users' work (not covered by cascades).
+    await tx.appraisalReview.deleteMany({ where: { reviewerId: id } });
+    await tx.fPGPReview.deleteMany({ where: { reviewerId: id } });
+
+    // Detach this user as HoD signer on other users' FPGP plans.
+    await tx.fPGPPlan.updateMany({
+      where: { hodSignedBy: id },
+      data: { hodSignedBy: null },
+    });
+
+    // This user's own data — cascades remove Cat*/subsections/reviews.
+    await tx.appraisalSubmission.deleteMany({ where: { userId: id } });
+    await tx.fPGPPlan.deleteMany({ where: { userId: id } });
+    await tx.auditLog.deleteMany({ where: { userId: id } });
+    await tx.emailNotification.deleteMany({ where: { toUserId: id } });
+    await tx.passwordOtp.delete({ where: { userId: id } }).catch(() => {});
+    await tx.userRole.deleteMany({ where: { userId: id } });
+
+    await tx.user.delete({ where: { id } });
+  });
+
+  return res.json({ message: 'User deleted' });
 }
 
 export async function assignRole(req: Request, res: Response) {

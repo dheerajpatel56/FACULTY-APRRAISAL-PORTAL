@@ -26,7 +26,7 @@ const reviewSchema = z.object({
 });
 
 const FULL_INCLUDE = {
-  cat1Courses: true, cat1Projects: true, cat1EContent: true, cat1ICT: true,
+  cat1Courses: true, cat1CourseResults: true, cat1Projects: true, cat1EContent: true, cat1ICT: true,
   cat2Journals: true, cat2Conferences: true, cat2BookChapters: true, cat2Books: true,
   cat2Citations: true, cat2Patents: true, cat2Projects: true, cat2Consultancy: true,
   cat2Guidance: true, cat2ResearchGroups: true, cat2Linkages: true, cat2Startups: true,

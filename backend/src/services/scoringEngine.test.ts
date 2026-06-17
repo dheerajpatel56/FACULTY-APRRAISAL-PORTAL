@@ -6,6 +6,7 @@ import { computeScore } from './scoringEngine';
 function emptySubmission(overrides: Record<string, any> = {}): any {
   return {
     cat1Courses: [],
+    cat1CourseResults: [],
     cat1Projects: [],
     cat1EContent: [],
     cat1ICT: [],
@@ -54,7 +55,6 @@ describe('Category 1 — Teaching', () => {
     const s = computeScore(emptySubmission({
       cat1Courses: [{
         periodsConducted: 96, periodPlanned: 100, novelPedagogyUsed: true,
-        avgAttendance: 0, feedbackScore: 0, passPercentage: 0,
       }],
     }));
     expect(s.cat1.lectures).toBe(15); // 10 + 5
@@ -62,7 +62,7 @@ describe('Category 1 — Teaching', () => {
 
   it('lectures: tiered base — 90% → 8, 80% → 6, below → 4', () => {
     const mk = (pct: number) => computeScore(emptySubmission({
-      cat1Courses: [{ periodsConducted: pct, periodPlanned: 100, novelPedagogyUsed: false, avgAttendance: 0, feedbackScore: 0, passPercentage: 0 }],
+      cat1Courses: [{ periodsConducted: pct, periodPlanned: 100, novelPedagogyUsed: false }],
     })).cat1.lectures;
     expect(mk(90)).toBe(8);
     expect(mk(80)).toBe(6);
@@ -72,19 +72,29 @@ describe('Category 1 — Teaching', () => {
   it('lectures capped at 40', () => {
     const courses = Array.from({ length: 10 }, () => ({
       periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: true,
-      avgAttendance: 0, feedbackScore: 0, passPercentage: 0,
     }));
     expect(computeScore(emptySubmission({ cat1Courses: courses })).cat1.lectures).toBe(40);
   });
 
-  it('attendance/feedback per-course capped at 20', () => {
+  it('1.2 attendance/feedback/results: A+B+C computed from raw counts', () => {
+    // Y=70, n1=65, n2=5 → A=(325+15)/70=4.857; B=4.7; n3=40,n4=28,n5=2 → C=(400+224+10)/70=9.057
     const s = computeScore(emptySubmission({
-      cat1Courses: [{
-        periodsConducted: 0, periodPlanned: 100, novelPedagogyUsed: false,
-        avgAttendance: 100, feedbackScore: 50, passPercentage: 100, // A=5 + B=50 + C=10 = 65, cap 20
+      cat1CourseResults: [{
+        classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.7,
+        gradeOAPlus: 40, gradeAB: 28, gradeCD: 2,
       }],
     }));
-    expect(s.cat1.attendanceFeedback).toBe(20);
+    expect(s.cat1.attendanceFeedback).toBeCloseTo(18.61, 1);
+  });
+
+  it('1.2 per-course total capped at 20; section capped at 80', () => {
+    const maxed = {
+      classSize: 10, attnGte75: 10, attnLt75Gte65: 0, feedbackReceived: 5,
+      gradeOAPlus: 10, gradeAB: 0, gradeCD: 0, // A=5 + B=5 + C=10 = 20
+    };
+    expect(computeScore(emptySubmission({ cat1CourseResults: [maxed] })).cat1.attendanceFeedback).toBe(20);
+    const five = Array.from({ length: 5 }, () => maxed); // 5*20 = 100, cap 80
+    expect(computeScore(emptySubmission({ cat1CourseResults: five })).cat1.attendanceFeedback).toBe(80);
   });
 
   it('projects: BTECH MINI = 2/count, MTECH MAJOR = 5/count', () => {
@@ -177,7 +187,7 @@ describe('Category 5 — Supplementary', () => {
 describe('selfTotal', () => {
   it('sums cat1-5 totals', () => {
     const s = computeScore(emptySubmission({
-      cat1Courses: [{ periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: false, avgAttendance: 0, feedbackScore: 0, passPercentage: 0 }], // lectures 10
+      cat1Courses: [{ periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: false }], // lectures 10
       cat5Memberships: [{ status: 'national_member' }], // 5
     }));
     expect(s.selfTotal).toBe(s.cat1.total + s.cat2.total + s.cat3.total + s.cat4.total + s.cat5.total);
@@ -188,7 +198,8 @@ describe('selfTotal', () => {
     // Saturate all categories
     const huge = Array.from({ length: 50 }, () => ({}));
     const s = computeScore(emptySubmission({
-      cat1Courses: Array.from({ length: 50 }, () => ({ periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: true, avgAttendance: 100, feedbackScore: 50, passPercentage: 100 })),
+      cat1Courses: Array.from({ length: 50 }, () => ({ periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: true })),
+      cat1CourseResults: Array.from({ length: 50 }, () => ({ classSize: 10, attnGte75: 10, attnLt75Gte65: 0, feedbackReceived: 5, gradeOAPlus: 10, gradeAB: 0, gradeCD: 0 })),
       cat1Projects: huge.map(() => ({ course: 'MTECH', projectType: 'MAJOR', count: 10 })),
       cat1EContent: huge, cat1ICT: huge,
       cat2Journals: huge.map(() => ({ indexed: 'SCI' })),

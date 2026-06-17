@@ -74,10 +74,10 @@ export default function AdminUsersPage() {
     }
   };
 
-  const deactivate = async (id: string) => {
-    if (!confirm('Deactivate this user?')) return;
+  const deleteUser = async (id: string) => {
+    if (!confirm('Permanently delete this user and all their data? This cannot be undone.')) return;
     await userApi.deleteUser(id);
-    toast.success('Deactivated');
+    toast.success('User deleted');
     load();
   };
 
@@ -211,7 +211,7 @@ export default function AdminUsersPage() {
                     >
                       <Shield size={11} /> Roles
                     </button>
-                    <button onClick={() => deactivate(u.id)} className="text-xs text-danger-500 hover:text-red-700">Deactivate</button>
+                    <button onClick={() => deleteUser(u.id)} className="text-xs text-danger-500 hover:text-red-700">Delete</button>
                   </div>
                 </td>
               </tr>

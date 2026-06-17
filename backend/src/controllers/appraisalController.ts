@@ -12,6 +12,7 @@ import {
 
 const FULL_INCLUDE = {
   cat1Courses: true,
+  cat1CourseResults: true,
   cat1Projects: true,
   cat1EContent: true,
   cat1ICT: true,
@@ -202,6 +203,10 @@ export async function updateAppraisal(req: Request, res: Response) {
     if (categories?.cat1Courses) {
       await tx.cat1Course.deleteMany({ where: { submissionId: sub.id } });
       await tx.cat1Course.createMany({ data: categories.cat1Courses.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
+    }
+    if (categories?.cat1CourseResults) {
+      await tx.cat1CourseResults.deleteMany({ where: { submissionId: sub.id } });
+      await tx.cat1CourseResults.createMany({ data: categories.cat1CourseResults.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
     }
     if (categories?.cat1Projects) {
       await tx.cat1Project.deleteMany({ where: { submissionId: sub.id } });
