@@ -278,3 +278,76 @@ describe('selfTotal', () => {
     expect(s.selfTotal).toBeLessThanOrEqual(500);
   });
 });
+
+// End-to-end form-alignment check using the real "V. Baby" FPAS sample.
+// Asserts each category total matches the official form's self-appraisal
+// (Cat1 = 147: the form's own 1.3 total of 20 is mis-added; by rule = 17).
+describe('V. Baby sample — form alignment', () => {
+  const sample = emptySubmission({
+    // 1.1 — 6 courses, all >=90% engagement + novel pedagogy -> caps 50
+    cat1Courses: [
+      { periodsConducted: 46, periodPlanned: 48, novelPedagogyUsed: true },
+      { periodsConducted: 46, periodPlanned: 48, novelPedagogyUsed: true },
+      { periodsConducted: 47, periodPlanned: 48, novelPedagogyUsed: true },
+      { periodsConducted: 47, periodPlanned: 48, novelPedagogyUsed: true },
+      { periodsConducted: 64, periodPlanned: 64, novelPedagogyUsed: true },
+      { periodsConducted: 64, periodPlanned: 64, novelPedagogyUsed: true },
+    ],
+    // 1.2 — 6 courses, per-course ~18.6-19.2 -> caps 80
+    cat1CourseResults: [
+      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.7, gradeOAPlus: 40, gradeAB: 28, gradeCD: 2 },
+      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.7, gradeOAPlus: 45, gradeAB: 23, gradeCD: 2 },
+      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.76, gradeOAPlus: 42, gradeAB: 25, gradeCD: 3 },
+      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.6, gradeOAPlus: 45, gradeAB: 22, gradeCD: 3 },
+      { classSize: 70, attnGte75: 70, attnLt75Gte65: 0, feedbackReceived: 4.5, gradeOAPlus: 60, gradeAB: 9, gradeCD: 1 },
+      { classSize: 70, attnGte75: 70, attnLt75Gte65: 0, feedbackReceived: 4.5, gradeOAPlus: 60, gradeAB: 10, gradeCD: 0 },
+    ],
+    // 1.3 — BTech Mini 1 (2), BTech Major 2 (10), MTech Major 1 (5) = 17
+    cat1Projects: [
+      { course: 'BTECH', projectType: 'MINI', count: 1 },
+      { course: 'BTECH', projectType: 'MAJOR', count: 2 },
+      { course: 'MTECH', projectType: 'MAJOR', count: 1 },
+    ],
+    // 2.1 — 4 indexed papers -> 60, caps 50
+    cat2Journals: [
+      { indexed: 'SCOPUS' }, { indexed: 'SCOPUS' }, { indexed: 'SCOPUS' }, { indexed: 'SCOPUS' },
+    ],
+    // 2.2 — total citations 61 -> 10
+    cat2Citations: { totalCitations: 61 },
+    // 2.3 — 1 published book chapter -> 10
+    cat2BookChapters: [{ isEdited: false }],
+    // 2.4 — 1 published patent -> 10
+    cat2Patents: [{ status: 'PUBLISHED' }],
+    // 2.8 -> 5, 2.9 -> 10, 2.10 -> 10
+    cat2ResearchGroups: [{}],
+    cat2Linkages: [{}, {}],
+    cat2IndustryLinkages: [{}, {}, {}],
+    // 3.2 -> 20, 3.3 -> 20, 3.4 (1+1) -> 20, 3.5 (10+5+5+5)=25
+    cat3Organised: [{}, {}],
+    cat3ConferencesAttended: [{}, {}],
+    cat3ResourcePerson: [{}],
+    cat3Editorial: [{}],
+    cat3Training: [{ durationDays: 30 }, { durationDays: 1 }, { durationDays: 1 }, { durationDays: 1 }],
+    // 4.1 -> 40, 4.2 -> 10
+    cat4AdminResp: [{}, {}, {}, {}],
+    cat4StudentAct: [{}, {}],
+    // 5.1 (3 national=15), 5.3 (3+3+7+7=20), 5.4 (2 -> cap 5)
+    cat5Memberships: [{ status: 'national_member' }, { status: 'national_member' }, { status: 'national_member' }],
+    cat5Differentiators: [{ role: 'participating' }, { role: 'participating' }, { role: 'leading' }, { role: 'leading' }],
+    cat5Internships: [{}, {}],
+  });
+
+  const s = computeScore(sample);
+
+  it('Category 1 = 147 (50 + 80 + 17)', () => {
+    expect(s.cat1.lectures).toBe(50);
+    expect(s.cat1.attendanceFeedback).toBe(80);
+    expect(s.cat1.projects).toBe(17);
+    expect(s.cat1.total).toBe(147);
+  });
+  it('Category 2 = 105', () => { expect(s.cat2.total).toBe(105); });
+  it('Category 3 = 85', () => { expect(s.cat3.total).toBe(85); });
+  it('Category 4 = 50', () => { expect(s.cat4.total).toBe(50); });
+  it('Category 5 = 40', () => { expect(s.cat5.total).toBe(40); });
+  it('self total = 427', () => { expect(s.selfTotal).toBe(427); });
+});
