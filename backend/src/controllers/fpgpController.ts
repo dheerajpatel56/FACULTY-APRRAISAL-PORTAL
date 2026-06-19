@@ -5,6 +5,7 @@ import prisma from '../utils/prismaClient';
 import { FPGP_TEMPLATE, defaultRowsFor } from '../services/fpgpTemplate';
 import { enqueueEmail } from '../services/emailService';
 import { triggerFpgpEvaluation } from '../cron/fpgpEvaluation';
+import { canViewUserResource } from '../utils/access';
 
 // ---- Schemas ----
 const subsectionUpdateSchema = z.object({
@@ -20,12 +21,6 @@ const subsectionUpdateSchema = z.object({
 // ---- Helpers ----
 function hasRole(req: Request, role: RoleType) {
   return req.user!.roles.some((r) => r.role === role);
-}
-
-function isFaculty(req: Request) {
-  return !req.user!.roles.some((r) =>
-    ([RoleType.ADMIN, RoleType.HOD, RoleType.REVIEWER] as RoleType[]).includes(r.role)
-  );
 }
 
 // ---- Endpoints ----
@@ -232,7 +227,7 @@ export async function getPlanDetail(req: Request, res: Response) {
   });
   if (!plan) return res.status(404).json({ error: 'Not found' });
 
-  if (isFaculty(req) && plan.userId !== req.user!.id) {
+  if (!canViewUserResource(req.user!, plan.userId, (plan.user as any)?.departmentId ?? null)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
@@ -279,7 +274,7 @@ export async function downloadFpgpPdf(req: Request, res: Response) {
   });
   if (!plan) return res.status(404).json({ error: 'Not found' });
 
-  if (isFaculty(req) && plan.userId !== req.user!.id) {
+  if (!canViewUserResource(req.user!, plan.userId, (plan.user as any)?.departmentId ?? null)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 

@@ -9,6 +9,7 @@ import {
   serializeSubmissionForReviewer,
   serializeSubmissionForAdmin,
 } from '../utils/serializers';
+import { canViewUserResource } from '../utils/access';
 
 const FULL_INCLUDE = {
   cat1Courses: true,
@@ -173,8 +174,7 @@ export async function getAppraisal(req: Request, res: Response) {
 
   if (!sub) return res.status(404).json({ error: 'Not found' });
 
-  const isFaculty = !hasRole(req, RoleType.ADMIN) && !hasRole(req, RoleType.HOD) && !hasRole(req, RoleType.REVIEWER);
-  if (isFaculty && sub.userId !== req.user!.id) {
+  if (!canViewUserResource(req.user!, sub.userId, (sub.user as any)?.departmentId ?? null)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
@@ -432,8 +432,9 @@ export async function getScore(req: Request, res: Response) {
 
   if (!sub) return res.status(404).json({ error: 'Not found' });
 
-  const isFaculty = !hasRole(req, RoleType.ADMIN) && !hasRole(req, RoleType.HOD) && !hasRole(req, RoleType.REVIEWER);
-  if (isFaculty && sub.userId !== req.user!.id) return res.status(403).json({ error: 'Forbidden' });
+  if (!canViewUserResource(req.user!, sub.userId, (sub.user as any)?.departmentId ?? null)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const score = computeScore(sub as any);
   return res.json(score);
@@ -452,7 +453,9 @@ export async function downloadAppraisalPdf(req: Request, res: Response) {
   if (!sub) return res.status(404).json({ error: 'Not found' });
 
   const isFaculty = !hasRole(req, RoleType.ADMIN) && !hasRole(req, RoleType.HOD) && !hasRole(req, RoleType.REVIEWER);
-  if (isFaculty && sub.userId !== req.user!.id) return res.status(403).json({ error: 'Forbidden' });
+  if (!canViewUserResource(req.user!, sub.userId, (sub.user as any)?.departmentId ?? null)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const score = computeScore(sub as any);
 

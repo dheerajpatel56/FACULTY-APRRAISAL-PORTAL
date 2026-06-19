@@ -4,6 +4,7 @@ import { RoleType, SubmissionStatus, ReviewerRole } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { computeScore } from '../services/scoringEngine';
 import { enqueueEmail } from '../services/emailService';
+import { canViewUserResource } from '../utils/access';
 
 const reviewSchema = z.object({
   cat1Score: z.number().optional(),
@@ -34,6 +35,7 @@ const FULL_INCLUDE = {
   cat3AdvQual: true, cat3Organised: true, cat3ConferencesAttended: true, cat3ResourcePerson: true, cat3Editorial: true,
   cat3Training: true, cat3IntlTravel: true, cat4AdminResp: true, cat4StudentAct: true,
   cat5Memberships: true, cat5Awards: true, cat5Differentiators: true, cat5Internships: true,
+  user: { select: { id: true, departmentId: true } },
 };
 
 export async function listPendingReviews(req: Request, res: Response) {
@@ -68,6 +70,10 @@ export async function submitReview(req: Request, res: Response) {
 
   if (!sub) return res.status(404).json({ error: 'Not found' });
   if (sub.userId === req.user!.id) return res.status(403).json({ error: 'Cannot review own submission' });
+  // Reviewer/HoD may only review submissions in their own department.
+  if (!canViewUserResource(req.user!, sub.userId, (sub.user as any)?.departmentId ?? null)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   if (sub.status === SubmissionStatus.APPROVED) return res.status(400).json({ error: 'Already approved' });
 
   const data = reviewSchema.parse(req.body);
@@ -173,17 +179,21 @@ export async function submitReview(req: Request, res: Response) {
 export async function getReview(req: Request, res: Response) {
   const sub = await prisma.appraisalSubmission.findUnique({
     where: { id: req.params.id },
-    include: { review: true },
+    include: { review: true, user: { select: { departmentId: true } } },
   });
 
   if (!sub) return res.status(404).json({ error: 'Not found' });
+
+  // Object-level authorization — owner, admin, or HoD/Reviewer of owner's dept.
+  if (!canViewUserResource(req.user!, sub.userId, sub.user.departmentId)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const isFaculty = !req.user!.roles.some((r) =>
     ([RoleType.ADMIN, RoleType.HOD, RoleType.REVIEWER] as RoleType[]).includes(r.role)
   );
 
   if (isFaculty) {
-    if (sub.userId !== req.user!.id) return res.status(403).json({ error: 'Forbidden' });
     if (!sub.review) return res.json(null);
     if (!([SubmissionStatus.APPROVED, SubmissionStatus.REJECTED] as SubmissionStatus[]).includes(sub.status)) {
       return res.json({ status: sub.review.status, comments: null });
