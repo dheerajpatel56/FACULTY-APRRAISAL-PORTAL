@@ -181,8 +181,8 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
 
   <h2>Cat 1 — Teaching &amp; Learning</h2>
   ${listTable('1.1 Courses Handled',
-    ['Course', 'Level', 'Year/Sem', 'Periods Planned', 'Conducted', 'Novel Pedagogy'],
-    (sub.cat1Courses ?? []).map((c: any) => [c.courseName, c.level, c.yearSem, c.periodPlanned, c.periodsConducted, c.novelPedagogyUsed ? 'Yes' : 'No'])
+    ['Course', 'Level', 'Year/Sem', 'Periods Planned', 'Conducted', 'Novel Pedagogy Method'],
+    (sub.cat1Courses ?? []).map((c: any) => [c.courseName, c.level, c.yearSem, c.periodPlanned, c.periodsConducted, c.novelPedagogyUsed ? (c.novelPedagogyMethod || 'Yes') : 'No'])
   )}
   ${listTable('1.2 Courses Taught — Attendance, Feedback, Results',
     ['Course', 'Class Size', '≥75%', '<75 & ≥65%', 'Feedback', 'Grade O,A+', 'Grade A,B', 'Grade C,D'],
@@ -210,6 +210,13 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
     ['Title', 'Conference', 'Date', 'Index', 'Proof'],
     (sub.cat2Conferences ?? []).map((c: any) => [c.title, c.conferenceName, fmtDate(c.dateOfPub), c.indexed, proofCell(c.proofFile)])
   )}
+  ${listTable('Citations',
+    ['Publications', 'Pubs w/ Citations', 'Total Citations', 'h-Index (Google)', 'h-Index (Scopus)', 'h-Index (WoS)'],
+    sub.cat2Citations ? [[
+      sub.cat2Citations.totalPubsTillDate, sub.cat2Citations.pubsWithCitations, sub.cat2Citations.totalCitations,
+      sub.cat2Citations.hIndexGoogle, sub.cat2Citations.hIndexScopus, sub.cat2Citations.hIndexWos,
+    ]] : []
+  )}
   ${listTable('Books & Chapters',
     ['Title', 'Authors', 'Publisher', 'Type'],
     [
@@ -232,6 +239,14 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
   ${listTable('Research Guidance (PhD/PG)',
     ['Scholar', 'University', 'Thesis', 'Guide/Co-Guide'],
     (sub.cat2Guidance ?? []).map((g: any) => [g.studentName, g.university, g.thesisTitle, g.isGuide ? 'Guide' : 'Co-Guide'])
+  )}
+  ${listTable('Research Interest Groups',
+    ['Group', 'Size', 'Outcome'],
+    (sub.cat2ResearchGroups ?? []).map((r: any) => [r.groupName, r.size, r.outcome])
+  )}
+  ${listTable('Institute / HEI Linkages',
+    ['Institute', 'Contact Person', 'Outcome'],
+    (sub.cat2Linkages ?? []).map((l: any) => [l.instituteName, l.contactPerson, l.outcome])
   )}
   ${listTable('Industry Linkage',
     ['Industry', 'Contact Person', 'Outcome'],
