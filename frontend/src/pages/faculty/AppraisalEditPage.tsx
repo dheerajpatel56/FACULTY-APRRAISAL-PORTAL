@@ -5,12 +5,15 @@ import { appraisalApi } from '../../api/appraisals';
 import toast from 'react-hot-toast';
 import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
+import { SAMPLE_APPRAISAL } from './sampleAppraisal';
+import { useAuthStore } from '../../store/authStore';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
 export default function AppraisalEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
   const [step, setStep] = useState(0);
   const [submission, setSubmission] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -193,7 +196,17 @@ export default function AppraisalEditPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, id]);
 
-  const readOnly = !!submission && submission.status !== 'DRAFT';
+  // Read-only when not a draft, OR when the viewer is not the owner
+  // (HoD/Reviewer/Admin see the full form but can never edit it).
+  const isOwner = !!submission && submission.userId === currentUser?.id;
+  const readOnly = !!submission && (submission.status !== 'DRAFT' || !isOwner);
+
+  // Testing helper — one-click fill all fields with sample data.
+  const fillTestData = () => {
+    reset(SAMPLE_APPRAISAL as any);
+    setScore(null);
+    toast.success('Test data filled — review then Save');
+  };
 
   const inputCls = "w-full border border-surface-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500";
   const labelCls = "block text-xs font-medium text-ink-secondary mb-1";
@@ -238,6 +251,16 @@ export default function AppraisalEditPage() {
           }`}>
             {submission.status}
           </span>
+        )}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={fillTestData}
+            className="ml-auto text-xs border border-dashed border-amber-400 text-amber-700 px-2.5 py-1 rounded hover:bg-amber-50"
+            title="Fill all fields with sample data (testing)"
+          >
+            🧪 Fill Test Data
+          </button>
         )}
       </div>
 

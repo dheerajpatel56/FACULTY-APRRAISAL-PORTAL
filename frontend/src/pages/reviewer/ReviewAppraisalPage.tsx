@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { appraisalApi } from '../../api/appraisals';
 import toast from 'react-hot-toast';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Eye } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 
@@ -59,6 +59,14 @@ export default function ReviewAppraisalPage() {
           { label: 'Review Queue', to: '/reviews' },
           { label: submission.user?.name },
         ]}
+        actions={
+          <button
+            onClick={() => navigate(`/appraisal/${id}/edit`)}
+            className="flex items-center gap-1 text-sm border border-surface-border px-3 py-1.5 rounded hover:bg-surface-muted"
+          >
+            <Eye size={14} /> View Full Form
+          </button>
+        }
       />
 
       <div className="grid grid-cols-2 gap-6">
