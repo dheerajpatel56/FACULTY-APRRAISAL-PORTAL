@@ -120,6 +120,7 @@ router.post('/admin/emails/trigger', authenticate, roleGuard([RoleType.ADMIN]), 
 // File upload (proof attachments) — any authenticated user
 router.post('/uploads/proof', authenticate, handleUpload, upload.uploadProof);
 router.delete('/uploads/proof', authenticate, upload.deleteProof);
+router.get('/uploads/file/:filename', authenticate, upload.serveProof);
 
 // Admin: audit log
 router.get('/admin/audit', authenticate, roleGuard([RoleType.ADMIN]), audit.listAuditLogs);

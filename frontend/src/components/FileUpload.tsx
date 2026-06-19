@@ -46,14 +46,26 @@ export default function FileUpload({ value, onChange, readOnly, accept = DEFAULT
     if (url) uploadApi.deleteProof(url).catch(() => {}); // best-effort
   };
 
+  // Open the proof via the authenticated route (not a direct URL).
+  const openProof = async () => {
+    if (!value) return;
+    try {
+      const objectUrl = await uploadApi.viewProof(value);
+      window.open(objectUrl, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch (e: any) {
+      toast.error(e?.response?.status === 403 ? 'Not authorized to view this file' : 'Could not open file');
+    }
+  };
+
   // Read-only: just a view link (or dash)
   if (readOnly) {
     if (!value) return <span className="text-xs text-ink-subtle">—</span>;
     return (
-      <a href={value} target="_blank" rel="noopener noreferrer"
+      <button type="button" onClick={openProof}
          className="inline-flex items-center gap-1 text-xs text-primary-600 hover:underline">
         <Eye size={11} /> View proof
-      </a>
+      </button>
     );
   }
 
@@ -62,10 +74,10 @@ export default function FileUpload({ value, onChange, readOnly, accept = DEFAULT
     return (
       <div className="flex items-center gap-2 text-xs">
         <FileText size={13} className="text-primary-600 shrink-0" />
-        <a href={value} target="_blank" rel="noopener noreferrer"
-           className="text-primary-600 hover:underline truncate max-w-[140px]" title={fileName(value)}>
+        <button type="button" onClick={openProof}
+           className="text-primary-600 hover:underline truncate max-w-[140px] text-left" title={fileName(value)}>
           {fileName(value)}
-        </a>
+        </button>
         <button type="button" onClick={remove} className="text-danger-500 hover:text-red-700 shrink-0" title="Remove">
           <X size={13} />
         </button>

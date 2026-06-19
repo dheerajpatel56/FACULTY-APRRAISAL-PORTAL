@@ -13,4 +13,12 @@ export const uploadApi = {
   },
   deleteProof: (url: string) =>
     api.delete('/uploads/proof', { data: { url } }).then((r) => r.data),
+
+  // Fetch a proof via the authenticated route and return an object URL.
+  // Caller must URL.revokeObjectURL() when done.
+  viewProof: async (url: string) => {
+    const filename = url.split('/').pop() ?? url;
+    const blob = await api.get(`/uploads/file/${encodeURIComponent(filename)}`, { responseType: 'blob' }).then((r) => r.data as Blob);
+    return URL.createObjectURL(blob);
+  },
 };

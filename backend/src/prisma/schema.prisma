@@ -122,6 +122,21 @@ model User {
   auditLogs        AuditLog[]
   emails           EmailNotification[]
   passwordOtp      PasswordOtp?
+  uploadedFiles    UploadedFile[]
+}
+
+// Proof/evidence file ownership — used to authorize downloads (prevents IDOR
+// via guessing/altering the filename in the URL).
+model UploadedFile {
+  id           String   @id @default(uuid())
+  filename     String   @unique
+  originalName String
+  mimeType     String
+  size         Int
+  uploaderId   String
+  createdAt    DateTime @default(now())
+
+  uploader User @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
 }
 
 model Department {

@@ -3,7 +3,6 @@ import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import path from 'path';
 import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { startEmailWorker } from './services/emailWorker';
@@ -53,13 +52,8 @@ app.use(cors({
 // JSON body cap kept small — file uploads go through multer, not JSON.
 app.use(express.json({ limit: '1mb' }));
 
-// Static proof files. UUID filenames; deny dotfiles + directory listing.
-// NOTE: still unauthenticated (inline <img>/<a> can't send a bearer token).
-// Residual risk tracked — see follow-up to serve these via an authed stream.
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
-  dotfiles: 'deny',
-  index: false,
-}));
+// Proof files are NOT served statically — they go through the authenticated,
+// ownership-checked route GET /api/uploads/file/:filename (see uploadController).
 
 // Trust proxy when behind reverse proxy (nginx/heroku/render) — needed for rate-limit IP
 app.set('trust proxy', 1);
