@@ -56,6 +56,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <>
           {navLink('/dashboard', 'Dashboard', LayoutDashboard)}
           {navLink('/reviews', 'Review Queue', FileText)}
+          {navLink('/fpgp', 'My FPGP', BookOpen)}
           {navLink('/fpgp/department', 'Dept FPGP', BookOpen)}
           {navLink('/reports/department', 'Reports', BarChart2)}
         </>
