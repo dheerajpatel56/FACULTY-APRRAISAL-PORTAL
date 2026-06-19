@@ -10,6 +10,7 @@ import { startEmailWorker } from './services/emailWorker';
 import { startReminderCrons } from './cron/reminders';
 import { startFpgpEvaluationCron } from './cron/fpgpEvaluation';
 import { httpLogger } from './middleware/logger';
+import { generalLimiter } from './middleware/rateLimit';
 import { metricsMiddleware, metricsHandler } from './middleware/metrics';
 import { health, ready } from './controllers/healthController';
 
@@ -49,13 +50,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// JSON body cap kept small — file uploads go through multer, not JSON.
+app.use(express.json({ limit: '1mb' }));
+
+// Static proof files. UUID filenames; deny dotfiles + directory listing.
+// NOTE: still unauthenticated (inline <img>/<a> can't send a bearer token).
+// Residual risk tracked — see follow-up to serve these via an authed stream.
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+  dotfiles: 'deny',
+  index: false,
+}));
 
 // Trust proxy when behind reverse proxy (nginx/heroku/render) — needed for rate-limit IP
 app.set('trust proxy', 1);
 
-app.use('/api', routes);
+// Global per-IP rate limit on the API surface (auth routes add stricter limits).
+app.use('/api', generalLimiter, routes);
 app.use(errorHandler as any);
 
 // Start server + background workers — skipped under test (supertest imports app directly).

@@ -26,15 +26,24 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   const token = authHeader.slice(7);
   try {
     const payload = verifyAccessToken(token);
-    const userRoles = await prisma.userRole.findMany({
-      where: { userId: payload.userId, isActive: true },
-      select: { role: true, departmentId: true },
+
+    // Verify the account still exists and is active — a token issued before
+    // deactivation/deletion must not keep working for its full lifetime.
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        isActive: true,
+        userRoles: { where: { isActive: true }, select: { role: true, departmentId: true } },
+      },
     });
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: 'Account inactive or not found' });
+    }
 
     req.user = {
       id: payload.userId,
       employeeCode: payload.employeeCode,
-      roles: userRoles,
+      roles: user.userRoles,
     };
     next();
   } catch {

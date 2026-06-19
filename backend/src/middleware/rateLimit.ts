@@ -19,10 +19,11 @@ export const otpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// General API limiter — looser
+// General API limiter — looser. Disabled under test (supertest hammers from one IP).
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 min
   max: 120, // 120 req / IP / min
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
 });

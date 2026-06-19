@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import { randomInt } from 'crypto';
 import { z } from 'zod';
 import prisma from '../utils/prismaClient';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt';
@@ -73,7 +74,8 @@ const OTP_EXPIRY_MIN = 10;
 const OTP_MAX_ATTEMPTS = 5;
 
 function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  // Cryptographically secure 6-digit code (100000–999999).
+  return String(randomInt(100000, 1000000));
 }
 
 const forgotSchema = z.object({
