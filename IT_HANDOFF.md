@@ -65,7 +65,7 @@ You already front Docker apps with a reverse proxy + TLS — plug this in the sa
 
 ## First run
 
-1. Create the admin account: `docker compose exec backend npm run seed` (loads sample data) **or** insert a single admin row.
+1. Create the admin account: `docker compose exec backend npm run seed:prod` (loads sample data) **or** insert a single admin row. *(Use `seed:prod` — the plain `seed` needs dev tooling not present in the production image.)*
 2. **Rotate the default password immediately** — seed ships `ADMIN001 / admin123`.
 3. In the Admin UI: create departments + academic year, open the submission window, bulk-import faculty via CSV.
 

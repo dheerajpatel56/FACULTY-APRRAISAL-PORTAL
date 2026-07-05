@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev --schema=src/prisma/schema.prisma",
     "prisma:push": "prisma db push --schema=src/prisma/schema.prisma",
     "seed": "tsx src/prisma/seed.ts",
+    "seed:prod": "node dist/prisma/seed.js",
     "prisma:studio": "prisma studio --schema=src/prisma/schema.prisma",
     "test": "vitest run",
     "test:watch": "vitest"

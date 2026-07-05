@@ -75,7 +75,7 @@ Whichever you pick, `FRONTEND_URL` must be the **https://** origin.
 
 | # | Task | Notes |
 |---|------|-------|
-| 5.1 | Create the admin account | Empty DB → seed or create. `docker compose exec backend npm run seed` (sample data) **or** insert one admin |
+| 5.1 | Create the admin account | Empty DB → seed or create. `docker compose exec backend npm run seed:prod` (sample data) **or** insert one admin. Use `seed:prod`, not `seed` (prod image has no dev tooling) |
 | 5.2 | **Change the default admin password immediately** | Seed ships `ADMIN001 / admin123` — rotate it |
 | 5.3 | Create real departments + academic year, open submission window | Via Admin UI |
 | 5.4 | Bulk-import faculty (CSV) | Admin → Users → Import CSV |
