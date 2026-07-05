@@ -154,6 +154,24 @@ Endpoints mounted at root (before `/api`), no auth — intended for internal scr
 
 ---
 
+## Phase 10 — Full E2E Regression Test (2026-07-05)
+
+End-to-end verification across all roles (read + mutating) against the live stack (backend `:5000`, frontend `:5180`, Postgres). **37/37 assertions passed, zero app bugs.** Driven via API (Node drivers) for form-heavy mutations + `preview_*` UI drive for screenshots/console/network.
+
+- **Faculty (FAC13)** — create appraisal → fill Cat 1–5 (valid `indexed` = WOS/SCOPUS/ESCI/ICI; SCI correctly absent from enum) → proof upload (201, attached to journal) → submit. Self-score visible (Total 80.0/500); reviewer scores + grandTotal hidden pre-review (`review=null`); PDF export `%PDF` 200.
+- **HoD (HOD001, CSE)** — FAC13 in review queue; proof docs visible + streamable; scored Cat 6 + comments → APPROVED; HoD sees full scores + **grandTotal=123**.
+- **Faculty re-check** — post-decision comments released; scores **still stripped** (both `/appraisals/:id` and `/:id/review`, via `serializeSubmissionForFaculty`).
+- **FPGP** — FAC13 sign → ACTIVE (no HoD-sign needed in current design); admin `/fpgp/evaluate` → FAC13 **ACCEPTED** (2.1:2/2, 2.2:1/1, 3.2:2/2 all met), FAC15 **NEEDS_REVIEW** (2.1:1/3 missed); `fpgp_evaluated` email enqueued (FAILED — SMTP creds invalid, won't send, expected).
+- **Reviewer (FAC11)** — pending queue scoped to reviewer dept (ECE) only, excludes CSE; cross-dept GET appraisal + POST review → 403.
+- **Admin** — assign-reviewer (→UNDER_REVIEW) + unlock (→DRAFT).
+- **Guards** — faculty→`/admin/users` 403; no-token→`/appraisals` 401; faculty cannot read reviewer scores.
+- **Proof-file access** (`uploadController.canAccess` = owner / admin / HoD-or-Reviewer same-dept) — verified: owner 200, same-dept **REVIEWER** (non-HoD) 200, same-dept HoD 200, cross-dept faculty 403. Files served only via authenticated ownership-checked `GET /api/uploads/file/:filename`.
+- **UI** — login FAC13/HOD001, dashboard, appraisal detail (self-score + comments card, no numeric reviewer scores rendered for any role — grandTotal lives in review API + PDF). No console errors, no failed network requests.
+
+Notes: `scripts/live-workflow.mjs` includes a `hod-sign` step that is now optional (design auto-approves via target eval); route still exists (→REVIEWED). Seed reality: **FAC11 = CSE faculty with REVIEWER role scoped to ECE** (not ECE faculty). All test data reverted (appraisals + FPGP cascade, uploaded proof row + disk file, own email rows targeted by dedupeKey); pre-existing rows preserved; baseline verified (appraisals 3, fpgp 2, emails 37, uploads 1). AuditLog left intact (immutable trail).
+
+---
+
 ## Database Maintenance
 
 The dev database was cleared to **ADMIN001 only** multiple times on request (deletes all non-admin users + their submissions, FPGP plans, reviews, emails, OTPs, audit logs, roles in one transaction; departments + academic years retained). `npm run seed` repopulates sample accounts.
