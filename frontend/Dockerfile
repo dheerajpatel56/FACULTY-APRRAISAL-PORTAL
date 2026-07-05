@@ -1,9 +1,11 @@
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# npm install (not ci): Windows-generated lockfile omits Linux/WASM optional
+# deps (Tailwind v4 oxide / lightningcss), which makes `npm ci` fail here.
 COPY package*.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 COPY . .
 RUN npm run build

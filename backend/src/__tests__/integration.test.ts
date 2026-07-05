@@ -109,7 +109,7 @@ describe('Full appraisal workflow', () => {
         categories: {
           cat2Journals: [{
             title: 'Test Paper', journalName: 'IEEE', authors: 'FAC21', authorPosition: 'First',
-            indexed: 'SCI', impactFactor: 3, volume: '1', issueNo: '1', pageNos: '1-10',
+            indexed: 'WOS', impactFactor: 3, volume: '1', issueNo: '1', pageNos: '1-10',
             dateOfPub: '2025-06-01', quartile: 'Q1', doi: '', issn: '',
           }],
         },

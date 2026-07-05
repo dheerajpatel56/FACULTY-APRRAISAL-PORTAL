@@ -22,11 +22,20 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql://appraisal_user:${DB_PASSWORD}@postgres:5432/faculty_appraisal
+      # Auth
       JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-7d}
+      # CORS — public origin of the frontend (REQUIRED, else browser calls blocked)
+      FRONTEND_URL: ${FRONTEND_URL}
+      # Email (code reads SMTP_PASS, not SMTP_PASSWORD)
+      EMAIL_DISABLED: ${EMAIL_DISABLED:-false}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       NODE_ENV: production
       LOG_LEVEL: info
@@ -47,8 +56,8 @@ services:
 
   frontend:
     build: ./frontend
-    environment:
-      VITE_API_URL: ${API_URL:-http://backend:5000/api}
+    # No API URL env needed: the app calls relative /api, and nginx proxies
+    # /api and /uploads to the backend service (see frontend/nginx.conf).
     ports:
       - "80:80"
     depends_on:

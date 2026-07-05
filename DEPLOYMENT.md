@@ -30,26 +30,33 @@ cd FACULTY-APPRAISAL-PORTAL
 
 ### 1.2 Create `.env` files
 
-#### Backend: `backend/.env`
+> **Docker Compose users:** you do NOT hand-write `backend/.env`. Compose injects
+> the backend's runtime env from the **root `.env`** (see `.env.example`). The keys
+> below are the exact names the backend code reads — use these names, not aliases.
+
+#### Backend runtime env (exact keys the code reads)
 
 ```bash
 # Database
 DATABASE_URL=postgresql://appraisal_user:secure_password@localhost:5432/faculty_appraisal
 
-# JWT & Authentication
+# JWT & refresh tokens (note: JWT_EXPIRES_IN, not JWT_EXPIRE)
 JWT_SECRET=your-super-secret-jwt-key-min-32-chars
-JWT_EXPIRE=24h
+JWT_EXPIRES_IN=8h
+REFRESH_TOKEN_SECRET=your-refresh-secret-min-32-chars
+REFRESH_TOKEN_EXPIRES_IN=7d
 
-# Email Service (Gmail SMTP example)
+# CORS — public origin of the frontend. REQUIRED, else the browser is blocked.
+FRONTEND_URL=https://your-domain.com
+
+# Email (note: SMTP_PASS, not SMTP_PASSWORD)
+EMAIL_DISABLED=false
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
+SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-specific-password
+SMTP_PASS=your-app-specific-password
 SMTP_FROM=noreply@vnrvjiet.in
-
-# File Upload
-MAX_FILE_SIZE=5242880
-UPLOAD_DIR=./uploads
 
 # Server
 PORT=5000
@@ -57,12 +64,10 @@ NODE_ENV=production
 LOG_LEVEL=info
 ```
 
-#### Frontend: `frontend/.env`
+#### Frontend
 
-```bash
-# API endpoint (adjust to your domain/IP)
-VITE_API_URL=https://your-domain.com/api
-```
+No env needed. The app calls the relative path `/api`; nginx proxies `/api` and
+`/uploads` to the backend (see `frontend/nginx.conf`). `VITE_API_URL` is not used.
 
 ### 1.3 Create `.env.example` files (safe to commit)
 

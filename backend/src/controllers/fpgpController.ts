@@ -269,7 +269,6 @@ export async function downloadFpgpPdf(req: Request, res: Response) {
       reviews: { include: { reviewer: { select: { id: true, name: true } } } },
       user: { include: { department: true } },
       hodSigner: { select: { id: true, name: true } },
-      academicYear: true,
     },
   });
   if (!plan) return res.status(404).json({ error: 'Not found' });
@@ -278,11 +277,15 @@ export async function downloadFpgpPdf(req: Request, res: Response) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
+  // FPGPPlan has no academicYear relation — fetch it and attach for the renderer.
+  const academicYear = await prisma.academicYear.findUnique({ where: { id: plan.academicYearId } });
+  (plan as any).academicYear = academicYear;
+
   const { renderFpgpHtml, renderHtmlToPdf } = await import('../services/pdfService');
   const html = renderFpgpHtml(plan, FPGP_TEMPLATE as any);
   const pdf = await renderHtmlToPdf(html);
 
-  const yearLabel = (plan.academicYear as any)?.label ?? 'fpgp';
+  const yearLabel = (academicYear as any)?.label ?? 'fpgp';
   const code = (plan.user as any)?.employeeCode ?? plan.userId;
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename=fpgp-${code}-${yearLabel}.pdf`);
