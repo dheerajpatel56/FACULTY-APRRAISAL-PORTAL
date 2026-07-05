@@ -42,7 +42,11 @@ app.use(cors({
     // Allow tools without origin (curl, Postman, server-to-server)
     if (!origin) return cb(null, true);
     if (allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error(`CORS: origin "${origin}" not allowed`), false);
+    // Disallowed origin: omit CORS headers so the browser blocks it.
+    // Do NOT throw — throwing surfaces as a 500; standard CORS just
+    // withholds the Access-Control-Allow-Origin header.
+    console.warn(`[cors] blocked origin: ${origin}`);
+    return cb(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
