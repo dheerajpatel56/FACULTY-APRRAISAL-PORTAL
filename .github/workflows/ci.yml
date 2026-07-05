@@ -46,8 +46,10 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
+        # npm install, not ci: the Windows-generated lockfile omits Linux/WASM
+        # optional deps (@emnapi/*), which makes `npm ci` fail on Linux runners.
         working-directory: backend
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Prisma generate
         working-directory: backend
@@ -83,8 +85,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
+        # npm install, not ci: Windows lockfile omits Linux/WASM optional deps.
         working-directory: frontend
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Lint
         working-directory: frontend
