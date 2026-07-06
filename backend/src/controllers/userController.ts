@@ -407,13 +407,24 @@ function parseJoiningDate(s: string): string | null {
   return dt.toISOString().slice(0, 10);
 }
 
+// Cells that identify the real header row — lets us skip title/section rows
+// above it (e.g. a merged "CSE-TEACHING" banner) instead of assuming row 1.
+const HEADER_HINTS = new Set<string>([
+  ...COLUMN_ALIASES.employeeCode,
+  ...COLUMN_ALIASES.email,
+  ...COLUMN_ALIASES.name,
+]);
+function isHeaderRow(cells: string[]): boolean {
+  return cells.some((c) => HEADER_HINTS.has(normKey(String(c ?? ''))));
+}
+
 interface ParsedRow {
   row: number;
   data: Record<string, string>;
   errors: string[];
 }
 
-function validateRow(idx: number, raw: any, seenCodes: Set<string>, seenEmails: Set<string>): ParsedRow {
+function validateRow(rowNum: number, raw: any, seenCodes: Set<string>, seenEmails: Set<string>): ParsedRow {
   const data = mapRow(raw);
   const errors: string[] = [];
 
@@ -445,7 +456,7 @@ function validateRow(idx: number, raw: any, seenCodes: Set<string>, seenEmails: 
     seenEmails.add(emailKey);
   }
 
-  return { row: idx + 2, data, errors }; // +2: 1-indexed + header row
+  return { row: rowNum, data, errors };
 }
 
 const bulkImportSchema = z.object({
@@ -464,11 +475,34 @@ export async function bulkImportUsers(req: Request, res: Response) {
   });
   if (!dept) return res.status(400).json({ error: 'Selected department not found' });
 
-  let rawRows: any[];
+  // Parse as a raw matrix (no header assumption) so we can skip title/section
+  // rows above the real header — e.g. Excel exports that start with a merged
+  // "CSE-TEACHING" banner. relax_column_count tolerates ragged rows.
+  let matrix: string[][];
   try {
-    rawRows = parseCsv(csv, { columns: true, skip_empty_lines: true, trim: true });
+    matrix = parseCsv(csv, { columns: false, skip_empty_lines: true, trim: true, relax_column_count: true });
   } catch (e: any) {
     return res.status(400).json({ error: `CSV parse error: ${e?.message ?? e}` });
+  }
+
+  const headerIdx = matrix.findIndex(isHeaderRow);
+  if (headerIdx === -1) {
+    return res.status(400).json({ error: 'Could not find a header row — expected columns like "EMP ID" and "E - Mail ID".' });
+  }
+  const headers = matrix[headerIdx];
+
+  // Data rows follow the header; keep each row's real spreadsheet line number
+  // (1-based) for error reporting, and drop fully-blank rows.
+  const rawRows: { obj: Record<string, string>; rowNum: number }[] = [];
+  for (let i = headerIdx + 1; i < matrix.length; i++) {
+    const cells = matrix[i];
+    // Skip blank rows and mid-sheet section banners (e.g. "CSE-NON TEACHING"),
+    // which have at most one non-empty cell — they are separators, not data.
+    const nonEmpty = cells.filter((c) => String(c ?? '').trim() !== '').length;
+    if (nonEmpty <= 1) continue;
+    const obj: Record<string, string> = {};
+    headers.forEach((h, j) => { if (h) obj[h] = String(cells[j] ?? ''); });
+    rawRows.push({ obj, rowNum: i + 1 });
   }
 
   if (rawRows.length === 0) return res.status(400).json({ error: 'CSV has no data rows' });
@@ -481,7 +515,7 @@ export async function bulkImportUsers(req: Request, res: Response) {
   // Parse + validate all rows
   const seenCodes = new Set<string>();
   const seenEmails = new Set<string>();
-  const parsed = rawRows.map((r, i) => validateRow(i, r, seenCodes, seenEmails));
+  const parsed = rawRows.map(({ obj, rowNum }) => validateRow(rowNum, obj, seenCodes, seenEmails));
 
   // Annotate dept + role for preview display, then check against existing DB
   for (const p of parsed) {
