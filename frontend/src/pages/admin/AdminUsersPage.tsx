@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userApi } from '../../api/users';
 import toast from 'react-hot-toast';
-import { Plus, Search, Upload, Shield } from 'lucide-react';
+import { Plus, Search, Upload, Shield, Trash2 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import CsvImportModal from '../../components/CsvImportModal';
@@ -25,6 +25,7 @@ export default function AdminUsersPage() {
   const [roleUser, setRoleUser] = useState<any>(null);
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ employeeCode: '', name: '', email: '', password: '', designation: '', departmentId: '' });
 
   const load = () => {
@@ -43,6 +44,33 @@ export default function AdminUsersPage() {
   useEffect(() => { load(); }, [search, offset]);
 
   useEffect(() => { setOffset(0); }, [search]);
+
+  // Selection is page-scoped — clear it when the visible set changes.
+  useEffect(() => { setSelected(new Set()); }, [search, offset]);
+
+  const toggleRow = (id: string) =>
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const allSelected = users.length > 0 && users.every((u) => selected.has(u.id));
+  const someSelected = users.some((u) => selected.has(u.id));
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(users.map((u) => u.id)));
+
+  const bulkDelete = async () => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    if (!confirm(`Permanently delete ${ids.length} selected user(s) and all their data? This cannot be undone.`)) return;
+    let ok = 0;
+    const fails: string[] = [];
+    for (const id of ids) {
+      try { await userApi.deleteUser(id); ok++; }
+      catch { fails.push(users.find((u) => u.id === id)?.employeeCode ?? id); }
+    }
+    if (ok) toast.success(`Deleted ${ok} user(s)`);
+    if (fails.length) toast.error(`Failed to delete: ${fails.join(', ')}`);
+    setSelected(new Set());
+    load();
+  };
 
   useEffect(() => {
     userApi.listDepartments().then(setDepts).catch(() => {});
@@ -174,10 +202,32 @@ export default function AdminUsersPage() {
         </Card>
       )}
 
+      {someSelected && (
+        <div className="mb-3 flex items-center justify-between bg-primary-50 border border-primary-200 rounded px-4 py-2.5 text-sm">
+          <span className="text-primary-700 font-medium">{selected.size} selected</span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSelected(new Set())} className="text-xs text-ink-secondary hover:underline">Clear</button>
+            <button onClick={bulkDelete} className="flex items-center gap-1.5 bg-danger-500 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-red-700">
+              <Trash2 size={13} /> Delete selected
+            </button>
+          </div>
+        </div>
+      )}
+
       <Card padding="none">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-primary-700 text-white text-xs">
+              <th className="w-10 px-4 py-2.5">
+                <input
+                  type="checkbox"
+                  aria-label="Select all rows"
+                  className="align-middle cursor-pointer accent-accent-500"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                  onChange={toggleAll}
+                />
+              </th>
               <th className="text-left px-4 py-2.5 font-medium">Code</th>
               <th className="text-left px-4 py-2.5 font-medium">Name</th>
               <th className="text-left px-4 py-2.5 font-medium">Email</th>
@@ -188,7 +238,16 @@ export default function AdminUsersPage() {
           </thead>
           <tbody className="divide-y divide-surface-border">
             {users.map((u, i) => (
-              <tr key={u.id} className={i % 2 === 1 ? 'bg-surface-muted/50' : ''}>
+              <tr key={u.id} className={`${selected.has(u.id) ? 'bg-primary-50' : i % 2 === 1 ? 'bg-surface-muted/50' : ''}`}>
+                <td className="px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${u.employeeCode}`}
+                    className="align-middle cursor-pointer accent-accent-500"
+                    checked={selected.has(u.id)}
+                    onChange={() => toggleRow(u.id)}
+                  />
+                </td>
                 <td className="px-4 py-2.5 font-mono text-xs">{u.employeeCode}</td>
                 <td className="px-4 py-2.5 font-medium text-ink-primary">{u.name}</td>
                 <td className="px-4 py-2.5 text-ink-muted">{u.email}</td>
@@ -219,7 +278,7 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
         {loading && users.length === 0 && (
-          <div className="p-2"><SkeletonTable rows={6} cols={6} /></div>
+          <div className="p-2"><SkeletonTable rows={6} cols={7} /></div>
         )}
         <Pagination total={total} limit={PAGE_SIZE} offset={offset} onChange={setOffset} />
       </Card>
