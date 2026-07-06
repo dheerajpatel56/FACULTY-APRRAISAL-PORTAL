@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Upload, Download, X, CheckCircle2, AlertCircle, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { userApi } from '../api/users';
@@ -19,7 +19,15 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
   const [preview, setPreview] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [departmentId, setDepartmentId] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Load departments once when the modal opens (needed to assign all imported rows).
+  useEffect(() => {
+    if (!open) return;
+    userApi.listDepartments().then(setDepartments).catch(() => toast.error('Failed to load departments'));
+  }, [open]);
 
   const reset = () => {
     setStage('upload');
@@ -28,6 +36,7 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
     setPreview(null);
     setResult(null);
     setBusy(false);
+    setDepartmentId('');
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -55,9 +64,13 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
       toast.error('No CSV content');
       return;
     }
+    if (!departmentId) {
+      toast.error('Select a department first');
+      return;
+    }
     setBusy(true);
     try {
-      const r = await userApi.bulkImportUsers(csvText, true);
+      const r = await userApi.bulkImportUsers(csvText, departmentId, true);
       setPreview(r);
       setStage('preview');
     } catch (e: any) {
@@ -71,7 +84,7 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
     setBusy(true);
     setStage('importing');
     try {
-      const r = await userApi.bulkImportUsers(csvText, false);
+      const r = await userApi.bulkImportUsers(csvText, departmentId, false);
       setResult(r);
       setStage('done');
       if (r.createdCount > 0) {
@@ -118,7 +131,9 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
           {stage === 'upload' && (
             <div>
               <div className="bg-primary-50 border border-primary-200 rounded p-3 mb-4 text-xs text-primary-700">
-                <strong>Format:</strong> First row = column headers. Required: <code>employeeCode, name, email, password, department</code>. Optional: <code>designation, dateOfJoining, phone, specialization, educationalQuals, role</code>. Role values: FACULTY (default), HOD, REVIEWER, ADMIN.
+                <strong>Format:</strong> First row = column headers: <code>S.NO, EMP ID, Name of the Faculty, Designation, D.O.J, Mobile Number, E - Mail ID</code>. Required: <code>EMP ID, Name, E - Mail ID</code>. D.O.J accepts <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code>.
+                <br />
+                All rows are imported as <strong>Faculty</strong> into the selected department with default password <code>Welcome@123</code> (users change it on first login). Promote to HoD/Reviewer/Admin individually after import.
               </div>
 
               <button
@@ -127,6 +142,22 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
               >
                 <Download size={14} /> Download template CSV
               </button>
+
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-ink-secondary mb-1">
+                  Department <span className="text-danger-500">*</span> <span className="text-ink-muted font-normal">— applied to every row</span>
+                </label>
+                <select
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                  className="w-full text-sm border border-surface-border rounded px-3 py-2 bg-surface-card"
+                >
+                  <option value="">Select department…</option>
+                  {departments.map((d: any) => (
+                    <option key={d.id} value={d.id}>{d.name}{d.code ? ` (${d.code})` : ''}</option>
+                  ))}
+                </select>
+              </div>
 
               <label
                 className="block border-2 border-dashed border-surface-border rounded p-8 text-center cursor-pointer hover:bg-surface-muted/50 transition-colors"
@@ -163,7 +194,7 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
                 <button onClick={close} className="text-sm text-ink-secondary px-4 py-2 border border-surface-border rounded hover:bg-surface-muted">Cancel</button>
                 <button
                   onClick={runDryRun}
-                  disabled={!csvText.trim() || busy}
+                  disabled={!csvText.trim() || !departmentId || busy}
                   className="text-sm bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700 disabled:opacity-50"
                 >
                   {busy ? 'Validating...' : 'Validate'}
@@ -188,6 +219,10 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
                   <div className="text-xs text-danger-500">Errors</div>
                   <div className="text-2xl font-bold text-danger-500">{preview.invalidCount}</div>
                 </div>
+              </div>
+
+              <div className="bg-primary-50 border border-primary-200 rounded p-3 mb-4 text-xs text-primary-700">
+                Importing into <strong>{preview.department}</strong> as <strong>Faculty</strong>. Default password: <code>{preview.defaultPassword}</code>.
               </div>
 
               <div className="border border-surface-border rounded overflow-hidden max-h-80 overflow-y-auto mb-4">

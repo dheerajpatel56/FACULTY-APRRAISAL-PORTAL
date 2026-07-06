@@ -27,7 +27,7 @@ export const userApi = {
     api.put(`/admin/departments/${id}`, data).then((r) => r.data),
   deleteDepartment: (id: string) =>
     api.delete(`/admin/departments/${id}`).then((r) => r.data),
-  bulkImportUsers: (csv: string, dryRun: boolean) =>
-    api.post('/admin/users/bulk-import', { csv, dryRun }).then((r) => r.data),
+  bulkImportUsers: (csv: string, departmentId: string, dryRun: boolean) =>
+    api.post('/admin/users/bulk-import', { csv, departmentId, dryRun }).then((r) => r.data),
   bulkImportTemplateUrl: () => '/api/admin/users/bulk-import/template',
 };

@@ -345,20 +345,67 @@ export async function revokeRole(req: Request, res: Response) {
 
 // ───── Bulk CSV Import ─────────────────────────────────────────────
 
-const TEMPLATE_CSV = `employeeCode,name,email,password,designation,department,dateOfJoining,phone,specialization,educationalQuals,role
-FAC001,John Doe,john.doe@vnrvjiet.in,Welcome@123,Assistant Professor,CSE,2020-08-15,9876543210,Machine Learning,M.Tech PhD,FACULTY
-HOD001,Dr. Rao,rao@vnrvjiet.in,Welcome@123,Professor & HoD,CSE,2010-01-15,9876543212,Algorithms,PhD,HOD
-REV001,Dr. Iyer,iyer@vnrvjiet.in,Welcome@123,Professor,IT,2012-03-20,9876543213,Networks,PhD,REVIEWER
+// Institutional faculty-roster format. Password, department and role are NOT in
+// the sheet: every row is imported as FACULTY into the admin-selected department
+// with a shared default password (users change it on first login).
+const DEFAULT_IMPORT_PASSWORD = 'Welcome@123';
+
+const TEMPLATE_CSV = `S.NO,EMP ID,Name of the Faculty,Designation,D.O.J,Mobile Number,E - Mail ID
+1,FAC001,John Doe,Assistant Professor,15-08-2020,9876543210,john.doe@vnrvjiet.in
+2,FAC002,Jane Smith,Associate Professor,01-06-2012,9876543211,jane.smith@vnrvjiet.in
 `;
 
 export function bulkImportTemplate(_req: Request, res: Response) {
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename=user-import-template.csv');
+  res.setHeader('Content-Disposition', 'attachment; filename=faculty-import-template.csv');
   return res.send(TEMPLATE_CSV);
 }
 
-const REQUIRED_COLS = ['employeeCode', 'name', 'email', 'password', 'department'];
-const VALID_ROLES = ['FACULTY', 'HOD', 'REVIEWER', 'ADMIN'];
+// Column aliases → internal field. Headers are matched after lowercasing and
+// stripping every non-alphanumeric char, so "E - Mail ID", "E-Mail ID" and
+// "Email" all resolve to the same field. "S.NO" is ignored (row index only).
+const COLUMN_ALIASES: Record<string, string[]> = {
+  employeeCode: ['empid', 'employeeid', 'employeecode', 'empcode', 'empno'],
+  name: ['nameofthefaculty', 'name', 'facultyname', 'nameoffaculty'],
+  designation: ['designation', 'desig'],
+  dateOfJoining: ['doj', 'dateofjoining', 'dateofjoin', 'joiningdate'],
+  phone: ['mobilenumber', 'mobileno', 'mobile', 'phone', 'phoneno', 'contactnumber', 'contactno'],
+  email: ['emailid', 'email', 'emailaddress', 'mail', 'mailid'],
+};
+
+const normKey = (k: string) => k.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Build { internalField: value } from a raw row keyed by original CSV headers.
+function mapRow(raw: Record<string, any>): Record<string, string> {
+  const normed: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) normed[normKey(k)] = String(v ?? '').trim();
+  const out: Record<string, string> = {};
+  for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
+    const hit = aliases.find((a) => normed[a] !== undefined && normed[a] !== '');
+    out[field] = hit ? normed[hit] : '';
+  }
+  return out;
+}
+
+// Accept YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY (also '.' separators, single-digit
+// day/month). Returns an ISO yyyy-mm-dd string, or null if unparseable.
+function parseJoiningDate(s: string): string | null {
+  const v = s.trim();
+  if (!v) return null;
+  let y: number, m: number, d: number;
+  let mt: RegExpMatchArray | null;
+  if ((mt = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+    y = +mt[1]; m = +mt[2]; d = +mt[3];
+  } else if ((mt = v.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/))) {
+    d = +mt[1]; m = +mt[2]; y = +mt[3];
+  } else {
+    return null;
+  }
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (isNaN(dt.getTime()) || dt.getUTCMonth() !== m - 1) return null; // rejects e.g. 31-02
+  return dt.toISOString().slice(0, 10);
+}
 
 interface ParsedRow {
   row: number;
@@ -366,55 +413,30 @@ interface ParsedRow {
   errors: string[];
 }
 
-function validateRow(idx: number, raw: any, deptCodes: Set<string>, seenCodes: Set<string>, seenEmails: Set<string>): ParsedRow {
+function validateRow(idx: number, raw: any, seenCodes: Set<string>, seenEmails: Set<string>): ParsedRow {
+  const data = mapRow(raw);
   const errors: string[] = [];
-  const data: Record<string, string> = {};
 
-  for (const col of REQUIRED_COLS) {
-    const v = String(raw[col] ?? '').trim();
-    if (!v) errors.push(`Missing required column: ${col}`);
-    data[col] = v;
-  }
-
-  // Optional columns
-  for (const col of ['designation', 'dateOfJoining', 'phone', 'specialization', 'educationalQuals', 'role']) {
-    data[col] = String(raw[col] ?? '').trim();
-  }
+  if (!data.employeeCode) errors.push('Missing EMP ID');
+  if (!data.name) errors.push('Missing Name of the Faculty');
+  if (!data.email) errors.push('Missing E-Mail ID');
 
   // Email format
   if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
     errors.push('Invalid email format');
   }
 
-  // Password min length
-  if (data.password && data.password.length < 6) {
-    errors.push('Password must be at least 6 characters');
-  }
-
-  // Department exists
-  if (data.department && !deptCodes.has(data.department.toUpperCase())) {
-    errors.push(`Department code "${data.department}" not found`);
-  }
-
-  // Role valid
-  const role = (data.role || 'FACULTY').toUpperCase();
-  if (!VALID_ROLES.includes(role)) {
-    errors.push(`Invalid role "${data.role}" — must be one of ${VALID_ROLES.join(', ')}`);
-  }
-  data.role = role;
-
-  // Date format
+  // D.O.J optional; if present must parse. Normalise to ISO for insert.
   if (data.dateOfJoining) {
-    const d = new Date(data.dateOfJoining);
-    if (isNaN(d.getTime())) {
-      errors.push(`Invalid dateOfJoining "${data.dateOfJoining}" — use YYYY-MM-DD`);
-    }
+    const iso = parseJoiningDate(data.dateOfJoining);
+    if (!iso) errors.push(`Invalid D.O.J "${data.dateOfJoining}" — use DD-MM-YYYY or YYYY-MM-DD`);
+    else data.dateOfJoining = iso;
   }
 
   // Duplicate within CSV
   if (data.employeeCode) {
     const codeKey = data.employeeCode.toUpperCase();
-    if (seenCodes.has(codeKey)) errors.push(`Duplicate employeeCode within CSV: ${data.employeeCode}`);
+    if (seenCodes.has(codeKey)) errors.push(`Duplicate EMP ID within CSV: ${data.employeeCode}`);
     seenCodes.add(codeKey);
   }
   if (data.email) {
@@ -428,11 +450,19 @@ function validateRow(idx: number, raw: any, deptCodes: Set<string>, seenCodes: S
 
 const bulkImportSchema = z.object({
   csv: z.string().min(1, 'CSV content required'),
+  departmentId: z.string().min(1, 'Target department is required'),
   dryRun: z.boolean().default(true),
 });
 
 export async function bulkImportUsers(req: Request, res: Response) {
-  const { csv, dryRun } = bulkImportSchema.parse(req.body);
+  const { csv, departmentId, dryRun } = bulkImportSchema.parse(req.body);
+
+  // Department is chosen once in the UI and applied to every row.
+  const dept = await prisma.department.findUnique({
+    where: { id: departmentId },
+    select: { id: true, code: true, name: true },
+  });
+  if (!dept) return res.status(400).json({ error: 'Selected department not found' });
 
   let rawRows: any[];
   try {
@@ -444,26 +474,22 @@ export async function bulkImportUsers(req: Request, res: Response) {
   if (rawRows.length === 0) return res.status(400).json({ error: 'CSV has no data rows' });
   if (rawRows.length > 500) return res.status(400).json({ error: 'CSV too large (max 500 rows)' });
 
-  // Load all departments + existing users for validation
-  const [depts, existingUsers] = await Promise.all([
-    prisma.department.findMany({ select: { id: true, code: true } }),
-    prisma.user.findMany({ select: { employeeCode: true, email: true } }),
-  ]);
-  const deptCodeToId = new Map(depts.map((d) => [d.code.toUpperCase(), d.id]));
-  const deptCodes = new Set(deptCodeToId.keys());
+  const existingUsers = await prisma.user.findMany({ select: { employeeCode: true, email: true } });
   const existingCodes = new Set(existingUsers.map((u) => u.employeeCode.toUpperCase()));
   const existingEmails = new Set(existingUsers.map((u) => u.email?.toLowerCase()).filter(Boolean) as string[]);
 
   // Parse + validate all rows
   const seenCodes = new Set<string>();
   const seenEmails = new Set<string>();
-  const parsed = rawRows.map((r, i) => validateRow(i, r, deptCodes, seenCodes, seenEmails));
+  const parsed = rawRows.map((r, i) => validateRow(i, r, seenCodes, seenEmails));
 
-  // Check against existing DB
+  // Annotate dept + role for preview display, then check against existing DB
   for (const p of parsed) {
+    p.data.department = dept.code;
+    p.data.role = 'FACULTY';
     if (p.errors.length) continue;
     if (existingCodes.has(p.data.employeeCode.toUpperCase())) {
-      p.errors.push(`employeeCode "${p.data.employeeCode}" already exists`);
+      p.errors.push(`EMP ID "${p.data.employeeCode}" already exists`);
     }
     if (p.data.email && existingEmails.has(p.data.email.toLowerCase())) {
       p.errors.push(`email "${p.data.email}" already exists`);
@@ -476,6 +502,8 @@ export async function bulkImportUsers(req: Request, res: Response) {
   if (dryRun) {
     return res.json({
       dryRun: true,
+      department: dept.name,
+      defaultPassword: DEFAULT_IMPORT_PASSWORD,
       total: parsed.length,
       validCount: valid.length,
       invalidCount: invalid.length,
@@ -483,16 +511,14 @@ export async function bulkImportUsers(req: Request, res: Response) {
     });
   }
 
-  // Actually create users
+  // Actually create users — all FACULTY in the selected dept, shared password.
   const created: any[] = [];
   const failed: any[] = [];
+  const passwordHash = await bcrypt.hash(DEFAULT_IMPORT_PASSWORD, 12);
 
   for (const p of valid) {
     try {
-      const passwordHash = await bcrypt.hash(p.data.password, 12);
-      const departmentId = deptCodeToId.get(p.data.department.toUpperCase());
       const dateOfJoining = p.data.dateOfJoining ? new Date(p.data.dateOfJoining) : null;
-      const role = p.data.role as RoleType;
 
       await prisma.$transaction(async (tx) => {
         const newUser = await tx.user.create({
@@ -502,19 +528,17 @@ export async function bulkImportUsers(req: Request, res: Response) {
             email: p.data.email,
             passwordHash,
             designation: p.data.designation || null,
-            departmentId: departmentId || null,
+            departmentId: dept.id,
             dateOfJoining,
             phone: p.data.phone || null,
-            specialization: p.data.specialization || null,
-            educationalQuals: p.data.educationalQuals || null,
           },
         });
 
         await tx.userRole.create({
           data: {
             userId: newUser.id,
-            role,
-            departmentId: role === RoleType.HOD || role === RoleType.REVIEWER ? departmentId : null,
+            role: RoleType.FACULTY,
+            departmentId: null,
             assignedBy: req.user!.id,
           },
         });
@@ -525,7 +549,7 @@ export async function bulkImportUsers(req: Request, res: Response) {
             action: 'USER_BULK_IMPORTED',
             entityType: 'User',
             entityId: newUser.id,
-            metadata: { row: p.row, role },
+            metadata: { row: p.row, role: 'FACULTY', departmentId: dept.id },
           },
         });
 
@@ -538,6 +562,8 @@ export async function bulkImportUsers(req: Request, res: Response) {
 
   return res.json({
     dryRun: false,
+    department: dept.name,
+    defaultPassword: DEFAULT_IMPORT_PASSWORD,
     total: parsed.length,
     createdCount: created.length,
     skippedCount: invalid.length,
