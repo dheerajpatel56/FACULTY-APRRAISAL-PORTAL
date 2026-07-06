@@ -45,18 +45,37 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
     onClose();
   };
 
-  const onFile = (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      toast.error('File must be .csv');
+  const onFile = async (file: File) => {
+    const name = file.name.toLowerCase();
+    const isCsv = name.endsWith('.csv');
+    const isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls');
+    if (!isCsv && !isXlsx) {
+      toast.error('File must be .csv or .xlsx');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = String(e.target?.result ?? '');
-      setCsvText(text);
+    if (isCsv) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setCsvText(String(e.target?.result ?? ''));
+        setFileName(file.name);
+      };
+      reader.readAsText(file);
+      return;
+    }
+    // .xlsx / .xls — parse the first sheet to CSV in the browser, then reuse the
+    // same CSV pipeline. SheetJS is loaded lazily so it stays out of the main bundle.
+    try {
+      const XLSX = await import('xlsx');
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      if (!sheet) throw new Error('no sheet');
+      const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+      setCsvText(csv);
       setFileName(file.name);
-    };
-    reader.readAsText(file);
+    } catch {
+      toast.error('Failed to read spreadsheet');
+    }
   };
 
   const runDryRun = async () => {
@@ -131,7 +150,7 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
           {stage === 'upload' && (
             <div>
               <div className="bg-primary-50 border border-primary-200 rounded p-3 mb-4 text-xs text-primary-700">
-                <strong>Format:</strong> First row = column headers: <code>S.NO, EMP ID, Name of the Faculty, Designation, D.O.J, Mobile Number, E - Mail ID</code>. Required: <code>EMP ID, Name, E - Mail ID</code>. D.O.J accepts <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code>.
+                <strong>Format (.csv or .xlsx):</strong> First row = column headers: <code>S.NO, EMP ID, Name of the Faculty, Designation, D.O.J, Mobile Number, E - Mail ID</code>. Required: <code>EMP ID, Name, E - Mail ID</code>. D.O.J accepts <code>DD-MM-YYYY</code> or <code>YYYY-MM-DD</code>. Excel files use the first sheet.
                 <br />
                 All rows are imported as <strong>Faculty</strong> into the selected department with default password <code>Welcome@123</code> (users change it on first login). Promote to HoD/Reviewer/Admin individually after import.
               </div>
@@ -171,12 +190,12 @@ export default function CsvImportModal({ open, onClose, onSuccess }: Props) {
                 }}
               >
                 <Upload className="mx-auto text-ink-subtle mb-2" size={32} />
-                <div className="text-sm text-ink-secondary mb-1">Click to browse or drag-drop CSV file</div>
-                <div className="text-xs text-ink-muted">Max 500 rows per import</div>
+                <div className="text-sm text-ink-secondary mb-1">Click to browse or drag-drop a CSV or Excel file</div>
+                <div className="text-xs text-ink-muted">.csv or .xlsx · Max 500 rows per import</div>
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                   className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
                 />
