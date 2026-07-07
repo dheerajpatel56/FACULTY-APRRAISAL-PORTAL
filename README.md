@@ -1,268 +1,207 @@
-Optimized tool selection# Faculty Appraisal System
+# Faculty Appraisal System
 
-A comprehensive web-based system for managing faculty appraisals, performance evaluations, and development planning in academic institutions.
+A full-stack web application for managing faculty self-appraisals, reviewer/HoD evaluation, Faculty Performance & Growth Planning (FPGP), and institutional reporting for VNRVJIET.
 
 ## Overview
 
-The Faculty Appraisal System is a full-stack application designed to streamline the faculty evaluation process. It includes features for appraisal management, reviewer assignment, performance scoring, report generation, and email notifications.
+Faculty record their yearly achievements across Categories 1–5; a server-side scoring engine computes the self-score. HoDs/Reviewers add Category 6 marks and comments and approve or reject. An FPGP module lets faculty set growth targets that are automatically reconciled against their appraisal actuals. Admins manage users, departments, academic years, reviewer assignment, notifications, and reports. Every mutation is written to an audit log.
 
 ## Features
 
-- **User Management**: Role-based access control (Admin, Faculty, Reviewer)
-- **Appraisal Management**: Create, update, and manage faculty appraisals
-- **Reviewer Assignment**: Dynamic reviewer assignment with customizable workflows
-- **FPGP Integration**: Faculty Performance and Growth Planning module
-- **Performance Scoring**: Automated scoring engine for consistent evaluation
-- **Report Generation**: PDF report generation and analytics
-- **Email Notifications**: Automated email reminders and notifications
-- **Audit Logging**: Complete audit trail of all system activities
-- **File Management**: Bulk CSV import and file upload capabilities
-- **Academic Year Management**: Multi-year appraisal cycles
-- **Department Management**: Organize faculty by departments
+- **Role-based access** — Admin, HoD, Reviewer, Faculty (multiple roles per user, department-scoped).
+- **Appraisal workflow** — draft → submit → review → approve/reject, with strict visibility rules (reviewer numeric scores are never exposed to faculty; comments release only after a decision).
+- **Scoring engine** — deterministic Category 1–6 scoring (self max 500 + reviewer Category 6).
+- **FPGP** — target-setting per the official template; quarterly (or on-demand) auto-reconciliation → `ACCEPTED` / `NEEDS_REVIEW`.
+- **Proof file uploads** — PDF/PNG/JPEG/WEBP attachments served only through an authenticated, ownership-checked route (no static serving).
+- **Bulk user import** — upload a `.csv` or `.xlsx` faculty roster. The header row is auto-detected (title banners and section rows are skipped); every row is imported as Faculty into an admin-selected department with a shared default password.
+- **User admin** — create/edit/delete users, assign roles, plus multi-select bulk delete in the users table.
+- **PDF export** — appraisal and FPGP PDFs rendered from HTML via headless Chrome.
+- **Email notifications** — queued in an outbox table and delivered by a background worker (idempotent, opt-in aware).
+- **Reports** — department and institute reports, with Excel export.
+- **Observability** — Prometheus metrics, liveness/readiness probes, structured JSON logs.
+- **Audit log** — complete trail of all operations.
 
 ## Tech Stack
 
-### Backend
-- **Runtime**: Node.js
-- **Language**: TypeScript
-- **Framework**: Express.js
-- **Database**: PostgreSQL with Prisma ORM
-- **Testing**: Vitest
-- **Email**: Nodemailer
-- **PDF Generation**: PDFKit
-- **Monitoring**: Prometheus metrics
-- **Authentication**: JWT-based
+**Backend** — Node.js + TypeScript, Express 4, PostgreSQL + Prisma 6, JWT auth, Nodemailer (SMTP), Puppeteer (PDF), SheetJS (Excel export), Prometheus + pino, Vitest.
 
-### Frontend
-- **Framework**: React 18+
-- **Build Tool**: Vite
-- **Language**: TypeScript
-- **Styling**: CSS
-- **HTTP Client**: Axios
-- **State Management**: Custom store (authStore)
-- **Development Server**: Vite dev server
+**Frontend** — React 18 + TypeScript, Vite, Tailwind CSS v4, Axios, Zustand (auth store), react-hook-form + Zod, SheetJS (client-side `.xlsx` parsing, lazy-loaded).
 
-### DevOps
-- **Containerization**: Docker & Docker Compose
-- **Web Server**: Nginx
-- **Monitoring**: Prometheus
+**DevOps** — Docker Compose, Nginx, Prometheus/Grafana/Loki-ready.
 
 ## Prerequisites
 
-- Node.js (v16 or higher)
-- PostgreSQL (v12 or higher)
-- Docker & Docker Compose (for production deployment)
-- npm or yarn package manager
+- Node.js **v18+** (uses global `fetch`/`FormData`)
+- PostgreSQL v12+
+- Docker & Docker Compose (production)
+- npm
 
 ## Installation
 
-### 1. Clone the Repository
+### 1. Clone
 ```bash
 git clone <repository-url>
 cd faculty-appraisal-system
 ```
 
-### 2. Backend Setup
+### 2. Backend
 ```bash
 cd backend
-
-# Install dependencies
 npm install
-
-# Create environment file
-cp .env.example .env
-
-# Setup database
-npx prisma migrate dev
-
-# Seed database (optional)
-npx prisma db seed
-
-# Install dependencies
-npm install
+cp .env.example .env        # then edit values (see Environment Variables)
+npm run prisma:generate     # generate Prisma client
+npx prisma migrate deploy   # apply migrations
+npm run seed                # seed sample accounts (optional)
 ```
 
-### 3. Frontend Setup
+### 3. Frontend
 ```bash
 cd ../frontend
-
-# Install dependencies
 npm install
-
-# Create environment file
-cp .env.example .env
 ```
 
 ## Running the Project
 
-### Development Mode
+### Development
 
-#### Backend
+**Backend** (hot-reload via `tsx watch`):
 ```bash
 cd backend
-npm run dev
+npm run dev          # http://localhost:5000
 ```
-Server runs on `http://localhost:5000` (default)
 
-#### Frontend
+**Frontend**:
 ```bash
 cd frontend
-npm run dev
+npm run dev          # http://localhost:5173  (proxies /api → :5000)
 ```
-Application runs on `http://localhost:5173` (Vite default)
 
-### Production Mode with Docker
+> The bundled preview config (`.claude/launch.json`) runs the frontend on port **5180** (strict). If the backend blocks the origin, add that URL to `FRONTEND_URL` in `backend/.env` and restart the backend.
+
+### Production (Docker)
 ```bash
-# Build and start all services
 docker-compose -f docker-compose.prod.yml up -d
-
-# View logs
 docker-compose -f docker-compose.prod.yml logs -f
 ```
 
 ### Testing
-
-#### Backend Tests
 ```bash
 cd backend
-npm run test
-npm run test:watch    # Watch mode
-npm run test:coverage # Coverage report
+npm test               # Vitest (unit + integration)
+npm run test:coverage  # coverage report
 ```
+
+## Sample Accounts (after seeding)
+
+| Code | Role | Password |
+|------|------|----------|
+| `ADMIN001` | Admin | `admin123` |
+| `HOD001` / `HOD002` | HoD (CSE / ECE) | `hod123` |
+| `FAC13`, `FAC15` … | Faculty | `faculty123` |
+
+Open academic year: **2026-27**. (See the seed script for the full list.)
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+```
+DATABASE_URL=postgresql://user:password@localhost:5432/faculty_appraisal
+NODE_ENV=development
+PORT=5000
+FRONTEND_URL=http://localhost:5173,http://localhost:5180   # comma-separated allowed CORS origins
+
+# Auth
+JWT_SECRET=change-me
+JWT_EXPIRES_IN=8h
+REFRESH_TOKEN_SECRET=change-me-too
+REFRESH_TOKEN_EXPIRES_IN=7d
+
+# Email (SMTP). Set EMAIL_DISABLED=true to log instead of send.
+EMAIL_DISABLED=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM="Faculty Appraisal <no-reply@vnrvjiet.in>"
+
+# Optional
+LOG_LEVEL=info
+PUPPETEER_EXECUTABLE_PATH=   # path to Chrome, if not using bundled Chromium
+```
+
+### Frontend
+No env required for local dev — Vite proxies `/api` to `http://localhost:5000` (see `vite.config.ts`).
+
+## Bulk Faculty Import
+
+Admin → **Users → Import CSV** accepts `.csv` or `.xlsx`.
+
+- Expected columns (order-independent, header names fuzzy-matched): `S.NO, EMP ID, Name of the Faculty, Designation, D.O.J, Mobile Number, E - Mail ID`.
+- Required per row: **EMP ID, Name, E-Mail ID**. `D.O.J` accepts `DD-MM-YYYY` or `YYYY-MM-DD`.
+- The real header row is auto-detected — leading title rows (e.g. `CSE-TEACHING`) and mid-sheet section banners (e.g. `CSE-NON TEACHING`) are skipped.
+- A target **department** is chosen in the UI and applied to every row; all rows import as **Faculty** with the default password `Welcome@123` (users change it on first login). Excel files use the first sheet.
 
 ## Project Structure
 
 ```
-├── backend/                  # Node.js/Express backend
+├── backend/                     # Express + Prisma API
 │   ├── src/
-│   │   ├── app.ts           # Express app configuration
-│   │   ├── controllers/     # Request handlers
-│   │   ├── services/        # Business logic
-│   │   ├── middleware/      # Express middleware
-│   │   ├── routes/          # API routes
-│   │   ├── prisma/          # Database schema & migrations
-│   │   ├── cron/            # Scheduled tasks
-│   │   └── utils/           # Utility functions
+│   │   ├── app.ts               # app wiring, CORS, security, workers
+│   │   ├── controllers/         # request handlers
+│   │   ├── services/            # scoring, email, pdf, fpgp reconciler
+│   │   ├── middleware/          # auth, roleGuard, upload, rateLimit, metrics
+│   │   ├── routes/              # API routes
+│   │   ├── prisma/              # schema.prisma + migrations
+│   │   ├── cron/                # reminders, FPGP evaluation
+│   │   ├── scripts/             # live E2E drivers (live-workflow, smoke-all)
+│   │   └── utils/               # access control, serializers
 │   └── package.json
-│
-├── frontend/                 # React/Vite frontend
-│   ├── src/
-│   │   ├── pages/           # Page components
-│   │   ├── components/      # Reusable components
-│   │   ├── api/             # API client calls
-│   │   ├── store/           # State management
-│   │   └── types/           # TypeScript types
-│   └── package.json
-│
-├── docker-compose.prod.yml   # Production deployment config
-├── prometheus.yml            # Prometheus monitoring config
-└── docs/                     # Documentation files
+├── frontend/                    # React + Vite SPA
+│   └── src/{pages,components,api,store}
+├── docker-compose.prod.yml
+├── prometheus.yml
+└── *.md                         # documentation (see below)
 ```
 
-## Environment Variables
+## API Surface (by controller)
 
-### Backend (.env)
-```
-DATABASE_URL=postgresql://user:password@localhost:5432/appraisal_db
-JWT_SECRET=your-secret-key
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-password
-NODE_ENV=development
-PORT=5000
-FRONTEND_URL=http://localhost:5173
-```
+`authController` · `userController` · `departmentController` · `academicYearController` · `appraisalController` · `reviewController` · `fpgpController` · `reportController` · `emailController` · `auditController` · `uploadController`. Routes are declared in `backend/src/routes/index.ts`.
 
-### Frontend (.env)
-```
-VITE_API_URL=http://localhost:5000
-```
-
-## Key Modules
-
-### Appraisal Management
-- Create and manage appraisals for academic years
-- Track appraisal status and progress
-- Support for multiple review cycles
-
-### FPGP (Faculty Performance & Growth Planning)
-- Performance-based template system
-- Customizable evaluation criteria
-- Growth planning integration
-
-### Scoring Engine
-- Automated calculation of performance scores
-- Weighted scoring based on criteria
-- Consistent evaluation methodology
-
-### Email Notifications
-- Automated reminders for pending appraisals
-- Notification templates
-- Worker-based email processing
-
-### Audit System
-- Complete audit trail of all operations
-- User activity logging
-- System event tracking
-
-## Database Migrations
+## Database
 
 ```bash
-# Create new migration
 cd backend
-npx prisma migrate dev --name migration_name
-
-# View migration status
+npx prisma migrate dev --name <name>   # new migration (dev)
 npx prisma migrate status
-
-# Reset database (development only)
-npx prisma migrate reset
+npx prisma migrate reset               # reset (dev only)
 ```
-
-## API Documentation
-
-API endpoints are documented in the controllers:
-- `authController` - Authentication endpoints
-- `appraisalController` - Appraisal management
-- `reviewController` - Review operations
-- `userController` - User management
-- `reportController` - Report generation
-- `uploadController` - File uploads
-- `emailController` - Email operations
-
-## Deployment
-
-Refer to DEPLOYMENT.md for detailed deployment instructions.
 
 ## Monitoring
 
-Prometheus metrics are exposed at `/metrics`. Configure Prometheus using prometheus.yml:
-
 ```bash
-# View metrics
-curl http://localhost:5000/metrics
+curl http://localhost:5000/metrics        # Prometheus
+curl http://localhost:5000/health         # liveness
+curl http://localhost:5000/health/ready   # readiness (DB ping)
 ```
 
-## Contributing
+## Documentation
 
-1. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-2. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-3. Push to the branch (`git push origin feature/AmazingFeature`)
-4. Open a Pull Request
+| File | What it covers |
+|------|----------------|
+| [FACULTY_APPRAISAL_SYSTEM_LLD.md](FACULTY_APPRAISAL_SYSTEM_LLD.md) | Low-level design — data model, scoring, workflows |
+| [PROJECT_HISTORY.md](PROJECT_HISTORY.md) | Chronological log of everything built, fixed, and decided |
+| [TUTORIAL.md](TUTORIAL.md) | End-user guide (faculty / HoD / admin) |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Docker Compose deployment instructions |
+| [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) | Pre-launch checklist |
+| [IT_HANDOFF.md](IT_HANDOFF.md) | Operations / IT handoff notes |
+| [OBSERVABILITY.md](OBSERVABILITY.md) | Metrics, health probes, logging setup |
+| [FILE_UPLOAD_PLAN.md](FILE_UPLOAD_PLAN.md) | Proof-file upload design |
+| [FPGP_AUTOACCEPT_PLAN.md](FPGP_AUTOACCEPT_PLAN.md) | FPGP auto-accept / reconciliation design |
+| [CAT_ALIGNMENT_PLAN.md](CAT_ALIGNMENT_PLAN.md) | Appraisal category alignment plan |
+| [sample_appraisal.md](sample_appraisal.md) · [sample_fpgp.md](sample_fpgp.md) | Sample filled forms |
+| [frontend/README.md](frontend/README.md) | Frontend-specific notes |
 
 ## License
 
-This project is proprietary and confidential.
-
-## Support
-
-For support, please contact the development team or refer to TUTORIAL.md for user guides.
-
-## Additional Documentation
-
-- [Low Level Design](.FACULTY_APPRAISAL_SYSTEM_LLD.md)
-- [File Upload Plan](.FILE_UPLOAD_PLAN.md)
-- [Observability Guide](.OBSERVABILITY.md)
-- [Project History](.PROJECT_HISTORY.md)
-- [Deployment Guide](.DEPLOYMENT.md)
+Proprietary and confidential.
