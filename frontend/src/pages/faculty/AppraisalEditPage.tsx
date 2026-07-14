@@ -9,6 +9,53 @@ import { useAuthStore } from '../../store/authStore';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
+// A row is only saved if the faculty actually filled its free-text identifier
+// (an alphanumeric char) — this drops the empty "Add Row" placeholders and their
+// dropdown defaults so an untouched section persists nothing and scores 0.
+// Mirrors the backend guard in appraisalController.dropBlankRows.
+const ROW_CONTENT_FIELDS: Record<string, string[]> = {
+  cat1Courses: ['courseName'],
+  cat1EContent: ['contentName', 'courseName'],
+  cat1ICT: ['courseName'],
+  cat2Journals: ['title', 'journalName'],
+  cat2Conferences: ['title', 'conferenceName'],
+  cat2Books: ['title'],
+  cat2BookChapters: ['title'],
+  cat2Patents: ['title'],
+  cat2Projects: ['title', 'fundingAgency'],
+  cat2Consultancy: ['name', 'agency'],
+  cat2Guidance: ['studentName', 'thesisTitle'],
+  cat2ResearchGroups: ['groupName'],
+  cat2Linkages: ['instituteName'],
+  cat2Startups: ['groupName'],
+  cat2IndustryLinkages: ['industryName'],
+  cat3Organised: ['title'],
+  cat3ConferencesAttended: ['paperTitle', 'conferenceName'],
+  cat3ResourcePerson: ['programName', 'topic'],
+  cat3Editorial: ['orgOrJournal'],
+  cat3Training: ['name'],
+  cat3IntlTravel: ['purpose', 'placeOrUniv'],
+  cat4AdminResp: ['responsibility'],
+  cat4StudentAct: ['activityName'],
+  cat5Memberships: ['association'],
+  cat5Awards: ['awardType', 'organization'],
+  cat5Differentiators: ['name'],
+  cat5Internships: ['industryOrInst'],
+};
+const hasText = (row: any, fields: string[]) =>
+  fields.some((f) => typeof row?.[f] === 'string' && /[a-z0-9]/i.test(row[f]));
+
+// Remove blank auto-rows from a categories payload (returns a shallow copy).
+function stripBlankRows(categories: any): any {
+  const out = { ...categories };
+  for (const [key, fields] of Object.entries(ROW_CONTENT_FIELDS)) {
+    if (Array.isArray(out[key])) out[key] = out[key].filter((r: any) => hasText(r, fields));
+  }
+  // Projects have no free-text field — keep only rows with a positive count.
+  if (Array.isArray(out.cat1Projects)) out.cat1Projects = out.cat1Projects.filter((p: any) => Number(p?.count) > 0);
+  return out;
+}
+
 export default function AppraisalEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -138,7 +185,7 @@ export default function AppraisalEditPage() {
       const { clLeaves, elLeaves, hplLeaves, odLeaves, otherLeaves, higherQualAcquired, ...categories } = values;
       await appraisalApi.update(id!, {
         leaveData: { clLeaves, elLeaves, hplLeaves, odLeaves, otherLeaves, higherQualAcquired },
-        categories,
+        categories: stripBlankRows(categories),
       });
       if (!silent) toast.success('Saved');
     } catch (e: any) {
@@ -418,7 +465,7 @@ export default function AppraisalEditPage() {
                   <button type="button" onClick={() => projects.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Project Row', () => projects.append({ course: 'BTECH', projectType: 'MINI', count: 1 }))}
+              {addRowBtn('Add Project Row', () => projects.append({ course: 'BTECH', projectType: 'MINI', count: 0 }))}
             </div>
 
             <div>
