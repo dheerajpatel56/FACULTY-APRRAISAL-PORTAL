@@ -70,6 +70,54 @@ function cleanRow(row: any) {
   return out;
 }
 
+// The appraisal form auto-adds a blank row per section, pre-filled with dropdown
+// defaults (e.g. nature="Video") and placeholders. Those must not persist — they
+// would inflate both the scoring engine and FPGP target reconciliation. A row is
+// kept only if at least one of its free-text identifier fields has real content
+// (an alphanumeric char); dropdown/enum/number fields are never the identifier.
+const ROW_CONTENT_FIELDS: Record<string, string[]> = {
+  cat1Courses: ['courseName'],
+  cat1EContent: ['contentName', 'courseName'],
+  cat1ICT: ['courseName'],
+  cat2Journals: ['title', 'journalName'],
+  cat2Conferences: ['title', 'conferenceName'],
+  cat2Books: ['title'],
+  cat2BookChapters: ['title'],
+  cat2Patents: ['title'],
+  cat2Projects: ['title', 'fundingAgency'],
+  cat2Consultancy: ['name', 'agency'],
+  cat2Guidance: ['studentName', 'thesisTitle'],
+  cat2ResearchGroups: ['groupName'],
+  cat2Linkages: ['instituteName'],
+  cat2Startups: ['groupName'],
+  cat2IndustryLinkages: ['industryName'],
+  cat3Organised: ['title'],
+  cat3ConferencesAttended: ['paperTitle', 'conferenceName'],
+  cat3ResourcePerson: ['programName', 'topic'],
+  cat3Editorial: ['orgOrJournal'],
+  cat3Training: ['name'],
+  cat3IntlTravel: ['purpose', 'placeOrUniv'],
+  cat4AdminResp: ['responsibility'],
+  cat4StudentAct: ['activityName'],
+  cat5Memberships: ['association'],
+  cat5Awards: ['awardType', 'organization'],
+  cat5Differentiators: ['name'],
+  cat5Internships: ['industryOrInst'],
+};
+
+const rowHasContent = (row: any, fields: string[]): boolean =>
+  fields.some((f) => typeof row?.[f] === 'string' && /[a-z0-9]/i.test(row[f]));
+
+// Strip blank auto-rows from an incoming categories payload (in place).
+function dropBlankRows(categories: any) {
+  if (!categories) return;
+  for (const [key, fields] of Object.entries(ROW_CONTENT_FIELDS)) {
+    if (Array.isArray(categories[key])) {
+      categories[key] = categories[key].filter((r: any) => rowHasContent(r, fields));
+    }
+  }
+}
+
 function serializeByRole(req: Request, sub: any) {
   const review = sub.review || null;
   if (hasRole(req, RoleType.ADMIN)) return serializeSubmissionForAdmin(sub, review);
@@ -193,6 +241,7 @@ export async function updateAppraisal(req: Request, res: Response) {
   }
 
   const { categories, leaveData } = req.body;
+  dropBlankRows(categories); // discard blank auto-added form rows before persisting
 
   await prisma.$transaction(async (tx) => {
     if (leaveData) {
