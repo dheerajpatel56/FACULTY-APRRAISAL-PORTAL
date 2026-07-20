@@ -177,6 +177,15 @@ describe('Category 2 — Research', () => {
     expect(computeScore(emptySubmission({ cat2Books: books })).cat2.books).toBe(10);
   });
 
+  it('books: the 10-point cap POOLS across books + chapters (not per-table)', () => {
+    const s = computeScore(emptySubmission({
+      cat2Books: [{ scope: 'INTERNATIONAL', isEdited: false }],        // 10
+      cat2BookChapters: [{ scope: 'INTERNATIONAL', isEdited: false }], // 10
+    }));
+    // 10 + 10 = 20 pooled, capped at 10 (NOT 20, and NOT 10 per table)
+    expect(s.cat2.books).toBe(10);
+  });
+
   it('patents: granted=10, published=5, filed=5, capped 20', () => {
     const s = computeScore(emptySubmission({
       cat2Patents: [{ status: 'GRANTED' }, { status: 'PUBLISHED' }, { status: 'FILED' }],
@@ -302,6 +311,13 @@ describe('Category 5 — Supplementary (2)', () => {
       cat5Awards: [{ level: 'state' }, { level: 'state' }, { level: 'state' }], // 5*3=15, cap 10
     }));
     expect(s.cat5.awards).toBe(10);
+  });
+
+  it('5.2 awards: unrecognized/empty level falls through to 10 (documents current assumption)', () => {
+    // Only 'state' is special-cased; any other value (including '' or an
+    // unknown label) takes the `!== 'state'` branch and scores 10.
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: '' }] })).cat5.awards).toBe(10);
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'regional' }] })).cat5.awards).toBe(10);
   });
 });
 

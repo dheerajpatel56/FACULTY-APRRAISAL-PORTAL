@@ -107,6 +107,7 @@ type FullSubmission = AppraisalSubmission & {
   cat2IndustryLinkages: Cat2IndustryLinkage[];
   cat3AdvQual: Cat3AdvQual | null;
   cat3Organised: Cat3OrganisedProgram[];
+  // Table retained on the model but intentionally no longer scored (see scoreCategory3). Do not delete.
   cat3ConferencesAttended: Cat3ConferenceAttended[];
   cat3ResourcePerson: Cat3ResourcePerson[];
   cat3Editorial: Cat3Editorial[];
@@ -235,10 +236,10 @@ function scoreCategory2(s: FullSubmission) {
   // 2.9 Linkages — institutes (max 10)
   const linkages = Math.min(s.cat2Linkages.length * 5, 10);
 
-  // 2.9 Industry linkage (max 10)
+  // 2.10 Industry linkage (max 10)
   const industryLinkages = Math.min(s.cat2IndustryLinkages.length * 5, 10);
 
-  // 2.10 Startups (max 5)
+  // Startups — retained extra bucket (max 5)
   const startups = Math.min(s.cat2Startups.length * 5, 5);
 
   const total = Math.min(
