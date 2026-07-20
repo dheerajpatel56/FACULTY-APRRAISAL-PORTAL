@@ -12,6 +12,7 @@ function emptySubmission(overrides: Record<string, any> = {}): any {
     cat1ICT: [],
     cat2Journals: [],
     cat2Conferences: [],
+    cat2ConfBookChapters: [],
     cat2BookChapters: [],
     cat2Books: [],
     cat2Citations: null,
@@ -134,6 +135,26 @@ describe('Category 2 — Research', () => {
     expect(s.cat2.publications).toBe(15); // 10 + 5
   });
 
+  it('2.1-C conference book chapters: indexed = 10, non-indexed = 5, add into 2.1', () => {
+    const s = computeScore(emptySubmission({
+      cat2ConfBookChapters: [{ indexed: 'SCOPUS' }, { indexed: 'NONE' }],
+    }));
+    expect(s.cat2.publications).toBe(15); // 10 + 5
+
+    // combines with journals + conferences, respecting the shared 60 cap
+    const combined = computeScore(emptySubmission({
+      cat2Journals: [{ indexed: 'ESCI' }],          // 15
+      cat2Conferences: [{ indexed: 'ICI' }],        // 10
+      cat2ConfBookChapters: [{ indexed: 'WOS' }],   // 10
+    }));
+    expect(combined.cat2.publications).toBe(35);
+
+    const maxed = computeScore(emptySubmission({
+      cat2ConfBookChapters: Array.from({ length: 10 }, () => ({ indexed: 'SCOPUS' })), // 100 -> cap 60
+    }));
+    expect(maxed.cat2.publications).toBe(60);
+  });
+
   it('publications capped at 60', () => {
     const journals = Array.from({ length: 10 }, () => ({ indexed: 'ESCI' }));
     expect(computeScore(emptySubmission({ cat2Journals: journals })).cat2.publications).toBe(60);
@@ -239,6 +260,24 @@ describe('Category 3 — Faculty Development', () => {
     // priority order: awarded > thesisSubmitted > clearedPrePhD > registeredForPhD
     expect(mk({ clearedPrePhD: true, registeredForPhD: true })).toBe(8);
     expect(mk({ awarded: true, thesisSubmitted: true, clearedPrePhD: true, registeredForPhD: true })).toBe(10);
+  });
+
+  it('3.1 new qual paths: postDoc=10, pgDegree=10, pgDiploma=10, highest-applicable wins, capped 10', () => {
+    const mk = (q: any) => computeScore(emptySubmission({ cat3AdvQual: q })).cat3.advQual;
+    expect(mk({ postDoc: true })).toBe(10);
+    expect(mk({ pgDegree: true })).toBe(10);
+    expect(mk({ pgDiploma: true })).toBe(10);
+    // only pgDiploma true -> 10
+    expect(mk({ pgDiploma: true, registeredForPhD: false })).toBe(10);
+    // registeredForPhD (5) + pgDegree (10) -> highest applicable = 10
+    expect(mk({ registeredForPhD: true, pgDegree: true })).toBe(10);
+    // registeredForPhD alone still yields 5 (unaffected by the new flags)
+    expect(mk({ registeredForPhD: true })).toBe(5);
+    // all new + old flags together still cap at 10
+    expect(mk({
+      postDoc: true, pgDegree: true, pgDiploma: true,
+      awarded: true, thesisSubmitted: true, clearedPrePhD: true, registeredForPhD: true,
+    })).toBe(10);
   });
 
   it('3.3 resource person: 10 each, capped 20', () => {

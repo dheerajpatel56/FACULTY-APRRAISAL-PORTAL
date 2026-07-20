@@ -7,6 +7,7 @@ import {
   Cat1ICT,
   Cat2Journal,
   Cat2Conference,
+  Cat2ConfBookChapter,
   Cat2BookChapter,
   Cat2Book,
   Cat2Citations,
@@ -94,6 +95,7 @@ type FullSubmission = AppraisalSubmission & {
   cat1ICT: Cat1ICT[];
   cat2Journals: Cat2Journal[];
   cat2Conferences: Cat2Conference[];
+  cat2ConfBookChapters: Cat2ConfBookChapter[];
   cat2BookChapters: Cat2BookChapter[];
   cat2Books: Cat2Book[];
   cat2Citations: Cat2Citations | null;
@@ -168,15 +170,19 @@ function scoreCategory2(s: FullSubmission) {
     PublicationIndex.ESCI, PublicationIndex.WOS, PublicationIndex.SCOPUS, PublicationIndex.ICI,
   ];
 
-  // 2.1 Publications — journals + conferences (max 60)
+  // 2.1 Publications — journals + conferences + conference-derived book chapters (max 60)
   // Journals: indexed (ESCI/WoS/SCOPUS/ICI) = 15, other = 5.
   // Conferences: indexed = 10, other = 5.
+  // Conference book chapters (2.1-C): indexed = 10, other = 5.
   let publications = 0;
   for (const j of s.cat2Journals) {
     publications += INDEXED.includes(j.indexed) ? 15 : 5;
   }
   for (const c of s.cat2Conferences) {
     publications += INDEXED.includes(c.indexed) ? 10 : 5;
+  }
+  for (const x of s.cat2ConfBookChapters) {
+    publications += INDEXED.includes(x.indexed) ? 10 : 5;
   }
   publications = Math.min(publications, 60);
 
@@ -251,15 +257,19 @@ function scoreCategory2(s: FullSubmission) {
 }
 
 function scoreCategory3(s: FullSubmission) {
-  // 3.1 Status of Ph.D. (max 10) — take highest applicable
+  // 3.1 Status of Ph.D. / advanced qualification (max 10) — take highest applicable
   let advQual = 0;
   if (s.cat3AdvQual) {
     const q = s.cat3AdvQual;
-    if (q.awarded) advQual = 10;
+    if (q.postDoc) advQual = 10;
+    else if (q.awarded) advQual = 10;
     else if (q.thesisSubmitted) advQual = 10;
+    else if (q.pgDegree) advQual = 10;
+    else if (q.pgDiploma) advQual = 10;
     else if (q.clearedPrePhD) advQual = 8;
     else if (q.registeredForPhD) advQual = 5;
   }
+  advQual = Math.min(advQual, 10);
 
   // 3.2 Organised Programs (max 20)
   const organisedPrograms = Math.min(s.cat3Organised.length * 10, 20);

@@ -219,6 +219,7 @@ model AppraisalSubmission {
   cat1ICT            Cat1ICT[]
   cat2Journals       Cat2Journal[]
   cat2Conferences    Cat2Conference[]
+  cat2ConfBookChapters Cat2ConfBookChapter[]
   cat2BookChapters   Cat2BookChapter[]
   cat2Books          Cat2Book[]
   cat2Citations      Cat2Citations?
@@ -366,6 +367,21 @@ model Cat2BookChapter {
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
 
+// 2.1-C Conference-derived, indexed book chapters. Separate from Cat2BookChapter
+// (the academic book-chapter table used in 2.3) — do not merge.
+model Cat2ConfBookChapter {
+  id             String           @id @default(uuid())
+  submissionId   String
+  title          String
+  authors        String
+  authorPosition String
+  conferenceName String
+  indexed        PublicationIndex @default(NONE)
+  proofFile      String?
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
 model Cat2Book {
   id           String  @id @default(uuid())
   submissionId String
@@ -493,6 +509,9 @@ model Cat3AdvQual {
   clearedPrePhD   Boolean @default(false)
   thesisSubmitted Boolean @default(false)
   awarded         Boolean @default(false)
+  postDoc         Boolean @default(false)
+  pgDegree        Boolean @default(false)
+  pgDiploma       Boolean @default(false)
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }

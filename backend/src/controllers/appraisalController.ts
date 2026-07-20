@@ -19,6 +19,7 @@ const FULL_INCLUDE = {
   cat1ICT: true,
   cat2Journals: true,
   cat2Conferences: true,
+  cat2ConfBookChapters: true,
   cat2BookChapters: true,
   cat2Books: true,
   cat2Citations: true,
@@ -81,6 +82,7 @@ const ROW_CONTENT_FIELDS: Record<string, string[]> = {
   cat1ICT: ['courseName'],
   cat2Journals: ['title', 'journalName'],
   cat2Conferences: ['title', 'conferenceName'],
+  cat2ConfBookChapters: ['title', 'conferenceName'],
   cat2Books: ['title'],
   cat2BookChapters: ['title'],
   cat2Patents: ['title'],
@@ -278,6 +280,10 @@ export async function updateAppraisal(req: Request, res: Response) {
     if (categories?.cat2Conferences) {
       await tx.cat2Conference.deleteMany({ where: { submissionId: sub.id } });
       await tx.cat2Conference.createMany({ data: categories.cat2Conferences.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
+    }
+    if (categories?.cat2ConfBookChapters) {
+      await tx.cat2ConfBookChapter.deleteMany({ where: { submissionId: sub.id } });
+      await tx.cat2ConfBookChapter.createMany({ data: categories.cat2ConfBookChapters.map((c: any) => ({ ...cleanRow(c), submissionId: sub.id })) });
     }
     if (categories?.cat2BookChapters) {
       await tx.cat2BookChapter.deleteMany({ where: { submissionId: sub.id } });
