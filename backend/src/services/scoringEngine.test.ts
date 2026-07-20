@@ -71,11 +71,11 @@ describe('Category 1 — Teaching', () => {
     expect(mk(50)).toBe(4);
   });
 
-  it('lectures capped at 50', () => {
+  it('lectures capped at 40', () => {
     const courses = Array.from({ length: 10 }, () => ({
       periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: true,
     }));
-    expect(computeScore(emptySubmission({ cat1Courses: courses })).cat1.lectures).toBe(50);
+    expect(computeScore(emptySubmission({ cat1Courses: courses })).cat1.lectures).toBe(40);
   });
 
   it('1.2 attendance/feedback/results: A+B+C computed from raw counts', () => {
@@ -120,44 +120,80 @@ describe('Category 1 — Teaching', () => {
 });
 
 describe('Category 2 — Research', () => {
-  it('indexed journal/conf = 15, non-indexed = 5', () => {
+  it('journals: indexed (ESCI/WOS/SCOPUS/ICI) = 15, non-indexed = 5', () => {
     const s = computeScore(emptySubmission({
       cat2Journals: [{ indexed: 'ESCI' }, { indexed: 'SCOPUS' }, { indexed: 'NONE' }],
+    }));
+    expect(s.cat2.publications).toBe(35); // 15 + 15 + 5
+  });
+
+  it('conferences: indexed = 10 (not 15), non-indexed = 5', () => {
+    const s = computeScore(emptySubmission({
       cat2Conferences: [{ indexed: 'ICI' }, { indexed: 'NONE' }],
     }));
-    // 15 + 15 + 5 + 15 + 5 = 55, capped 50
-    expect(s.cat2.publications).toBe(50);
+    expect(s.cat2.publications).toBe(15); // 10 + 5
   });
 
-  it('publications capped at 50', () => {
+  it('publications capped at 60', () => {
     const journals = Array.from({ length: 10 }, () => ({ indexed: 'ESCI' }));
-    expect(computeScore(emptySubmission({ cat2Journals: journals })).cat2.publications).toBe(50);
+    expect(computeScore(emptySubmission({ cat2Journals: journals })).cat2.publications).toBe(60);
   });
 
-  it('citations from totalCitations: >40→10, 21-40→8, 11-20→5, 3-10→2', () => {
+  it('citations from totalCitations: >100→5, 51-100→3, 11-50→2, 3-10→1, else 0', () => {
     const mk = (totalCitations: number) => computeScore(emptySubmission({
       cat2Citations: { totalCitations },
     })).cat2.citations;
-    expect(mk(61)).toBe(10);
-    expect(mk(30)).toBe(8);
-    expect(mk(15)).toBe(5);
-    expect(mk(5)).toBe(2);
+    expect(mk(101)).toBe(5);
+    expect(mk(51)).toBe(3);
+    expect(mk(100)).toBe(3);
+    expect(mk(11)).toBe(2);
+    expect(mk(50)).toBe(2);
+    expect(mk(3)).toBe(1);
+    expect(mk(10)).toBe(1);
     expect(mk(2)).toBe(0);
   });
 
-  it('patents: granted/published=10, filed=5, capped 10', () => {
+  it('books/chapters: scope x role matrix — international author=10/editor=5, national author=5/editor=3', () => {
+    expect(computeScore(emptySubmission({
+      cat2Books: [{ scope: 'INTERNATIONAL', isEdited: false }],
+    })).cat2.books).toBe(10);
+    expect(computeScore(emptySubmission({
+      cat2Books: [{ scope: 'INTERNATIONAL', isEdited: true }],
+    })).cat2.books).toBe(5);
+    expect(computeScore(emptySubmission({
+      cat2Books: [{ scope: 'NATIONAL', isEdited: false }],
+    })).cat2.books).toBe(5);
+    expect(computeScore(emptySubmission({
+      cat2Books: [{ scope: 'NATIONAL', isEdited: true }],
+    })).cat2.books).toBe(3);
+    // same matrix applies to book chapters
+    expect(computeScore(emptySubmission({
+      cat2BookChapters: [{ scope: 'NATIONAL', isEdited: false }],
+    })).cat2.books).toBe(5);
+  });
+
+  it('books capped at 10', () => {
+    const books = Array.from({ length: 3 }, () => ({ scope: 'INTERNATIONAL', isEdited: false })); // 30 → cap 10
+    expect(computeScore(emptySubmission({ cat2Books: books })).cat2.books).toBe(10);
+  });
+
+  it('patents: granted=10, published=5, filed=5, capped 20', () => {
     const s = computeScore(emptySubmission({
       cat2Patents: [{ status: 'GRANTED' }, { status: 'PUBLISHED' }, { status: 'FILED' }],
     }));
-    // 10 + 10 + 5 = 25, capped 10
-    expect(s.cat2.patents).toBe(10);
+    expect(s.cat2.patents).toBe(20); // 10 + 5 + 5 = 20
   });
 
-  it('guidance: guide=10, co-guide=5, capped 10', () => {
+  it('patents capped at 20', () => {
+    const patents = Array.from({ length: 5 }, () => ({ status: 'GRANTED' })); // 50 → cap 20
+    expect(computeScore(emptySubmission({ cat2Patents: patents })).cat2.patents).toBe(20);
+  });
+
+  it('guidance: guide=5, co-guide=3, capped 5', () => {
     const s = computeScore(emptySubmission({
       cat2Guidance: [{ isGuide: true }, { isGuide: false }],
     }));
-    expect(s.cat2.guidance).toBe(10);
+    expect(s.cat2.guidance).toBe(5); // 5 + 3 = 8, capped 5
   });
 
   it('industry linkage: 5 each, capped 10', () => {
@@ -167,34 +203,49 @@ describe('Category 2 — Research', () => {
     expect(s.cat2.industryLinkages).toBe(10);
   });
 
-  it('sponsored projects: ongoing=20 max (not additive)', () => {
+  it('sponsored projects: ongoing=20 max (not additive), capped 20', () => {
     const s = computeScore(emptySubmission({
       cat2Projects: [{ status: 'ONGOING' }, { status: 'ONGOING' }],
     }));
     expect(s.cat2.sponsoredProjects).toBe(20);
   });
+
+  it('startups: 5 each, capped 5, counted in cat2 total', () => {
+    const s = computeScore(emptySubmission({
+      cat2Startups: [{}, {}],
+    }));
+    expect(s.cat2.startups).toBe(5);
+    expect(s.cat2.total).toBe(5);
+  });
 });
 
 describe('Category 3 — Faculty Development', () => {
-  it('3.1 PhD status: awarded=10, thesis=8, registered/prePhD=5', () => {
+  it('3.1 PhD status: awarded=10, thesisSubmitted=10, clearedPrePhD=8, registeredForPhD=5', () => {
     const mk = (q: any) => computeScore(emptySubmission({ cat3AdvQual: q })).cat3.advQual;
     expect(mk({ awarded: true })).toBe(10);
-    expect(mk({ thesisSubmitted: true })).toBe(8);
+    expect(mk({ thesisSubmitted: true })).toBe(10);
+    expect(mk({ clearedPrePhD: true })).toBe(8);
     expect(mk({ registeredForPhD: true })).toBe(5);
-    expect(mk({ clearedPrePhD: true })).toBe(5);
     expect(mk({})).toBe(0);
+    // priority order: awarded > thesisSubmitted > clearedPrePhD > registeredForPhD
+    expect(mk({ clearedPrePhD: true, registeredForPhD: true })).toBe(8);
+    expect(mk({ awarded: true, thesisSubmitted: true, clearedPrePhD: true, registeredForPhD: true })).toBe(10);
   });
 
-  it('3.3 attending conferences: 10 each, capped 20', () => {
+  it('3.3 resource person: 10 each, capped 20', () => {
+    const s = computeScore(emptySubmission({ cat3ResourcePerson: [{}, {}, {}] }));
+    expect(s.cat3.resourcePerson).toBe(20); // 3*10=30, cap 20
+  });
+
+  it('3.4 editorial: 10 each, capped 20', () => {
+    const s = computeScore(emptySubmission({ cat3Editorial: [{}, {}, {}] }));
+    expect(s.cat3.editorial).toBe(20); // 3*10=30, cap 20
+  });
+
+  it('conferencesAttended is no longer scored (dropped from cat3 breakdown/total)', () => {
     const s = computeScore(emptySubmission({ cat3ConferencesAttended: [{}, {}, {}] }));
-    expect(s.cat3.conferencesAttended).toBe(20);
-  });
-
-  it('3.4 resource person + editorial combined, capped 20', () => {
-    const s = computeScore(emptySubmission({
-      cat3ResourcePerson: [{}, {}], cat3Editorial: [{}],
-    }));
-    expect(s.cat3.resourceEditorial).toBe(20); // (2+1)*10 = 30, cap 20
+    expect((s.cat3 as any).conferencesAttended).toBeUndefined();
+    expect(s.cat3.total).toBe(0);
   });
 
   it('3.5 training: >=5 days→10, <5→5, capped 25', () => {
@@ -233,7 +284,7 @@ describe('Category 5 — Supplementary', () => {
   });
 });
 
-describe('Category 5 — Supplementary', () => {
+describe('Category 5 — Supplementary (2)', () => {
   it('5.1 membership: national=5, international/executive=10, capped 15', () => {
     const s = computeScore(emptySubmission({
       cat5Memberships: [
@@ -243,8 +294,13 @@ describe('Category 5 — Supplementary', () => {
     expect(s.cat5.memberships).toBe(15); // 5 + 10 + 10 = 25, cap 15
   });
 
-  it('5.2 awards: flat 10 each, capped 10', () => {
-    const s = computeScore(emptySubmission({ cat5Awards: [{}, {}] }));
+  it('5.2 awards: state=5, national/international=10, capped 10', () => {
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'state' }] })).cat5.awards).toBe(5);
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'national' }] })).cat5.awards).toBe(10);
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'international' }] })).cat5.awards).toBe(10);
+    const s = computeScore(emptySubmission({
+      cat5Awards: [{ level: 'state' }, { level: 'state' }, { level: 'state' }], // 5*3=15, cap 10
+    }));
     expect(s.cat5.awards).toBe(10);
   });
 });
@@ -281,10 +337,10 @@ describe('selfTotal', () => {
 
 // End-to-end form-alignment check using a real filled appraisal sample.
 // Asserts each category total matches the official form's self-appraisal
-// (Cat1 = 147: the form's own 1.3 total of 20 is mis-added; by rule = 17).
+// (Cat1 = 137: the form's own 1.3 total of 20 is mis-added; by rule = 17).
 describe('sample appraisal — form alignment', () => {
   const sample = emptySubmission({
-    // 1.1 — 6 courses, all >=90% engagement + novel pedagogy -> caps 50
+    // 1.1 — 6 courses, all >=90% engagement + novel pedagogy -> raw 86, caps 40
     cat1Courses: [
       { periodsConducted: 46, periodPlanned: 48, novelPedagogyUsed: true },
       { periodsConducted: 46, periodPlanned: 48, novelPedagogyUsed: true },
@@ -308,21 +364,22 @@ describe('sample appraisal — form alignment', () => {
       { course: 'BTECH', projectType: 'MAJOR', count: 2 },
       { course: 'MTECH', projectType: 'MAJOR', count: 1 },
     ],
-    // 2.1 — 4 indexed papers -> 60, caps 50
+    // 2.1 — 4 indexed journal papers -> 60, caps 60
     cat2Journals: [
       { indexed: 'SCOPUS' }, { indexed: 'SCOPUS' }, { indexed: 'SCOPUS' }, { indexed: 'SCOPUS' },
     ],
-    // 2.2 — total citations 61 -> 10
+    // 2.2 — total citations 61 -> 3 (51-100 tier)
     cat2Citations: { totalCitations: 61 },
-    // 2.3 — 1 published book chapter -> 10
+    // 2.3 — 1 published book chapter, default (international) scope, author -> 10
     cat2BookChapters: [{ isEdited: false }],
-    // 2.4 — 1 published patent -> 10
+    // 2.4 — 1 published patent -> 5 (published tier, not granted)
     cat2Patents: [{ status: 'PUBLISHED' }],
-    // 2.8 -> 5, 2.9 -> 10, 2.10 -> 10
+    // 2.8 -> 5, 2.9 -> 10, industry linkage -> 10
     cat2ResearchGroups: [{}],
     cat2Linkages: [{}, {}],
     cat2IndustryLinkages: [{}, {}, {}],
-    // 3.2 -> 20, 3.3 -> 20, 3.4 (1+1) -> 20, 3.5 (10+5+5+5)=25
+    // 3.2 -> 20, 3.3 resourcePerson (1) -> 10, 3.4 editorial (1) -> 10, 3.5 (10+5+5+5)=25
+    // cat3ConferencesAttended included to prove it no longer contributes to the score.
     cat3Organised: [{}, {}],
     cat3ConferencesAttended: [{}, {}],
     cat3ResourcePerson: [{}],
@@ -339,15 +396,15 @@ describe('sample appraisal — form alignment', () => {
 
   const s = computeScore(sample);
 
-  it('Category 1 = 147 (50 + 80 + 17)', () => {
-    expect(s.cat1.lectures).toBe(50);
+  it('Category 1 = 137 (40 + 80 + 17)', () => {
+    expect(s.cat1.lectures).toBe(40);
     expect(s.cat1.attendanceFeedback).toBe(80);
     expect(s.cat1.projects).toBe(17);
-    expect(s.cat1.total).toBe(147);
+    expect(s.cat1.total).toBe(137);
   });
-  it('Category 2 = 105', () => { expect(s.cat2.total).toBe(105); });
-  it('Category 3 = 85', () => { expect(s.cat3.total).toBe(85); });
+  it('Category 2 = 103', () => { expect(s.cat2.total).toBe(103); });
+  it('Category 3 = 65', () => { expect(s.cat3.total).toBe(65); });
   it('Category 4 = 50', () => { expect(s.cat4.total).toBe(50); });
   it('Category 5 = 40', () => { expect(s.cat5.total).toBe(40); });
-  it('self total = 427', () => { expect(s.selfTotal).toBe(427); });
+  it('self total = 395', () => { expect(s.selfTotal).toBe(395); });
 });
