@@ -116,7 +116,7 @@ model User {
   userRoles        UserRole[]
   appraisals       AppraisalSubmission[]
   fpgpPlans        FPGPPlan[]
-  fpgpHodSigned    FPGPPlan[]   @relation("HoDSigner")
+  fpgpHodSigned    FPGPPlan[]            @relation("HoDSigner")
   reviewsGiven     AppraisalReview[]
   fpgpReviewsGiven FPGPReview[]
   auditLogs        AuditLog[]
@@ -152,13 +152,13 @@ model Department {
 }
 
 model UserRole {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   userId       String
   role         RoleType
   departmentId String?
   assignedBy   String
-  assignedAt   DateTime  @default(now())
-  isActive     Boolean   @default(true)
+  assignedAt   DateTime @default(now())
+  isActive     Boolean  @default(true)
 
   user       User        @relation(fields: [userId], references: [id])
   department Department? @relation(fields: [departmentId], references: [id])
@@ -212,54 +212,54 @@ model AppraisalSubmission {
   user         User         @relation(fields: [userId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  cat1Courses        Cat1Course[]
-  cat1CourseResults  Cat1CourseResults[]
-  cat1Projects       Cat1Project[]
-  cat1EContent       Cat1EContent[]
-  cat1ICT            Cat1ICT[]
-  cat2Journals       Cat2Journal[]
-  cat2Conferences    Cat2Conference[]
-  cat2ConfBookChapters Cat2ConfBookChapter[]
-  cat2BookChapters   Cat2BookChapter[]
-  cat2Books          Cat2Book[]
-  cat2Citations      Cat2Citations?
-  cat2Patents        Cat2Patent[]
-  cat2Projects       Cat2Project[]
-  cat2Consultancy    Cat2Consultancy[]
-  cat2Guidance       Cat2Guidance[]
-  cat2ResearchGroups Cat2ResearchGroup[]
-  cat2Linkages       Cat2Linkage[]
-  cat2Startups       Cat2Startup[]
-  cat2IndustryLinkages Cat2IndustryLinkage[]
-  cat3AdvQual        Cat3AdvQual?
-  cat3Organised      Cat3OrganisedProgram[]
+  cat1Courses             Cat1Course[]
+  cat1CourseResults       Cat1CourseResults[]
+  cat1Projects            Cat1Project[]
+  cat1EContent            Cat1EContent[]
+  cat1ICT                 Cat1ICT[]
+  cat2Journals            Cat2Journal[]
+  cat2Conferences         Cat2Conference[]
+  cat2ConfBookChapters    Cat2ConfBookChapter[]
+  cat2BookChapters        Cat2BookChapter[]
+  cat2Books               Cat2Book[]
+  cat2Citations           Cat2Citations?
+  cat2Patents             Cat2Patent[]
+  cat2Projects            Cat2Project[]
+  cat2Consultancy         Cat2Consultancy[]
+  cat2Guidance            Cat2Guidance[]
+  cat2ResearchGroups      Cat2ResearchGroup[]
+  cat2Linkages            Cat2Linkage[]
+  cat2Startups            Cat2Startup[]
+  cat2IndustryLinkages    Cat2IndustryLinkage[]
+  cat3AdvQual             Cat3AdvQual?
+  cat3Organised           Cat3OrganisedProgram[]
   cat3ConferencesAttended Cat3ConferenceAttended[]
-  cat3ResourcePerson Cat3ResourcePerson[]
-  cat3Editorial      Cat3Editorial[]
-  cat3Training       Cat3Training[]
-  cat3IntlTravel     Cat3IntlTravel[]
-  cat4AdminResp      Cat4AdminResp[]
-  cat4StudentAct     Cat4StudentActivity[]
-  cat5Memberships    Cat5Membership[]
-  cat5Awards         Cat5Award[]
-  cat5Differentiators Cat5Differentiator[]
-  cat5Internships    Cat5Internship[]
+  cat3ResourcePerson      Cat3ResourcePerson[]
+  cat3Editorial           Cat3Editorial[]
+  cat3Training            Cat3Training[]
+  cat3IntlTravel          Cat3IntlTravel[]
+  cat4AdminResp           Cat4AdminResp[]
+  cat4StudentAct          Cat4StudentActivity[]
+  cat5Memberships         Cat5Membership[]
+  cat5Awards              Cat5Award[]
+  cat5Differentiators     Cat5Differentiator[]
+  cat5Internships         Cat5Internship[]
 
-  review       AppraisalReview?
+  review AppraisalReview?
 
   @@unique([userId, academicYearId, submissionNumber])
 }
 
 model Cat1Course {
-  id                String      @id @default(uuid())
-  submissionId      String
-  courseName        String
-  level             CourseLevel
-  yearSem           String
-  novelPedagogyUsed Boolean     @default(false)
-  novelPedagogyMethod String?   // e.g. "Chalk and Talk", "Project Based Learning"
-  periodPlanned     Int
-  periodsConducted  Int
+  id                  String      @id @default(uuid())
+  submissionId        String
+  courseName          String
+  level               CourseLevel
+  yearSem             String
+  novelPedagogyUsed   Boolean     @default(false)
+  novelPedagogyMethod String? // e.g. "Chalk and Talk", "Project Based Learning"
+  periodPlanned       Int
+  periodsConducted    Int
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -272,7 +272,7 @@ model Cat1CourseResults {
   id               String @id @default(uuid())
   submissionId     String
   courseName       String
-  classSize        Int    // Y
+  classSize        Int // Y
   attnGte75        Int    @default(0) // n1: students with % attendance >= 75
   attnLt75Gte65    Int    @default(0) // n2: students with % attendance < 75 and >= 65
   feedbackReceived Float  @default(0) // B (out of 5)
@@ -353,7 +353,7 @@ model Cat2Conference {
 }
 
 model Cat2BookChapter {
-  id             String @id @default(uuid())
+  id             String  @id @default(uuid())
   submissionId   String
   title          String
   authors        String
@@ -425,16 +425,16 @@ model Cat2Patent {
 }
 
 model Cat2Project {
-  id                  String        @id @default(uuid())
-  submissionId        String
-  title               String
-  fundingAgency       String
-  amountLakhs         Float
-  role                String
-  status              ProjectStatus
-  durationPeriod      String?
-  dateOfApplication   DateTime?
-  proofFile           String?
+  id                String        @id @default(uuid())
+  submissionId      String
+  title             String
+  fundingAgency     String
+  amountLakhs       Float
+  role              String
+  status            ProjectStatus
+  durationPeriod    String?
+  dateOfApplication DateTime?
+  proofFile         String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -503,21 +503,21 @@ model Cat2IndustryLinkage {
 
 // 3.1 Status of Ph.D. — Registered 5 / Cleared Pre-PhD 5 / Thesis Submitted 8 / Awarded 10
 model Cat3AdvQual {
-  id              String  @id @default(uuid())
-  submissionId    String  @unique
+  id               String  @id @default(uuid())
+  submissionId     String  @unique
   registeredForPhD Boolean @default(false)
-  clearedPrePhD   Boolean @default(false)
-  thesisSubmitted Boolean @default(false)
-  awarded         Boolean @default(false)
-  postDoc         Boolean @default(false)
-  pgDegree        Boolean @default(false)
-  pgDiploma       Boolean @default(false)
+  clearedPrePhD    Boolean @default(false)
+  thesisSubmitted  Boolean @default(false)
+  awarded          Boolean @default(false)
+  postDoc          Boolean @default(false)
+  pgDegree         Boolean @default(false)
+  pgDiploma        Boolean @default(false)
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
 
 model Cat3OrganisedProgram {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   submissionId String
   title        String
   period       String
@@ -565,7 +565,7 @@ model Cat3Editorial {
 }
 
 model Cat3Training {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   submissionId String
   name         String
   period       String
@@ -615,7 +615,7 @@ model Cat5Membership {
 }
 
 model Cat5Award {
-  id           String @id @default(uuid())
+  id           String  @id @default(uuid())
   submissionId String
   awardType    String
   organization String
@@ -699,8 +699,8 @@ model FPGPPlan {
 
   // Year-end target reconciliation vs appraisal actuals
   evaluatedAt  DateTime?
-  autoAccepted Boolean  @default(false)
-  achievement  Json?    // [{ subsection, key, target, achieved, met }]
+  autoAccepted Boolean   @default(false)
+  achievement  Json? // [{ subsection, key, target, achieved, met }]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -714,7 +714,7 @@ model FPGPPlan {
 }
 
 model FPGPSubsection {
-  id         String  @id @default(uuid())
+  id         String @id @default(uuid())
   fpgpId     String
   subsection String
 
@@ -766,19 +766,19 @@ model PasswordOtp {
 }
 
 model EmailNotification {
-  id         String      @id @default(uuid())
-  toUserId   String
-  toEmail    String
-  subject    String
-  template   String
-  payload    Json
-  status     EmailStatus @default(PENDING)
-  sentAt     DateTime?
-  error      String?
-  attempts   Int         @default(0)
-  dedupeKey  String?     @unique
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id        String      @id @default(uuid())
+  toUserId  String
+  toEmail   String
+  subject   String
+  template  String
+  payload   Json
+  status    EmailStatus @default(PENDING)
+  sentAt    DateTime?
+  error     String?
+  attempts  Int         @default(0)
+  dedupeKey String?     @unique
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   toUser User @relation(fields: [toUserId], references: [id])
 

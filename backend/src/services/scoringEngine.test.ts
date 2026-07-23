@@ -155,6 +155,16 @@ describe('Category 2 — Research', () => {
     expect(maxed.cat2.publications).toBe(60);
   });
 
+  it('2.1 shared cap: a trailing 5-point conf book chapter cannot push past 60', () => {
+    // Journals + conferences already saturate 2.1 at exactly 60, then a
+    // NON-indexed (5-point) conf book chapter is added — section stays clamped.
+    const s = computeScore(emptySubmission({
+      cat2Journals: Array.from({ length: 4 }, () => ({ indexed: 'ESCI' })), // 4*15 = 60
+      cat2ConfBookChapters: [{ indexed: 'NONE' }],                          // +5, would be 65
+    }));
+    expect(s.cat2.publications).toBe(60);
+  });
+
   it('publications capped at 60', () => {
     const journals = Array.from({ length: 10 }, () => ({ indexed: 'ESCI' }));
     expect(computeScore(emptySubmission({ cat2Journals: journals })).cat2.publications).toBe(60);
