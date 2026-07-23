@@ -1,0 +1,46 @@
+{
+  "cat1": {
+    "lectures": 23,
+    "attendanceFeedback": 15.700000000000001,
+    "projects": 9,
+    "eContent": 4,
+    "ict": 2,
+    "total": 53.7
+  },
+  "cat2": {
+    "publications": 45,
+    "citations": 3,
+    "books": 10,
+    "patents": 20,
+    "sponsoredProjects": 20,
+    "consultancy": 10,
+    "guidance": 5,
+    "researchGroups": 5,
+    "linkages": 5,
+    "industryLinkages": 10,
+    "startups": 5,
+    "total": 138
+  },
+  "cat3": {
+    "advQual": 10,
+    "organisedPrograms": 20,
+    "resourcePerson": 10,
+    "editorial": 20,
+    "training": 15,
+    "intlTravel": 5,
+    "total": 80
+  },
+  "cat4": {
+    "adminResp": 20,
+    "studentActivities": 5,
+    "total": 25
+  },
+  "cat5": {
+    "memberships": 15,
+    "awards": 10,
+    "differentiators": 20,
+    "internships": 5,
+    "total": 50
+  },
+  "selfTotal": 346.7
+}

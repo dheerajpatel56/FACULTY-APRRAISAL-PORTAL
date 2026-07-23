@@ -1,0 +1,120 @@
+{
+  "cat1Courses": [
+    { "courseName": "Data Structures", "level": "BTECH", "yearSem": "II-I", "periodPlanned": 48, "periodsConducted": 46, "novelPedagogyUsed": true, "novelPedagogyMethod": "Flipped Classroom" },
+    { "courseName": "Operating Systems", "level": "BTECH", "yearSem": "III-I", "periodPlanned": 100, "periodsConducted": 100, "novelPedagogyUsed": false, "novelPedagogyMethod": "" }
+  ],
+  "cat1CourseResults": [
+    { "courseName": "Data Structures", "classSize": 50, "attnGte75": 40, "attnLt75Gte65": 5, "feedbackReceived": 4.5, "gradeOAPlus": 20, "gradeAB": 15, "gradeCD": 5 }
+  ],
+  "cat1Projects": [
+    { "course": "BTECH", "projectType": "MINI", "count": 2 },
+    { "course": "MTECH", "projectType": "MAJOR", "count": 1 }
+  ],
+  "cat1EContent": [
+    { "courseName": "Data Structures", "contentName": "DS Video Lectures", "nature": "Video", "evidenceFile": "" },
+    { "courseName": "Operating Systems", "contentName": "OS Quiz Bank", "nature": "PPT", "evidenceFile": "" }
+  ],
+  "cat1ICT": [
+    { "courseName": "Data Structures", "platform": "Google Classroom", "natureOfUse": "Assignments", "evidenceFile": "" }
+  ],
+  "cat2Journals": [
+    { "title": "A Scalable Approach to X", "journalName": "Intl J. of CS", "authors": "A, B", "authorPosition": "First", "indexed": "SCOPUS", "impactFactor": 3.2, "volume": "12", "issueNo": "4", "pageNos": "100-110", "dateOfPub": "2025-06-01", "issn": "", "doi": "", "quartile": "Q2" },
+    { "title": "A Local Study of Y", "journalName": "State J. of Eng", "authors": "A", "authorPosition": "First", "indexed": "NONE", "impactFactor": 0, "volume": "3", "issueNo": "1", "pageNos": "1-9", "dateOfPub": "2025-02-01", "issn": "", "doi": "", "quartile": "" }
+  ],
+  "cat2Conferences": [
+    { "title": "Z at Scale", "conferenceName": "IEEE ICXYZ 2025", "authors": "A, B, C", "authorPosition": "First", "dateOfPub": "2025-09-10", "issn": "", "doi": "", "indexed": "WOS" }
+  ],
+  "cat2ConfBookChapters": [
+    { "title": "Proceedings Chapter on W", "authors": "A, B", "authorPosition": "Second", "conferenceName": "Springer LNCS Series", "indexed": "ESCI" },
+    { "title": "Proceedings Chapter on V", "authors": "A", "authorPosition": "First", "conferenceName": "Local Conf Proceedings", "indexed": "NONE" }
+  ],
+  "cat2BookChapters": [
+    { "title": "Chapter on Foundations", "authors": "A", "authorPosition": "First", "publisher": "Pearson", "isbn": "978-0-000-00000-0", "chapterNo": "3", "isEdited": false, "scope": "NATIONAL" }
+  ],
+  "cat2Books": [
+    { "title": "Advanced Topics in CS", "authors": "A, B", "publisher": "Springer", "isbn": "978-0-000-00000-1", "isEdited": true, "scope": "INTERNATIONAL" },
+    { "title": "Fundamentals of Y", "authors": "A", "publisher": "Wiley", "isbn": "978-0-000-00000-2", "isEdited": false, "scope": "INTERNATIONAL" }
+  ],
+  "cat2Citations": { "totalPubsTillDate": 12, "pubsWithCitations": 8, "totalCitations": 55, "hIndexGoogle": 5, "hIndexScopus": 4, "hIndexWos": 3 },
+  "cat2Patents": [
+    { "title": "Patent on Z", "country": "India", "inventors": "A, B", "status": "GRANTED", "appNumber": "IN-001", "dateOfPub": "2024-01-01", "dateOfGrant": "2025-01-01", "validDuration": "20 years" },
+    { "title": "Patent on W", "country": "India", "inventors": "A", "status": "PUBLISHED", "appNumber": "IN-002", "dateOfPub": "2025-03-01", "dateOfGrant": "", "validDuration": "" },
+    { "title": "Patent on V", "country": "India", "inventors": "A, C", "status": "FILED", "appNumber": "IN-003", "dateOfPub": "", "dateOfGrant": "", "validDuration": "" }
+  ],
+  "cat2Projects": [
+    { "title": "Sponsored Project Alpha", "fundingAgency": "AICTE", "amountLakhs": 15, "status": "ONGOING", "role": "PI", "durationPeriod": "2024-2026", "dateOfApplication": "2023-11-01" },
+    { "title": "Sponsored Project Beta", "fundingAgency": "DST", "amountLakhs": 8, "status": "APPLIED", "role": "Co-PI", "durationPeriod": "", "dateOfApplication": "2025-05-01" },
+    { "title": "Sponsored Project Gamma", "fundingAgency": "UGC", "amountLakhs": 5, "status": "COMPLETED", "role": "PI", "durationPeriod": "2021-2023", "dateOfApplication": "2020-06-01" }
+  ],
+  "cat2Consultancy": [
+    { "name": "Industry Advisory A", "agency": "ABC Corp", "amountLakhs": 6 },
+    { "name": "Industry Advisory B", "agency": "XYZ Ltd", "amountLakhs": 1.5 }
+  ],
+  "cat2Guidance": [
+    { "studentName": "Student One", "university": "JNTUH", "thesisTitle": "Thesis on X", "isGuide": true },
+    { "studentName": "Student Two", "university": "JNTUH", "thesisTitle": "Thesis on Y", "isGuide": false }
+  ],
+  "cat2ResearchGroups": [
+    { "groupName": "AI Research Group", "size": 6, "outcome": "2 papers published" }
+  ],
+  "cat2Linkages": [
+    { "instituteName": "IIT Hyderabad", "contactPerson": "Prof. X", "outcome": "MoU signed" }
+  ],
+  "cat2Startups": [
+    { "groupName": "Innovation Cell", "activity": "Incubation support", "outcome": "1 startup registered" }
+  ],
+  "cat2IndustryLinkages": [
+    { "industryName": "TCS", "contactPerson": "Mr. Y", "outcome": "Internship tie-up" },
+    { "industryName": "Infosys", "contactPerson": "Ms. Z", "outcome": "Guest lectures" }
+  ],
+  "cat3AdvQual": { "registeredForPhD": true, "clearedPrePhD": false, "thesisSubmitted": false, "awarded": false, "postDoc": false, "pgDegree": false, "pgDiploma": true },
+  "cat3Organised": [
+    { "title": "FDP on Emerging Tech", "period": "5 days", "sponsor": "AICTE", "scope": "NATIONAL", "status": "Completed" },
+    { "title": "Intl Workshop on AI", "period": "3 days", "sponsor": "IEEE", "scope": "INTERNATIONAL", "status": "Completed" }
+  ],
+  "cat3ConferencesAttended": [
+    { "paperTitle": "Paper A", "authors": "A", "conferenceName": "Conf A", "period": "2025" },
+    { "paperTitle": "Paper B", "authors": "A", "conferenceName": "Conf B", "period": "2025" },
+    { "paperTitle": "Paper C", "authors": "A", "conferenceName": "Conf C", "period": "2025" }
+  ],
+  "cat3ResourcePerson": [
+    { "programType": "FDP", "programName": "FDP on ML", "topic": "Deep Learning", "duration": "2 days", "venue": "VNRVJIET", "organisedBy": "CSE Dept" }
+  ],
+  "cat3Editorial": [
+    { "natureOfContrib": "Editorial Board", "orgOrJournal": "Intl J. of CS", "scope": "INTERNATIONAL", "dateDuration": "2025" },
+    { "natureOfContrib": "Reviewer", "orgOrJournal": "IEEE Access", "scope": "INTERNATIONAL", "dateDuration": "2025" }
+  ],
+  "cat3Training": [
+    { "name": "NPTEL Training", "period": "2025", "durationDays": 10 },
+    { "name": "Short Course", "period": "2025", "durationDays": 3 }
+  ],
+  "cat3IntlTravel": [
+    { "purpose": "Conference Presentation", "placeOrUniv": "Singapore", "outcome": "Paper presented" }
+  ],
+  "cat4AdminResp": [
+    { "responsibility": "Time Table Coordinator", "level": "Department", "workInvolved": "Scheduling", "period": "1 Year" },
+    { "responsibility": "NBA Coordinator", "level": "Department", "workInvolved": "Accreditation", "period": "1 Year" }
+  ],
+  "cat4StudentAct": [
+    { "activityName": "Coding Club Mentor", "period": "1 Year" }
+  ],
+  "cat5Memberships": [
+    { "association": "IEEE", "status": "national_member" },
+    { "association": "ACM", "status": "international_member" },
+    { "association": "ISTE", "status": "national_executive" }
+  ],
+  "cat5Awards": [
+    { "awardType": "Best Paper Award", "organization": "IEEE", "level": "international" },
+    { "awardType": "Best Teacher Award", "organization": "VNRVJIET", "level": "national" },
+    { "awardType": "State Excellence Award", "organization": "Govt of TS", "level": "state" }
+  ],
+  "cat5Differentiators": [
+    { "name": "Hackathon 2025", "role": "participating" },
+    { "name": "Tech Fest", "role": "leading" },
+    { "name": "New Lab Setup", "role": "initiating" }
+  ],
+  "cat5Internships": [
+    { "industryOrInst": "TCS", "studentBatch": "2025", "internshipDetails": "Summer Internship", "period": "2 months" },
+    { "industryOrInst": "Infosys", "studentBatch": "2025", "internshipDetails": "Winter Internship", "period": "1 month" }
+  ]
+}
