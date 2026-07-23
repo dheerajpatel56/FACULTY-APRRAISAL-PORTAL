@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form';
 import { appraisalApi } from '../../api/appraisals';
 import toast from 'react-hot-toast';
 import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import { useAuthStore } from '../../store/authStore';
+import { computeScore, type ScoreBreakdown } from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
@@ -19,6 +20,7 @@ const ROW_CONTENT_FIELDS: Record<string, string[]> = {
   cat1ICT: ['courseName'],
   cat2Journals: ['title', 'journalName'],
   cat2Conferences: ['title', 'conferenceName'],
+  cat2ConfBookChapters: ['title', 'conferenceName'],
   cat2Books: ['title'],
   cat2BookChapters: ['title'],
   cat2Patents: ['title'],
@@ -56,6 +58,15 @@ function stripBlankRows(categories: any): any {
   return out;
 }
 
+// Small inline live-score badge shown beside a subsection heading / category
+// header. Purely presentational — value/max are pre-computed by the caller
+// from the shared `computeScore` breakdown.
+const ScoreBadge = ({ value, max }: { value: number; max: number }) => (
+  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-muted text-primary-700 whitespace-nowrap">
+    {value} / {max}
+  </span>
+);
+
 export default function AppraisalEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,17 +81,27 @@ export default function AppraisalEditPage() {
     defaultValues: {
       clLeaves: 0, elLeaves: 0, hplLeaves: 0, odLeaves: 0, otherLeaves: '', higherQualAcquired: '',
       cat1Courses: [] as any[], cat1CourseResults: [] as any[], cat1Projects: [] as any[], cat1EContent: [] as any[], cat1ICT: [] as any[],
-      cat2Journals: [] as any[], cat2Conferences: [] as any[], cat2BookChapters: [] as any[],
+      cat2Journals: [] as any[], cat2Conferences: [] as any[], cat2ConfBookChapters: [] as any[], cat2BookChapters: [] as any[],
       cat2Books: [] as any[], cat2Citations: { totalPubsTillDate: 0, pubsWithCitations: 0, totalCitations: 0, hIndexGoogle: 0, hIndexScopus: 0, hIndexWos: 0 },
       cat2Patents: [] as any[], cat2Projects: [] as any[], cat2Consultancy: [] as any[],
       cat2Guidance: [] as any[], cat2ResearchGroups: [] as any[], cat2Linkages: [] as any[], cat2Startups: [] as any[], cat2IndustryLinkages: [] as any[],
-      cat3AdvQual: { registeredForPhD: false, clearedPrePhD: false, thesisSubmitted: false, awarded: false },
+      cat3AdvQual: { registeredForPhD: false, clearedPrePhD: false, thesisSubmitted: false, awarded: false, postDoc: false, pgDegree: false, pgDiploma: false },
       cat3Organised: [] as any[], cat3ConferencesAttended: [] as any[], cat3ResourcePerson: [] as any[], cat3Editorial: [] as any[],
       cat3Training: [] as any[], cat3IntlTravel: [] as any[],
       cat4AdminResp: [] as any[], cat4StudentAct: [] as any[],
       cat5Memberships: [] as any[], cat5Awards: [] as any[], cat5Differentiators: [] as any[], cat5Internships: [] as any[],
     },
   });
+
+  // Live per-subsection scoring — recomputed from in-memory form values on
+  // every change, no save/recompute round-trip needed. Blank auto-added rows
+  // are stripped first (same helper used before save) so an untouched section
+  // never shows a misleading non-zero badge.
+  const watchedValues = useWatch({ control });
+  const live: ScoreBreakdown = useMemo(
+    () => computeScore(stripBlankRows(watchedValues)),
+    [watchedValues],
+  );
 
   const courses = useFieldArray({ control, name: 'cat1Courses' });
   const courseResults = useFieldArray({ control, name: 'cat1CourseResults' });
@@ -89,6 +110,7 @@ export default function AppraisalEditPage() {
   const ict = useFieldArray({ control, name: 'cat1ICT' });
   const journals = useFieldArray({ control, name: 'cat2Journals' });
   const conferences = useFieldArray({ control, name: 'cat2Conferences' });
+  const confBookChapters = useFieldArray({ control, name: 'cat2ConfBookChapters' });
   const bookChapters = useFieldArray({ control, name: 'cat2BookChapters' });
   const books = useFieldArray({ control, name: 'cat2Books' });
   const patents = useFieldArray({ control, name: 'cat2Patents' });
@@ -129,6 +151,7 @@ export default function AppraisalEditPage() {
         cat1ICT: sub.cat1ICT ?? [],
         cat2Journals: sub.cat2Journals ?? [],
         cat2Conferences: sub.cat2Conferences ?? [],
+        cat2ConfBookChapters: sub.cat2ConfBookChapters ?? [],
         cat2BookChapters: sub.cat2BookChapters ?? [],
         cat2Books: sub.cat2Books ?? [],
         cat2Citations: sub.cat2Citations ?? { totalPubsTillDate: 0, pubsWithCitations: 0, totalCitations: 0, hIndexGoogle: 0, hIndexScopus: 0, hIndexWos: 0 },
@@ -140,7 +163,7 @@ export default function AppraisalEditPage() {
         cat2Linkages: sub.cat2Linkages ?? [],
         cat2Startups: sub.cat2Startups ?? [],
         cat2IndustryLinkages: sub.cat2IndustryLinkages ?? [],
-        cat3AdvQual: sub.cat3AdvQual ?? { registeredForPhD: false, clearedPrePhD: false, thesisSubmitted: false, awarded: false },
+        cat3AdvQual: sub.cat3AdvQual ?? { registeredForPhD: false, clearedPrePhD: false, thesisSubmitted: false, awarded: false, postDoc: false, pgDegree: false, pgDiploma: false },
         cat3Organised: sub.cat3Organised ?? [],
         cat3ConferencesAttended: sub.cat3ConferencesAttended ?? [],
         cat3ResourcePerson: sub.cat3ResourcePerson ?? [],
@@ -291,6 +314,12 @@ export default function AppraisalEditPage() {
             {submission.status}
           </span>
         )}
+        {submission && (
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-ink-secondary">
+            Live Self-Appraisal Total
+            <ScoreBadge value={live.selfTotal} max={500} />
+          </span>
+        )}
       </div>
 
       {readOnly && (
@@ -346,8 +375,15 @@ export default function AppraisalEditPage() {
         {/* Step 1: Teaching */}
         {step === 1 && (
           <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink-secondary">Category 1 — Teaching</h2>
+              <ScoreBadge value={live.cat1.total} max={150} />
+            </div>
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">1.1 Courses Taught — Lectures</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">1.1 Courses Taught — Lectures</h2>
+                <ScoreBadge value={live.cat1.lectures} max={40} />
+              </div>
               <p className="text-xs text-ink-muted mb-3">Lecture delivery score from periods conducted vs planned (+ novel pedagogy).</p>
               {courses.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
@@ -393,7 +429,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">1.2 Courses Taught — Attendance, Feedback &amp; Results</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">1.2 Courses Taught — Attendance, Feedback &amp; Results</h2>
+                <ScoreBadge value={live.cat1.attendanceFeedback} max={80} />
+              </div>
               <p className="text-xs text-ink-muted mb-3">
                 Per course (max 20): Attendance A = (n1·5 + n2·3)/Y (max 5), Feedback B (max 5),
                 Results C = (n3·10 + n4·8 + n5·5)/Y (max 10). Section max 80. Scores computed automatically.
@@ -441,7 +480,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">1.3 Projects Guided</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">1.3 Projects Guided</h2>
+                <ScoreBadge value={live.cat1.projects} max={20} />
+              </div>
               {projects.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div>
@@ -469,7 +511,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">1.4 e-Content Developed</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">1.4 e-Content Developed</h2>
+                <ScoreBadge value={live.cat1.eContent} max={5} />
+              </div>
               {eContent.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -493,7 +538,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">1.5 ICT Usage</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">1.5 ICT Usage</h2>
+                <ScoreBadge value={live.cat1.ict} max={5} />
+              </div>
               {ict.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -529,8 +577,15 @@ export default function AppraisalEditPage() {
         {/* Step 2: Research */}
         {step === 2 && (
           <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink-secondary">Category 2 — Research</h2>
+              <ScoreBadge value={live.cat2.total} max={150} />
+            </div>
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.1 Journal Publications</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.1 Journal Publications</h2>
+                <ScoreBadge value={live.cat2.publications} max={60} />
+              </div>
               {journals.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -575,7 +630,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.1 Conference Papers</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.1 Conference Papers</h2>
+                <ScoreBadge value={live.cat2.publications} max={60} />
+              </div>
               {conferences.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -606,7 +664,42 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.1 Book Chapters</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.1-C Conference Book Chapters</h2>
+                <ScoreBadge value={live.cat2.publications} max={60} />
+              </div>
+              <p className="text-xs text-ink-muted mb-3">Book chapters derived from a conference proceeding — scored as part of 2.1 Publications, same as journals/conference papers.</p>
+              {confBookChapters.fields.map((field, i) => (
+                <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className={labelCls}>Title</label><input {...register(`cat2ConfBookChapters.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Conference Name</label><input {...register(`cat2ConfBookChapters.${i}.conferenceName`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors</label><input {...register(`cat2ConfBookChapters.${i}.authors`)} className={inputCls} /></div>
+                    <div>
+                      <label className={labelCls}>Author Position</label>
+                      <select {...register(`cat2ConfBookChapters.${i}.authorPosition`)} className={inputCls}>
+                        <option>First</option><option>Second</option><option>Corresponding</option><option>Supervisor</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Indexed</label>
+                      <select {...register(`cat2ConfBookChapters.${i}.indexed`)} className={inputCls}>
+                        <option value="ESCI">ESCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="ICI">ICI</option><option value="NONE">None</option>
+                      </select>
+                    </div>
+                    {proofField(`cat2ConfBookChapters.${i}.proofFile`)}
+                  </div>
+                  <button type="button" onClick={() => confBookChapters.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
+                </div>
+              ))}
+              {addRowBtn('Add Conference Book Chapter', () => confBookChapters.append({ title: '', conferenceName: '', authors: '', authorPosition: 'First', indexed: 'NONE', proofFile: '' }))}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.3 Academic Book Chapters</h2>
+                <ScoreBadge value={live.cat2.books} max={10} />
+              </div>
               {bookChapters.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -640,7 +733,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.2 Citations</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.2 Citations</h2>
+                <ScoreBadge value={live.cat2.citations} max={5} />
+              </div>
               <p className="text-xs text-ink-muted mb-3">Score from Total Citations: 3–10→2, 11–20→5, 21–40→8, &gt;40→10.</p>
               <div className="grid grid-cols-3 gap-3">
                 <div><label className={labelCls}>Publications/Books (till date)</label><input type="number" {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
@@ -653,7 +749,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.3 Books</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.3 Books</h2>
+                <ScoreBadge value={live.cat2.books} max={10} />
+              </div>
               {books.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -680,7 +779,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.4 Patents</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.4 Patents</h2>
+                <ScoreBadge value={live.cat2.patents} max={20} />
+              </div>
               {patents.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -706,7 +808,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.5 Sponsored Projects</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.5 Sponsored Projects</h2>
+                <ScoreBadge value={live.cat2.sponsoredProjects} max={20} />
+              </div>
               {cat2Proj.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -736,7 +841,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.6 Consultancy</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.6 Consultancy</h2>
+                <ScoreBadge value={live.cat2.consultancy} max={10} />
+              </div>
               {consultancy.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Name</label><input {...register(`cat2Consultancy.${i}.name`)} className={inputCls} /></div>
@@ -749,7 +857,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.7 Research Guidance (PhD)</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.7 Research Guidance (PhD)</h2>
+                <ScoreBadge value={live.cat2.guidance} max={5} />
+              </div>
               {guidance.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Student Name</label><input {...register(`cat2Guidance.${i}.studentName`)} className={inputCls} /></div>
@@ -768,7 +879,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.8 Research Interest Groups</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.8 Research Interest Groups</h2>
+                <ScoreBadge value={live.cat2.researchGroups} max={5} />
+              </div>
               {researchGroups.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Group Name</label><input {...register(`cat2ResearchGroups.${i}.groupName`)} className={inputCls} /></div>
@@ -781,7 +895,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.9 Institute Linkages</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.9 Institute Linkages</h2>
+                <ScoreBadge value={live.cat2.linkages} max={10} />
+              </div>
               {linkages.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Institute Name</label><input {...register(`cat2Linkages.${i}.instituteName`)} className={inputCls} /></div>
@@ -794,7 +911,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">2.10 Industry Linkage</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.10 Industry Linkage</h2>
+                <ScoreBadge value={live.cat2.industryLinkages} max={10} />
+              </div>
               <p className="text-xs text-ink-muted mb-3">Score 5 per linkage, max 10.</p>
               {industryLinkages.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
@@ -808,7 +928,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">Startups / Innovation (supplementary)</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">Startups / Innovation (supplementary)</h2>
+                <ScoreBadge value={live.cat2.startups} max={5} />
+              </div>
               {startups.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Group Name</label><input {...register(`cat2Startups.${i}.groupName`)} className={inputCls} /></div>
@@ -825,20 +948,30 @@ export default function AppraisalEditPage() {
         {/* Step 3: Faculty Development */}
         {step === 3 && (
           <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink-secondary">Category 3 — Faculty Development</h2>
+              <ScoreBadge value={live.cat3.total} max={100} />
+            </div>
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.1 Status of Ph.D.</h2>
-              <p className="text-xs text-ink-muted mb-3">Awarded → 10, Thesis Submitted → 8, Registered / Cleared Pre-PhD → 5 (highest applies).</p>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">3.1 Advanced Qualification</h2>
+                <ScoreBadge value={live.cat3.advQual} max={10} />
+              </div>
+              <p className="text-xs text-ink-muted mb-3">Highest applicable: Post-Doctoral / Awarded / Thesis Submitted / PG Degree / PG Diploma → 10, Cleared Pre-PhD → 8, Registered for Ph.D. → 5.</p>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.registeredForPhD')} /> Registered for Ph.D.</label>
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.clearedPrePhD')} /> Cleared Pre-PhD Exam</label>
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.thesisSubmitted')} /> Thesis Submitted</label>
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.awarded')} /> Awarded</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.postDoc')} /> Post-Doctoral</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.pgDegree')} /> PG Degree</label>
+                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.pgDiploma')} /> PG Diploma</label>
               </div>
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.3 Conferences / Seminars / Workshops Attended</h2>
-              <p className="text-xs text-ink-muted mb-3">Score 10 each, max 20.</p>
+              <h2 className="font-semibold text-ink-primary mb-3">Conferences / Seminars / Workshops Attended (retained — not scored)</h2>
+              <p className="text-xs text-ink-muted mb-3">Kept for record-keeping only; no longer contributes to the self-appraisal score.</p>
               {conferencesAttended.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Paper Title</label><input {...register(`cat3ConferencesAttended.${i}.paperTitle`)} className={inputCls} /></div>
@@ -852,7 +985,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.2 Programs Organised</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">3.2 Programs Organised</h2>
+                <ScoreBadge value={live.cat3.organisedPrograms} max={20} />
+              </div>
               {organised.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Title</label><input {...register(`cat3Organised.${i}.title`)} className={inputCls} /></div>
@@ -875,7 +1011,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.4 Resource Person</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">3.3 Resource Person</h2>
+                <ScoreBadge value={live.cat3.resourcePerson} max={20} />
+              </div>
               {resourcePerson.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -899,7 +1038,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.4 Editorial / Review Roles (same section, combined max 20)</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">3.4 Editorial / Review Roles</h2>
+                <ScoreBadge value={live.cat3.editorial} max={20} />
+              </div>
               {editorial.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -926,7 +1068,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.5 Training Attended</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">3.5 Training Attended</h2>
+                <ScoreBadge value={live.cat3.training} max={25} />
+              </div>
               {training.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Name</label><input {...register(`cat3Training.${i}.name`)} className={inputCls} /></div>
@@ -940,7 +1085,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">3.6 International Travel</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">3.6 International Travel</h2>
+                <ScoreBadge value={live.cat3.intlTravel} max={5} />
+              </div>
               {intlTravel.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Purpose</label><input {...register(`cat3IntlTravel.${i}.purpose`)} className={inputCls} /></div>
@@ -957,8 +1105,15 @@ export default function AppraisalEditPage() {
         {/* Step 4: Governance */}
         {step === 4 && (
           <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink-secondary">Category 4 — Governance</h2>
+              <ScoreBadge value={live.cat4.total} max={50} />
+            </div>
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">4.1 Admin Responsibilities</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">4.1 Admin Responsibilities</h2>
+                <ScoreBadge value={live.cat4.adminResp} max={40} />
+              </div>
               {adminResp.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Responsibility</label><input {...register(`cat4AdminResp.${i}.responsibility`)} className={inputCls} /></div>
@@ -976,7 +1131,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">4.2 Student Activities</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">4.2 Student Activities</h2>
+                <ScoreBadge value={live.cat4.studentActivities} max={10} />
+              </div>
               {studentAct.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Activity</label><input {...register(`cat4StudentAct.${i}.activityName`)} className={inputCls} /></div>
@@ -992,8 +1150,15 @@ export default function AppraisalEditPage() {
         {/* Step 5: Supplementary */}
         {step === 5 && (
           <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink-secondary">Category 5 — Supplementary</h2>
+              <ScoreBadge value={live.cat5.total} max={50} />
+            </div>
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">5.1 Memberships</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">5.1 Memberships</h2>
+                <ScoreBadge value={live.cat5.memberships} max={15} />
+              </div>
               {memberships.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Association</label><input {...register(`cat5Memberships.${i}.association`)} className={inputCls} /></div>
@@ -1011,7 +1176,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">5.2 Awards</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">5.2 Awards</h2>
+                <ScoreBadge value={live.cat5.awards} max={10} />
+              </div>
               {awards.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Award Type</label><input {...register(`cat5Awards.${i}.awardType`)} className={inputCls} /></div>
@@ -1031,7 +1199,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">5.3 Differentiators</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">5.3 Differentiators</h2>
+                <ScoreBadge value={live.cat5.differentiators} max={20} />
+              </div>
               {differentiators.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Name</label><input {...register(`cat5Differentiators.${i}.name`)} className={inputCls} /></div>
@@ -1050,7 +1221,10 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">5.4 Internships</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">5.4 Internships</h2>
+                <ScoreBadge value={live.cat5.internships} max={5} />
+              </div>
               {internships.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -1086,6 +1260,7 @@ export default function AppraisalEditPage() {
                   ['Cat 1 ICT', ict.fields.length],
                   ['Cat 2 Journals', journals.fields.length],
                   ['Cat 2 Conferences', conferences.fields.length],
+                  ['Cat 2 Conf Book Chapters', confBookChapters.fields.length],
                   ['Cat 2 Book Chapters', bookChapters.fields.length],
                   ['Cat 2 Books', books.fields.length],
                   ['Cat 2 Patents', patents.fields.length],
@@ -1147,13 +1322,14 @@ export default function AppraisalEditPage() {
                       ['2.7 Guidance', score.cat2.guidance, 5],
                       ['2.8 Research Groups', score.cat2.researchGroups, 5],
                       ['2.9 Linkages', score.cat2.linkages, 10],
+                      ['2.9 Industry Linkages', score.cat2.industryLinkages, 10],
                       ['2.10 Startups', score.cat2.startups, 5],
                     ]],
                     ['Category 3 — Faculty Development', score.cat3, 100, [
-                      ['3.1 Status of Ph.D.', score.cat3.advQual, 10],
+                      ['3.1 Advanced Qualification', score.cat3.advQual, 10],
                       ['3.2 Programs Organised', score.cat3.organisedPrograms, 20],
-                      ['3.3 Conferences Attended', score.cat3.conferencesAttended, 20],
-                      ['3.4 Resource Person + Editorial', score.cat3.resourceEditorial, 20],
+                      ['3.3 Resource Person', score.cat3.resourcePerson, 20],
+                      ['3.4 Editorial', score.cat3.editorial, 20],
                       ['3.5 Training', score.cat3.training, 25],
                       ['3.6 International Travel', score.cat3.intlTravel, 5],
                     ]],
