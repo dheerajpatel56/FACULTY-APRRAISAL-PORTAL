@@ -12,6 +12,11 @@ import { computeScore } from './scoringEngine';
 //
 // See frontend/src/utils/scoring.test.ts for the mirrored assertion.
 
+// Relative path is 3 levels up (src/services -> src -> backend -> repo root);
+// keep it in sync if this file moves. scoring-expected.json is the shared
+// shape+value contract both engines must equal — a shape drift on EITHER side
+// (backend engine or frontend port) fails that side's test against this same
+// object.
 const fixture = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, '../../../docs/superpowers/plans/scoring-fixture.json'), 'utf8'),
 );
