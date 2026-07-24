@@ -10,6 +10,16 @@ import { computeScore, type ScoreBreakdown } from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
+// Fixed 1.1 Novel Pedagogy Method options. "Other" reveals a free-text input
+// that overwrites the same `novelPedagogyMethod` field (no schema field added) —
+// the input stays visible for any value not in this fixed list (not just the
+// literal string "Other"), so it doesn't vanish as soon as the user types.
+const NOVEL_PEDAGOGY_OPTIONS = [
+  'Flipped Classroom', 'Project-Based Learning', 'Problem-Based Learning', 'Case Study / Case-Based',
+  'Collaborative / Team-Based Learning', 'Active Learning (Think-Pair-Share)', 'Gamification',
+  'Blended Learning', 'Experiential / Hands-on', 'Peer Learning',
+];
+
 // A row is only saved if the faculty actually filled its free-text identifier
 // (an alphanumeric char) — this drops the empty "Add Row" placeholders and their
 // dropdown defaults so an untouched section persists nothing and scores 0.
@@ -85,7 +95,7 @@ export default function AppraisalEditPage() {
   const [score, setScore] = useState<any>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
 
-  const { register, control, reset, getValues } = useForm({
+  const { register, control, reset, getValues, setValue } = useForm({
     defaultValues: {
       clLeaves: 0, elLeaves: 0, hplLeaves: 0, odLeaves: 0, otherLeaves: '', higherQualAcquired: '',
       cat1Courses: [] as any[], cat1CourseResults: [] as any[], cat1Projects: [] as any[], cat1EContent: [] as any[], cat1ICT: [] as any[],
@@ -110,6 +120,24 @@ export default function AppraisalEditPage() {
     () => computeScore(stripBlankRows(watchedValues)),
     [watchedValues],
   );
+
+  // 3.1 Status of Ph.D. — a single controlled select whose value is DERIVED
+  // from the underlying booleans (scoring reads the booleans, so they must
+  // keep being written). Priority order for display when multiple are true:
+  // postDoc > awarded > thesisSubmitted > pgDegree > pgDiploma > clearedPrePhD > registeredForPhD.
+  const advQualKeys = ['registeredForPhD', 'clearedPrePhD', 'thesisSubmitted', 'awarded', 'postDoc', 'pgDegree', 'pgDiploma'] as const;
+  const advQualLive = (watchedValues as any)?.cat3AdvQual ?? {};
+  const phdStatus: string = advQualLive.postDoc ? 'postDoc'
+    : advQualLive.awarded ? 'awarded'
+    : advQualLive.thesisSubmitted ? 'thesisSubmitted'
+    : advQualLive.pgDegree ? 'pgDegree'
+    : advQualLive.pgDiploma ? 'pgDiploma'
+    : advQualLive.clearedPrePhD ? 'clearedPrePhD'
+    : advQualLive.registeredForPhD ? 'registeredForPhD'
+    : 'none';
+  const setPhdStatus = (val: string) => {
+    for (const k of advQualKeys) setValue(`cat3AdvQual.${k}` as any, k === val, { shouldDirty: true });
+  };
 
   const courses = useFieldArray({ control, name: 'cat1Courses' });
   const courseResults = useFieldArray({ control, name: 'cat1CourseResults' });
@@ -421,7 +449,23 @@ export default function AppraisalEditPage() {
                     </div>
                     <div>
                       <label className={labelCls}>Novel Pedagogy Method</label>
-                      <input {...register(`cat1Courses.${i}.novelPedagogyMethod`)} className={inputCls} placeholder="e.g. Chalk and Talk" />
+                      <select {...register(`cat1Courses.${i}.novelPedagogyMethod`)} className={inputCls}>
+                        <option value="">Select...</option>
+                        {NOVEL_PEDAGOGY_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        <option value="Other">Other</option>
+                      </select>
+                      {(() => {
+                        const v = (watchedValues as any)?.cat1Courses?.[i]?.novelPedagogyMethod;
+                        return v && !NOVEL_PEDAGOGY_OPTIONS.includes(v) ? (
+                          <input
+                            key={`npm-other-${i}`}
+                            className={`${inputCls} mt-2`}
+                            placeholder="Specify method"
+                            defaultValue={v === 'Other' ? '' : v}
+                            onChange={(e) => setValue(`cat1Courses.${i}.novelPedagogyMethod`, e.target.value, { shouldDirty: true })}
+                          />
+                        ) : null;
+                      })()}
                     </div>
                     <div className="flex items-end pb-1">
                       <label className="flex items-center gap-2 text-sm text-ink-secondary">
@@ -537,7 +581,10 @@ export default function AppraisalEditPage() {
                         <option value="Other">Other</option>
                       </select>
                     </div>
-                    {proofField(`cat1EContent.${i}.evidenceFile`, 'Evidence File')}
+                    <div>
+                      <label className={labelCls}>Link / URL</label>
+                      <input {...register(`cat1EContent.${i}.evidenceFile`)} className={inputCls} placeholder="https://..." />
+                    </div>
                   </div>
                   <button type="button" onClick={() => eContent.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
@@ -570,14 +617,20 @@ export default function AppraisalEditPage() {
                         <option value="Quizzes">Quizzes</option>
                         <option value="Recorded Lectures">Recorded Lectures</option>
                         <option value="Discussion Forums">Discussion Forums</option>
+                        <option value="Other">Other</option>
                       </select>
                     </div>
-                    {proofField(`cat1ICT.${i}.evidenceFile`, 'Evidence File')}
+                    {((watchedValues as any)?.cat1ICT?.[i]?.platform === 'Other' || (watchedValues as any)?.cat1ICT?.[i]?.natureOfUse === 'Other') && (
+                      <div>
+                        <label className={labelCls}>Other — specify</label>
+                        <input {...register(`cat1ICT.${i}.otherDescription`)} className={inputCls} />
+                      </div>
+                    )}
                   </div>
                   <button type="button" onClick={() => ict.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add ICT Usage', () => ict.append({ courseName: '', platform: 'Google Classroom', natureOfUse: 'Assignments', evidenceFile: '' }))}
+              {addRowBtn('Add ICT Usage', () => ict.append({ courseName: '', platform: 'Google Classroom', natureOfUse: 'Assignments', otherDescription: '' }))}
             </div>
           </div>
         )}
@@ -600,13 +653,13 @@ export default function AppraisalEditPage() {
               {journals.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2Journals.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Title of the Publication</label><input {...register(`cat2Journals.${i}.title`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Journal Name</label><input {...register(`cat2Journals.${i}.journalName`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors</label><input {...register(`cat2Journals.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Journals.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
                       <select {...register(`cat2Journals.${i}.authorPosition`)} className={inputCls}>
-                        <option>First</option><option>Second</option><option>Corresponding</option><option>Supervisor</option>
+                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
                       </select>
                     </div>
                     <div>
@@ -616,6 +669,16 @@ export default function AppraisalEditPage() {
                       </select>
                     </div>
                     <div><label className={labelCls}>Impact Factor</label><input type="number" step="0.01" {...register(`cat2Journals.${i}.impactFactor`, { valueAsNumber: true })} className={inputCls} /></div>
+                    <div>
+                      <label className={labelCls}>Impact Factor Source</label>
+                      <select {...register(`cat2Journals.${i}.impactFactorSource`)} className={inputCls}>
+                        <option value="">Select...</option>
+                        <option value="Clarivate Analytics (JCR)">Clarivate Analytics (JCR)</option>
+                        <option value="Scopus / SCImago (SJR / CiteScore)">Scopus / SCImago (SJR / CiteScore)</option>
+                        <option value="Google Scholar">Google Scholar</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
                     <div><label className={labelCls}>DOI</label><input {...register(`cat2Journals.${i}.doi`)} className={inputCls} /></div>
                     <div><label className={labelCls}>ISSN</label><input {...register(`cat2Journals.${i}.issn`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Volume</label><input {...register(`cat2Journals.${i}.volume`)} className={inputCls} /></div>
@@ -632,17 +695,18 @@ export default function AppraisalEditPage() {
                         <option value="Q4">Q4</option>
                       </select>
                     </div>
-                    {proofField(`cat2Journals.${i}.proofFile`)}
+                    {proofField(`cat2Journals.${i}.proofFile`, '1st Page Proof')}
+                    {proofField(`cat2Journals.${i}.indexProofFile`, 'Index Proof')}
                   </div>
                   <button type="button" onClick={() => journals.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Journal', () => journals.append({ title: '', journalName: '', authors: '', authorPosition: 'First', indexed: 'NONE', impactFactor: 0, volume: '', issueNo: '', pageNos: '', dateOfPub: '', quartile: '' }))}
+              {addRowBtn('Add Journal', () => journals.append({ title: '', journalName: '', authors: '', authorPosition: '1st', indexed: 'NONE', impactFactor: 0, impactFactorSource: '', volume: '', issueNo: '', pageNos: '', dateOfPub: '', quartile: '', proofFile: '', indexProofFile: '' }))}
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.1 Conference Papers</h2>
+                <h2 className="font-semibold text-ink-primary">2.1 Conference Proceedings</h2>
                 <span className="flex items-center gap-1.5">
                   <span className="text-xs text-ink-muted">(combined 2.1)</span>
                   <ScoreBadge value={live.cat2.publications} max={60} />
@@ -651,17 +715,17 @@ export default function AppraisalEditPage() {
               {conferences.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2Conferences.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Conference Name</label><input {...register(`cat2Conferences.${i}.conferenceName`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors</label><input {...register(`cat2Conferences.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Title of the Publication</label><input {...register(`cat2Conferences.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Name of the Conference Proceedings</label><input {...register(`cat2Conferences.${i}.conferenceName`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Conferences.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
                       <select {...register(`cat2Conferences.${i}.authorPosition`)} className={inputCls}>
-                        <option>First</option><option>Second</option><option>Corresponding</option><option>Supervisor</option>
+                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
                       </select>
                     </div>
                     <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Conferences.${i}.dateOfPub`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>ISSN</label><input {...register(`cat2Conferences.${i}.issn`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>ISSN / ISBN</label><input {...register(`cat2Conferences.${i}.issn`)} className={inputCls} /></div>
                     <div><label className={labelCls}>DOI</label><input {...register(`cat2Conferences.${i}.doi`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Indexed</label>
@@ -669,12 +733,21 @@ export default function AppraisalEditPage() {
                         <option value="ESCI">ESCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="ICI">ICI</option><option value="NONE">None</option>
                       </select>
                     </div>
+                    <div>
+                      <label className={labelCls}>Presentation Status</label>
+                      <select {...register(`cat2Conferences.${i}.presentationStatus`)} className={inputCls}>
+                        <option value="">Select...</option>
+                        <option value="Accepted">Accepted</option>
+                        <option value="Presented">Presented</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
                     {proofField(`cat2Conferences.${i}.proofFile`)}
                   </div>
                   <button type="button" onClick={() => conferences.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Conference', () => conferences.append({ title: '', conferenceName: '', authors: '', authorPosition: 'First', dateOfPub: '', issn: '', doi: '', indexed: 'NONE' }))}
+              {addRowBtn('Add Conference', () => conferences.append({ title: '', conferenceName: '', authors: '', authorPosition: '1st', dateOfPub: '', issn: '', doi: '', indexed: 'NONE', presentationStatus: '' }))}
             </div>
 
             <div>
@@ -691,11 +764,11 @@ export default function AppraisalEditPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className={labelCls}>Title</label><input {...register(`cat2ConfBookChapters.${i}.title`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Conference Name</label><input {...register(`cat2ConfBookChapters.${i}.conferenceName`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors</label><input {...register(`cat2ConfBookChapters.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2ConfBookChapters.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
                       <select {...register(`cat2ConfBookChapters.${i}.authorPosition`)} className={inputCls}>
-                        <option>First</option><option>Second</option><option>Corresponding</option><option>Supervisor</option>
+                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
                       </select>
                     </div>
                     <div>
@@ -709,7 +782,7 @@ export default function AppraisalEditPage() {
                   <button type="button" onClick={() => confBookChapters.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Conference Book Chapter', () => confBookChapters.append({ title: '', conferenceName: '', authors: '', authorPosition: 'First', indexed: 'NONE', proofFile: '' }))}
+              {addRowBtn('Add Conference Book Chapter', () => confBookChapters.append({ title: '', conferenceName: '', authors: '', authorPosition: '1st', indexed: 'NONE', proofFile: '' }))}
             </div>
 
             <div>
@@ -721,11 +794,11 @@ export default function AppraisalEditPage() {
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className={labelCls}>Title</label><input {...register(`cat2BookChapters.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors</label><input {...register(`cat2BookChapters.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2BookChapters.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
                       <select {...register(`cat2BookChapters.${i}.authorPosition`)} className={inputCls}>
-                        <option>First</option><option>Second</option><option>Corresponding</option><option>Supervisor</option>
+                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
                       </select>
                     </div>
                     <div><label className={labelCls}>Publisher</label><input {...register(`cat2BookChapters.${i}.publisher`)} className={inputCls} /></div>
@@ -742,11 +815,12 @@ export default function AppraisalEditPage() {
                         <input type="checkbox" {...register(`cat2BookChapters.${i}.isEdited`)} /> Edited Book
                       </label>
                     </div>
+                    {proofField(`cat2BookChapters.${i}.proofFile`, 'Cover / Proof')}
                   </div>
                   <button type="button" onClick={() => bookChapters.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Book Chapter', () => bookChapters.append({ title: '', authors: '', authorPosition: 'First', publisher: '', isbn: '', chapterNo: '', isEdited: false, scope: 'INTERNATIONAL' }))}
+              {addRowBtn('Add Book Chapter', () => bookChapters.append({ title: '', authors: '', authorPosition: '1st', publisher: '', isbn: '', chapterNo: '', isEdited: false, scope: 'INTERNATIONAL', proofFile: '' }))}
             </div>
 
             <div>
@@ -774,7 +848,7 @@ export default function AppraisalEditPage() {
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className={labelCls}>Title</label><input {...register(`cat2Books.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors</label><input {...register(`cat2Books.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Books.${i}.authors`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Publisher</label><input {...register(`cat2Books.${i}.publisher`)} className={inputCls} /></div>
                     <div><label className={labelCls}>ISBN</label><input {...register(`cat2Books.${i}.isbn`)} className={inputCls} /></div>
                     <div>
@@ -788,11 +862,12 @@ export default function AppraisalEditPage() {
                         <input type="checkbox" {...register(`cat2Books.${i}.isEdited`)} /> Edited
                       </label>
                     </div>
+                    {proofField(`cat2Books.${i}.proofFile`, 'Cover / Proof')}
                   </div>
                   <button type="button" onClick={() => books.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Book', () => books.append({ title: '', authors: '', publisher: '', isbn: '', isEdited: false, scope: 'INTERNATIONAL' }))}
+              {addRowBtn('Add Book', () => books.append({ title: '', authors: '', publisher: '', isbn: '', isEdited: false, scope: 'INTERNATIONAL', proofFile: '' }))}
             </div>
 
             <div>
@@ -804,7 +879,13 @@ export default function AppraisalEditPage() {
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className={labelCls}>Title</label><input {...register(`cat2Patents.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Country</label><input {...register(`cat2Patents.${i}.country`)} className={inputCls} /></div>
+                    <div>
+                      <label className={labelCls}>Country</label>
+                      <select {...register(`cat2Patents.${i}.country`)} className={inputCls}>
+                        <option value="India">India</option>
+                        <option value="US">US</option>
+                      </select>
+                    </div>
                     <div><label className={labelCls}>Inventors</label><input {...register(`cat2Patents.${i}.inventors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Status</label>
@@ -812,7 +893,22 @@ export default function AppraisalEditPage() {
                         <option value="FILED">Filed</option><option value="PUBLISHED">Published</option><option value="GRANTED">Granted</option>
                       </select>
                     </div>
+                    <div>
+                      <label className={labelCls}>Type of IPR</label>
+                      <select {...register(`cat2Patents.${i}.iprType`)} className={inputCls}>
+                        <option value="">Select...</option>
+                        <option value="Patent">Patent</option>
+                        <option value="Copyright">Copyright</option>
+                        <option value="Trademark">Trademark</option>
+                        <option value="Design">Design</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    {(watchedValues as any)?.cat2Patents?.[i]?.iprType === 'Other' && (
+                      <div><label className={labelCls}>IPR Type — specify</label><input {...register(`cat2Patents.${i}.iprTypeOther`)} className={inputCls} /></div>
+                    )}
                     <div><label className={labelCls}>Application Number</label><input {...register(`cat2Patents.${i}.appNumber`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Date of Filing</label><input type="date" {...register(`cat2Patents.${i}.dateOfFiling`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Patents.${i}.dateOfPub`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Grant</label><input type="date" {...register(`cat2Patents.${i}.dateOfGrant`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Valid Duration</label><input {...register(`cat2Patents.${i}.validDuration`)} className={inputCls} /></div>
@@ -821,7 +917,7 @@ export default function AppraisalEditPage() {
                   <button type="button" onClick={() => patents.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Patent', () => patents.append({ title: '', country: 'India', inventors: '', status: 'FILED', appNumber: '', dateOfPub: '', dateOfGrant: '', validDuration: '' }))}
+              {addRowBtn('Add Patent', () => patents.append({ title: '', country: 'India', inventors: '', status: 'FILED', iprType: '', iprTypeOther: '', appNumber: '', dateOfFiling: '', dateOfPub: '', dateOfGrant: '', validDuration: '' }))}
             </div>
 
             <div>
@@ -847,14 +943,14 @@ export default function AppraisalEditPage() {
                         <option>PI</option><option>Co-PI</option>
                       </select>
                     </div>
-                    <div><label className={labelCls}>Duration Period</label><input {...register(`cat2Projects.${i}.durationPeriod`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Application</label><input type="date" {...register(`cat2Projects.${i}.dateOfApplication`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Date of Grant / Sanction</label><input type="date" {...register(`cat2Projects.${i}.dateOfGrant`)} className={inputCls} /></div>
                     {proofField(`cat2Projects.${i}.proofFile`)}
                   </div>
                   <button type="button" onClick={() => cat2Proj.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Project', () => cat2Proj.append({ title: '', fundingAgency: '', amountLakhs: 0, role: 'PI', status: 'APPLIED', durationPeriod: '', dateOfApplication: '' }))}
+              {addRowBtn('Add Project', () => cat2Proj.append({ title: '', fundingAgency: '', amountLakhs: 0, role: 'PI', status: 'APPLIED', dateOfApplication: '', dateOfGrant: '' }))}
             </div>
 
             <div>
@@ -865,7 +961,7 @@ export default function AppraisalEditPage() {
               {consultancy.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Name</label><input {...register(`cat2Consultancy.${i}.name`)} className={inputCls} /></div>
-                  <div><label className={labelCls}>Agency</label><input {...register(`cat2Consultancy.${i}.agency`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Sponsoring Agency</label><input {...register(`cat2Consultancy.${i}.agency`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Amount (Lakhs)</label><input type="number" step="0.1" {...register(`cat2Consultancy.${i}.amountLakhs`, { valueAsNumber: true })} className={inputCls} /></div>
                   <button type="button" onClick={() => consultancy.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
@@ -880,13 +976,13 @@ export default function AppraisalEditPage() {
               </div>
               {guidance.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
-                  <div><label className={labelCls}>Student Name</label><input {...register(`cat2Guidance.${i}.studentName`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Research Scholar Name</label><input {...register(`cat2Guidance.${i}.studentName`)} className={inputCls} /></div>
                   <div><label className={labelCls}>University</label><input {...register(`cat2Guidance.${i}.university`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Thesis Title</label><input {...register(`cat2Guidance.${i}.thesisTitle`)} className={inputCls} /></div>
                   <div className="flex items-end pb-1">
                     <label className="flex items-center gap-2 text-sm text-ink-secondary">
                       <input type="checkbox" {...register(`cat2Guidance.${i}.isGuide`)} />
-                      Guide (unchecked = Co-Guide)
+                      Supervisor (unchecked = Co-Supervisor)
                     </label>
                   </div>
                   <button type="button" onClick={() => guidance.remove(i)} className="text-red-400 text-xs">Remove</button>
@@ -971,18 +1067,22 @@ export default function AppraisalEditPage() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">3.1 Advanced Qualification</h2>
+                <h2 className="font-semibold text-ink-primary">3.1 Status of Ph.D.</h2>
                 <ScoreBadge value={live.cat3.advQual} max={10} />
               </div>
               <p className="text-xs text-ink-muted mb-3">Highest applicable: Post-Doctoral / Awarded / Thesis Submitted / PG Degree / PG Diploma → 10, Cleared Pre-PhD → 8, Registered for Ph.D. → 5.</p>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.registeredForPhD')} /> Registered for Ph.D.</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.clearedPrePhD')} /> Cleared Pre-PhD Exam</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.thesisSubmitted')} /> Thesis Submitted</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.awarded')} /> Awarded</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.postDoc')} /> Post-Doctoral</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.pgDegree')} /> PG Degree</label>
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('cat3AdvQual.pgDiploma')} /> PG Diploma</label>
+              <div>
+                <label className={labelCls}>Status of Ph.D.</label>
+                <select value={phdStatus} onChange={(e) => setPhdStatus(e.target.value)} className={inputCls}>
+                  <option value="none">None</option>
+                  <option value="registeredForPhD">Registered for Ph.D.</option>
+                  <option value="clearedPrePhD">Cleared Pre-PhD</option>
+                  <option value="thesisSubmitted">Thesis Submitted</option>
+                  <option value="awarded">Ph.D. Awarded</option>
+                  <option value="postDoc">Post-Doctoral</option>
+                  <option value="pgDegree">PG Degree</option>
+                  <option value="pgDiploma">PG Diploma</option>
+                </select>
               </div>
             </div>
 
@@ -1111,10 +1211,19 @@ export default function AppraisalEditPage() {
                   <div><label className={labelCls}>Purpose</label><input {...register(`cat3IntlTravel.${i}.purpose`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Place / University</label><input {...register(`cat3IntlTravel.${i}.placeOrUniv`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Outcome</label><input {...register(`cat3IntlTravel.${i}.outcome`)} className={inputCls} /></div>
+                  <div>
+                    <label className={labelCls}>Funding Source</label>
+                    <select {...register(`cat3IntlTravel.${i}.fundingSource`)} className={inputCls}>
+                      <option value="">Select...</option>
+                      <option value="Self-funded">Self-funded</option>
+                      <option value="Institute">Institute</option>
+                      <option value="Sponsor">Sponsor</option>
+                    </select>
+                  </div>
                   <button type="button" onClick={() => intlTravel.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Travel', () => intlTravel.append({ purpose: '', placeOrUniv: '', outcome: '' }))}
+              {addRowBtn('Add Travel', () => intlTravel.append({ purpose: '', placeOrUniv: '', outcome: '', fundingSource: '' }))}
             </div>
           </div>
         )}
@@ -1173,7 +1282,7 @@ export default function AppraisalEditPage() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">5.1 Memberships</h2>
+                <h2 className="font-semibold text-ink-primary">5.1 Professional Association</h2>
                 <ScoreBadge value={live.cat5.memberships} max={15} />
               </div>
               {memberships.fields.map((field, i) => (
@@ -1184,6 +1293,7 @@ export default function AppraisalEditPage() {
                       <option value="national_member">National Member</option>
                       <option value="international_member">International Member</option>
                       <option value="national_executive">National Executive</option>
+                      <option value="life_member">Life Membership</option>
                     </select>
                   </div>
                   <button type="button" onClick={() => memberships.remove(i)} className="text-red-400 text-xs">Remove</button>
@@ -1199,7 +1309,7 @@ export default function AppraisalEditPage() {
               </div>
               {awards.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
-                  <div><label className={labelCls}>Award Type</label><input {...register(`cat5Awards.${i}.awardType`)} className={inputCls} /></div>
+                  <div><label className={labelCls}>Award Title</label><input {...register(`cat5Awards.${i}.awardType`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Organization</label><input {...register(`cat5Awards.${i}.organization`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Level</label>
                     <select {...register(`cat5Awards.${i}.level`)} className={inputCls}>
@@ -1239,7 +1349,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">5.4 Internships</h2>
+                <h2 className="font-semibold text-ink-primary">5.4 Student Internships Arranged</h2>
                 <ScoreBadge value={live.cat5.internships} max={5} />
               </div>
               {internships.fields.map((field, i) => (
