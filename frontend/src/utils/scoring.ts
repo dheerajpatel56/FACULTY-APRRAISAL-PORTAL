@@ -22,7 +22,7 @@ export type PatentStatus = 'FILED' | 'PUBLISHED' | 'GRANTED';
 export type ProjectStatus = 'APPLIED' | 'ONGOING' | 'COMPLETED';
 export type CourseLevel = 'BTECH' | 'MTECH';
 export type ProjectType = 'MINI' | 'MAJOR';
-export type MembershipStatus = 'national_member' | 'international_member' | 'national_executive';
+export type MembershipStatus = 'national_member' | 'international_member' | 'national_executive' | 'life_member';
 export type DifferentiatorRole = 'participating' | 'leading' | 'initiating';
 // Award level is free-text on the backend model (String, not an enum) — only
 // 'state' is special-cased by the scoring rule. Keep it as `string` to match.
@@ -413,7 +413,7 @@ function scoreCategory5(v: ScoreFormValues) {
   let memberships = 0;
   for (const m of arr<Cat5MembershipInput>(v.cat5Memberships)) {
     if (m?.status === 'national_member') memberships += 5;
-    else if (m?.status === 'international_member' || m?.status === 'national_executive') memberships += 10;
+    else if (m?.status === 'international_member' || m?.status === 'national_executive' || m?.status === 'life_member') memberships += 10;
   }
   memberships = Math.min(memberships, 15);
 

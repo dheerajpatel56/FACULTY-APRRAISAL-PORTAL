@@ -334,6 +334,20 @@ describe('Category 5 — Supplementary', () => {
     expect(s.cat5.memberships).toBe(15);
   });
 
+  it('memberships: life_member=10 (same tier as international/national_executive)', () => {
+    const s = computeScore(emptySubmission({
+      cat5Memberships: [{ status: 'life_member' }],
+    }));
+    expect(s.cat5.memberships).toBe(10);
+  });
+
+  it('memberships: two life_member entries cap at 15 (10+10=20)', () => {
+    const s = computeScore(emptySubmission({
+      cat5Memberships: [{ status: 'life_member' }, { status: 'life_member' }],
+    }));
+    expect(s.cat5.memberships).toBe(15);
+  });
+
   it('differentiators: initiating=10, leading=7, participating=3', () => {
     const s = computeScore(emptySubmission({
       cat5Differentiators: [{ role: 'initiating' }, { role: 'participating' }],

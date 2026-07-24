@@ -133,6 +133,20 @@ describe('computeScore — cat4 caps', () => {
   });
 });
 
+describe('computeScore — cat5 branch coverage', () => {
+  it('5.1 membership: life_member scores 10 (same tier as international_member/national_executive)', () => {
+    const s = computeScore({ cat5Memberships: [{ status: 'life_member' }] });
+    expect(s.cat5.memberships).toBe(10);
+  });
+
+  it('5.1 membership: two life_member entries cap the section at 15 (10+10=20)', () => {
+    const s = computeScore({
+      cat5Memberships: [{ status: 'life_member' }, { status: 'life_member' }],
+    });
+    expect(s.cat5.memberships).toBe(15);
+  });
+});
+
 describe('computeScore — robustness (partial/missing form state)', () => {
   it('tolerates an empty object -> all zeros, never throws', () => {
     const result = computeScore({});

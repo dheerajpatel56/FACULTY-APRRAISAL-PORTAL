@@ -310,7 +310,7 @@ function scoreCategory5(s: FullSubmission) {
   let memberships = 0;
   for (const m of s.cat5Memberships) {
     if (m.status === 'national_member') memberships += 5;
-    else if (m.status === 'international_member' || m.status === 'national_executive') memberships += 10;
+    else if (m.status === 'international_member' || m.status === 'national_executive' || m.status === 'life_member') memberships += 10;
   }
   memberships = Math.min(memberships, 15);
 

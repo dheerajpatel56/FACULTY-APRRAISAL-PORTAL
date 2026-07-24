@@ -101,7 +101,7 @@
   "cat5Memberships": [
     { "association": "IEEE", "status": "national_member" },
     { "association": "ACM", "status": "international_member" },
-    { "association": "ISTE", "status": "national_executive" }
+    { "association": "ISTE", "status": "life_member" }
   ],
   "cat5Awards": [
     { "awardType": "Best Paper Award", "organization": "IEEE", "level": "international" },
