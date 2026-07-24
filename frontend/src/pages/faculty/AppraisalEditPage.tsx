@@ -60,12 +60,20 @@ function stripBlankRows(categories: any): any {
 
 // Small inline live-score badge shown beside a subsection heading / category
 // header. Purely presentational — value/max are pre-computed by the caller
-// from the shared `computeScore` breakdown.
-const ScoreBadge = ({ value, max }: { value: number; max: number }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-muted text-primary-700 whitespace-nowrap">
-    {value} / {max}
-  </span>
-);
+// from the shared `computeScore` breakdown. Only the DISPLAYED value is
+// rounded (float artifacts like 15.700000000000001 → 15.7); the underlying
+// `live` value used for logic is never mutated.
+const ScoreBadge = ({ value, max }: { value: number; max: number }) => {
+  const shown = Number.isInteger(value) ? value : Math.round(value * 100) / 100;
+  return (
+    <span
+      aria-label={`score ${shown} of ${max}`}
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-surface-muted text-primary-700 whitespace-nowrap"
+    >
+      {shown} / {max}
+    </span>
+  );
+};
 
 export default function AppraisalEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -584,7 +592,10 @@ export default function AppraisalEditPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold text-ink-primary">2.1 Journal Publications</h2>
-                <ScoreBadge value={live.cat2.publications} max={60} />
+                <span className="flex items-center gap-1.5">
+                  <span className="text-xs text-ink-muted">(combined 2.1)</span>
+                  <ScoreBadge value={live.cat2.publications} max={60} />
+                </span>
               </div>
               {journals.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
@@ -632,7 +643,10 @@ export default function AppraisalEditPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold text-ink-primary">2.1 Conference Papers</h2>
-                <ScoreBadge value={live.cat2.publications} max={60} />
+                <span className="flex items-center gap-1.5">
+                  <span className="text-xs text-ink-muted">(combined 2.1)</span>
+                  <ScoreBadge value={live.cat2.publications} max={60} />
+                </span>
               </div>
               {conferences.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
@@ -666,7 +680,10 @@ export default function AppraisalEditPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="font-semibold text-ink-primary">2.1-C Conference Book Chapters</h2>
-                <ScoreBadge value={live.cat2.publications} max={60} />
+                <span className="flex items-center gap-1.5">
+                  <span className="text-xs text-ink-muted">(combined 2.1)</span>
+                  <ScoreBadge value={live.cat2.publications} max={60} />
+                </span>
               </div>
               <p className="text-xs text-ink-muted mb-3">Book chapters derived from a conference proceeding — scored as part of 2.1 Publications, same as journals/conference papers.</p>
               {confBookChapters.fields.map((field, i) => (
@@ -1322,7 +1339,7 @@ export default function AppraisalEditPage() {
                       ['2.7 Guidance', score.cat2.guidance, 5],
                       ['2.8 Research Groups', score.cat2.researchGroups, 5],
                       ['2.9 Linkages', score.cat2.linkages, 10],
-                      ['2.9 Industry Linkages', score.cat2.industryLinkages, 10],
+                      ['2.10 Industry Linkages', score.cat2.industryLinkages, 10],
                       ['2.10 Startups', score.cat2.startups, 5],
                     ]],
                     ['Category 3 — Faculty Development', score.cat3, 100, [
