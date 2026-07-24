@@ -55,14 +55,17 @@ function hasRole(req: Request, role: RoleType) {
 
 // Convert empty strings to null for date fields, otherwise pass through.
 // Date fields (LLD): dateOfPub, dateOfGrant, dateOfApplication, dateOfFiling
-const DATE_KEYS = new Set(['dateOfPub', 'dateOfGrant', 'dateOfApplication', 'dateOfFiling']);
-function cleanRow(row: any) {
+export const DATE_KEYS = new Set(['dateOfPub', 'dateOfGrant', 'dateOfApplication', 'dateOfFiling']);
+// Proof/file keys where an empty string means "no file" and must store as null
+// (indexProofFile is the 2nd proof on Cat2Journal, sibling to proofFile).
+const NULLABLE_FILE_KEYS = new Set(['evidenceFile', 'proofFile', 'indexProofFile']);
+export function cleanRow(row: any) {
   const out: any = {};
   for (const k of Object.keys(row)) {
     const v = row[k];
     if (DATE_KEYS.has(k)) {
       out[k] = v === '' || v == null ? null : new Date(v);
-    } else if (typeof v === 'string' && v === '' && (k.endsWith('Id') || k === 'evidenceFile' || k === 'proofFile')) {
+    } else if (typeof v === 'string' && v === '' && (k.endsWith('Id') || NULLABLE_FILE_KEYS.has(k))) {
       out[k] = null;
     } else {
       out[k] = v;
