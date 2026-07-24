@@ -305,49 +305,53 @@ model Cat1EContent {
 }
 
 model Cat1ICT {
-  id           String  @id @default(uuid())
-  submissionId String
-  courseName   String
-  platform     String
-  natureOfUse  String
-  evidenceFile String?
+  id               String  @id @default(uuid())
+  submissionId     String
+  courseName       String
+  platform         String
+  natureOfUse      String
+  otherDescription String? // free text shown when platform/nature = "Other"
+  evidenceFile     String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
 
 model Cat2Journal {
-  id             String           @id @default(uuid())
-  submissionId   String
-  title          String
-  journalName    String
-  authors        String
-  authorPosition String
-  volume         String?
-  issueNo        String?
-  pageNos        String?
-  dateOfPub      DateTime?
-  issn           String?
-  doi            String?
-  impactFactor   Float?
-  indexed        PublicationIndex @default(NONE)
-  quartile       String?
-  proofFile      String?
+  id                 String           @id @default(uuid())
+  submissionId       String
+  title              String
+  journalName        String
+  authors            String
+  authorPosition     String
+  volume             String?
+  issueNo            String?
+  pageNos            String?
+  dateOfPub          DateTime?
+  issn               String?
+  doi                String?
+  impactFactor       Float?
+  impactFactorSource String? // e.g. Clarivate/SCImago/Google Scholar/Other
+  indexed            PublicationIndex @default(NONE)
+  quartile           String?
+  proofFile          String?
+  indexProofFile     String? // 2nd proof — the "index" page (proofFile is the 1st page)
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
 
 model Cat2Conference {
-  id             String           @id @default(uuid())
-  submissionId   String
-  title          String
-  conferenceName String
-  authors        String
-  authorPosition String
-  dateOfPub      DateTime?
-  issn           String?
-  doi            String?
-  indexed        PublicationIndex @default(NONE)
-  proofFile      String?
+  id                 String           @id @default(uuid())
+  submissionId       String
+  title              String
+  conferenceName     String
+  authors            String
+  authorPosition     String
+  dateOfPub          DateTime?
+  issn               String?
+  doi                String?
+  indexed            PublicationIndex @default(NONE)
+  presentationStatus String? // Accepted / Presented / Other
+  proofFile          String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -363,6 +367,7 @@ model Cat2BookChapter {
   chapterNo      String?
   isEdited       Boolean @default(false)
   scope          Scope   @default(INTERNATIONAL)
+  proofFile      String? // cover/coverage proof
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -391,6 +396,7 @@ model Cat2Book {
   isbn         String?
   isEdited     Boolean @default(false)
   scope        Scope   @default(INTERNATIONAL)
+  proofFile    String? // cover/coverage proof
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -416,6 +422,9 @@ model Cat2Patent {
   inventors     String
   appNumber     String?
   status        PatentStatus
+  iprType       String? // Patent/Copyright/Trademark/Design/Other
+  iprTypeOther  String? // free text when iprType = Other
+  dateOfFiling  DateTime? // separate from dateOfPub
   dateOfPub     DateTime?
   dateOfGrant   DateTime?
   validDuration String?
@@ -434,6 +443,7 @@ model Cat2Project {
   status            ProjectStatus
   durationPeriod    String?
   dateOfApplication DateTime?
+  dateOfGrant       DateTime? // project grant/sanction date, separate from dateOfApplication
   proofFile         String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
@@ -576,11 +586,12 @@ model Cat3Training {
 }
 
 model Cat3IntlTravel {
-  id           String @id @default(uuid())
-  submissionId String
-  purpose      String
-  placeOrUniv  String
-  outcome      String
+  id            String  @id @default(uuid())
+  submissionId  String
+  purpose       String
+  placeOrUniv   String
+  outcome       String
+  fundingSource String? // Self / Institute / Sponsor
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }

@@ -54,8 +54,8 @@ function hasRole(req: Request, role: RoleType) {
 }
 
 // Convert empty strings to null for date fields, otherwise pass through.
-// Date fields (LLD): dateOfPub, dateOfGrant, dateOfApplication
-const DATE_KEYS = new Set(['dateOfPub', 'dateOfGrant', 'dateOfApplication']);
+// Date fields (LLD): dateOfPub, dateOfGrant, dateOfApplication, dateOfFiling
+const DATE_KEYS = new Set(['dateOfPub', 'dateOfGrant', 'dateOfApplication', 'dateOfFiling']);
 function cleanRow(row: any) {
   const out: any = {};
   for (const k of Object.keys(row)) {
