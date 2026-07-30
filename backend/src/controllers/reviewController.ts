@@ -5,6 +5,7 @@ import prisma from '../utils/prismaClient';
 import { computeScore } from '../services/scoringEngine';
 import { enqueueEmail } from '../services/emailService';
 import { canViewUserResource } from '../utils/access';
+import { syncProofVerifications } from '../services/proofService';
 
 const reviewSchema = z.object({
   cat1Score: z.number().optional(),
@@ -77,6 +78,18 @@ export async function submitReview(req: Request, res: Response) {
   if (sub.status === SubmissionStatus.APPROVED) return res.status(400).json({ error: 'Already approved' });
 
   const data = reviewSchema.parse(req.body);
+
+  // W2 gate — cannot approve until every proof is verified.
+  if (data.status === 'APPROVED') {
+    const proofs = await syncProofVerifications(sub.id);
+    const unverified = proofs.filter((p) => p.status !== 'VERIFIED');
+    if (unverified.length > 0) {
+      return res.status(400).json({
+        error: `Cannot approve — ${unverified.length} proof(s) not yet verified`,
+        unverified: unverified.map((p) => ({ section: p.section, item: p.item, field: p.field, status: p.status })),
+      });
+    }
+  }
 
   const isHod = req.user!.roles.some((r) => r.role === RoleType.HOD);
   const reviewerRole: ReviewerRole = isHod ? ReviewerRole.HOD : ReviewerRole.REVIEWER;

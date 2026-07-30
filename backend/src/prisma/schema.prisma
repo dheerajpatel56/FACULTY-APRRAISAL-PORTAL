@@ -21,6 +21,14 @@ enum SubmissionStatus {
   APPROVED
   REJECTED
   WITHDRAWN
+  HOLD
+}
+
+// W2 — per-proof verification state (incharge/HoD marks each proof link/file).
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }
 
 enum FPGPStatus {
@@ -147,6 +155,7 @@ model User {
   emails           EmailNotification[]
   passwordOtp      PasswordOtp?
   uploadedFiles    UploadedFile[]
+  proofsVerified   ProofVerification[] @relation("ProofVerifier")
 }
 
 // Proof/evidence file ownership — used to authorize downloads (prevents IDOR
@@ -276,6 +285,12 @@ model AppraisalSubmission {
   otherLeaves        String?
   higherQualAcquired String?
 
+  // W2 — reject/red-list. A rejected proof puts the submission on HOLD and
+  // red-lists the faculty until the HoD clears it after re-upload.
+  redListed  Boolean   @default(false)
+  holdReason String?
+  heldAt     DateTime?
+
   user         User         @relation(fields: [userId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
@@ -312,9 +327,34 @@ model AppraisalSubmission {
   cat5Differentiators     Cat5Differentiator[]
   cat5Internships         Cat5Internship[]
 
-  review AppraisalReview?
+  review             AppraisalReview?
+  proofVerifications ProofVerification[]
 
   @@unique([userId, academicYearId, submissionNumber])
+}
+
+// W2 — one row per proof (link or uploaded file) referenced by a submission,
+// carrying its section mapping + verification state. Records are synced from
+// the submission's category rows on demand (the section map is derived, not
+// stored at upload time). Keyed by (submissionId, url).
+model ProofVerification {
+  id           String             @id @default(uuid())
+  submissionId String
+  section      String // subsection label, e.g. "2.1 Journals"
+  item         String // row identifier, e.g. the paper/patent title
+  field        String // which proof field, e.g. "Proof" / "Index proof"
+  url          String
+  status       VerificationStatus @default(PENDING)
+  verifiedById String?
+  verifiedAt   DateTime?
+  comment      String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  verifiedBy User?               @relation("ProofVerifier", fields: [verifiedById], references: [id])
+
+  @@unique([submissionId, url])
 }
 
 model Cat1Course {

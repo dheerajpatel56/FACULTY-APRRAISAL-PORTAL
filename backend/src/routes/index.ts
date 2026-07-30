@@ -19,6 +19,7 @@ import * as audit from '../controllers/auditController';
 import * as upload from '../controllers/uploadController';
 import * as cadreTarget from '../controllers/cadreTargetController';
 import * as tierRule from '../controllers/tierRuleController';
+import * as verification from '../controllers/verificationController';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 
@@ -102,6 +103,12 @@ router.get('/appraisals/:id/score', authenticate, appraisal.getScore);
 router.get('/reviews/pending', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), review.listPendingReviews);
 router.post('/appraisals/:id/review', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), reviewerGuard, review.submitReview);
 router.get('/appraisals/:id/review', authenticate, review.getReview);
+
+// W2 — proof verification + red-list
+router.get('/appraisals/:id/proofs', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.listProofs);
+router.post('/appraisals/:id/proofs/verify', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.verifyProof);
+router.get('/red-list', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), verification.listRedList);
+router.post('/appraisals/:id/clear-hold', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), verification.clearHold);
 
 // Admin force actions
 router.get('/appraisals/:id/pdf', authenticate, appraisal.downloadAppraisalPdf);
