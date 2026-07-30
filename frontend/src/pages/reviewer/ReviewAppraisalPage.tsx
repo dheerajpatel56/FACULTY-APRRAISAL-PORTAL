@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { CheckCircle, XCircle, Eye } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
+import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -127,41 +128,8 @@ export default function ReviewAppraisalPage() {
             </div>
           </Card>
 
-          {(() => {
-            const proofs: { label: string; url: string }[] = [];
-            const add = (rows: any[], field: string, label: string) =>
-              (rows ?? []).forEach((r: any, i: number) => {
-                if (r[field]) proofs.push({ label: `${label} #${i + 1}`, url: r[field] });
-              });
-            add(submission.cat2Journals, 'proofFile', 'Journal');
-            add(submission.cat2Conferences, 'proofFile', 'Conference');
-            add(submission.cat2Patents, 'proofFile', 'Patent');
-            add(submission.cat2Projects, 'proofFile', 'Project');
-            add(submission.cat3Training, 'proofFile', 'Training');
-            add(submission.cat5Awards, 'proofFile', 'Award');
-            add(submission.cat1EContent, 'evidenceFile', 'e-Content');
-            add(submission.cat1ICT, 'evidenceFile', 'ICT');
-            return (
-              <Card>
-                <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">
-                  Proof Documents ({proofs.length})
-                </h2>
-                {proofs.length === 0 ? (
-                  <div className="text-xs text-ink-muted">No proof files attached.</div>
-                ) : (
-                  <ul className="space-y-1">
-                    {proofs.map((p, i) => (
-                      <li key={i} className="text-xs">
-                        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">
-                          📎 {p.label}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            );
-          })()}
+          <ProofVerificationPanel submissionId={id!} />
+
         </div>
 
         {/* Right: Review form */}

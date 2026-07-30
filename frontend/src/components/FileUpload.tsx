@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Upload, FileText, X, Eye, Loader2 } from 'lucide-react';
+import { Upload, FileText, X, Eye, Loader2, Link as LinkIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { uploadApi } from '../api/uploads';
 
@@ -13,7 +13,14 @@ interface Props {
 
 const DEFAULT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp';
 
+function isExternal(url: string): boolean {
+  return /^https?:\/\//i.test(url) && !url.includes('/uploads/');
+}
+
 function fileName(url: string): string {
+  if (isExternal(url)) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return 'link'; }
+  }
   // strip uuid prefix "<uuid>-name.ext" → "name.ext"
   const base = url.split('/').pop() ?? url;
   const dash = base.indexOf('-', 36); // uuid is 36 chars
@@ -23,7 +30,21 @@ function fileName(url: string): string {
 export default function FileUpload({ value, onChange, readOnly, accept = DEFAULT_ACCEPT, label }: Props) {
   const [uploading, setUploading] = useState(false);
   const [pct, setPct] = useState(0);
+  const [linkMode, setLinkMode] = useState(false);
+  const [link, setLink] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const saveLink = () => {
+    const url = link.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      toast.error('Enter a valid link (https://…)');
+      return;
+    }
+    onChange(url);
+    setLink('');
+    setLinkMode(false);
+    toast.success('Link saved');
+  };
 
   const onPick = async (file: File) => {
     setUploading(true);
@@ -46,9 +67,14 @@ export default function FileUpload({ value, onChange, readOnly, accept = DEFAULT
     if (url) uploadApi.deleteProof(url).catch(() => {}); // best-effort
   };
 
-  // Open the proof via the authenticated route (not a direct URL).
+  // Open the proof — external links directly, internal files via the
+  // authenticated route (not a direct URL).
   const openProof = async () => {
     if (!value) return;
+    if (isExternal(value)) {
+      window.open(value, '_blank', 'noopener,noreferrer');
+      return;
+    }
     try {
       const objectUrl = await uploadApi.viewProof(value);
       window.open(objectUrl, '_blank', 'noopener,noreferrer');
@@ -94,15 +120,41 @@ export default function FileUpload({ value, onChange, readOnly, accept = DEFAULT
     );
   }
 
-  // Empty — upload button
+  // Link-paste mode (e.g. Google Drive share link)
+  if (linkMode) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <input
+          autoFocus
+          type="url"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveLink(); } }}
+          placeholder="Paste link (Google Drive…)"
+          className="text-xs border border-surface-border rounded px-2 py-1 w-48 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+        <button type="button" onClick={saveLink} className="text-xs text-primary-600 hover:underline">Save</button>
+        <button type="button" onClick={() => { setLinkMode(false); setLink(''); }} className="text-xs text-ink-muted hover:underline">Cancel</button>
+      </div>
+    );
+  }
+
+  // Empty — upload button + paste-link option
   return (
-    <div>
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
         className="inline-flex items-center gap-1.5 text-xs border border-surface-border rounded px-2.5 py-1 text-ink-secondary hover:bg-surface-muted hover:border-primary-300"
       >
         <Upload size={12} /> {label ?? 'Upload proof'}
+      </button>
+      <button
+        type="button"
+        onClick={() => setLinkMode(true)}
+        className="inline-flex items-center gap-1.5 text-xs border border-surface-border rounded px-2.5 py-1 text-ink-secondary hover:bg-surface-muted hover:border-primary-300"
+      >
+        <LinkIcon size={12} /> Link
       </button>
       <input
         ref={inputRef}
