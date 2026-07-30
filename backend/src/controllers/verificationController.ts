@@ -4,6 +4,7 @@ import { RoleType, SubmissionStatus } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { canViewUserResource } from '../utils/access';
 import { syncProofVerifications } from '../services/proofService';
+import { enqueueEmail } from '../services/emailService';
 
 // A verifier (incharge/HoD/admin) of the faculty's department — never the owner.
 function canVerify(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
@@ -63,7 +64,10 @@ const verifySchema = z.object({
 export async function verifyProof(req: Request, res: Response) {
   const sub = await prisma.appraisalSubmission.findUnique({
     where: { id: req.params.id },
-    include: { user: { select: { departmentId: true } } },
+    include: {
+      user: { select: { id: true, name: true, employeeCode: true, departmentId: true } },
+      academicYear: { select: { label: true } },
+    },
   });
   if (!sub) return res.status(404).json({ error: 'Not found' });
   if (!canVerify(req.user!, sub.userId, sub.user.departmentId)) {
@@ -106,6 +110,43 @@ export async function verifyProof(req: Request, res: Response) {
     });
   });
 
+  // Notify on reject — faculty (must re-upload) + dept HoD(s) (red list).
+  if (status === 'REJECTED') {
+    try {
+      const base = {
+        year: sub.academicYear.label,
+        submissionNumber: sub.submissionNumber,
+        submissionId: sub.id,
+        section: pv.section,
+        item: pv.item,
+        field: pv.field,
+        comment: comment ?? '',
+      };
+      await enqueueEmail({
+        toUserId: sub.userId,
+        template: 'proof_rejected',
+        payload: { name: sub.user.name, ...base },
+        dedupeKey: `proof_rejected:${pv.id}:${Date.now()}`,
+      });
+      const hods = await prisma.userRole.findMany({
+        where: { role: 'HOD', isActive: true, departmentId: sub.user.departmentId ?? undefined },
+        select: { userId: true },
+      });
+      for (const h of hods) {
+        if (h.userId === req.user!.id) continue; // rejecter is the HoD — no self-notice
+        const hod = await prisma.user.findUnique({ where: { id: h.userId }, select: { name: true } });
+        await enqueueEmail({
+          toUserId: h.userId,
+          template: 'proof_rejected_hod',
+          payload: { name: hod?.name ?? 'HoD', facultyName: sub.user.name, employeeCode: sub.user.employeeCode, ...base },
+          dedupeKey: `proof_rejected_hod:${pv.id}:${h.userId}:${Date.now()}`,
+        });
+      }
+    } catch (e) {
+      console.error('[email] enqueue proof reject failed:', e);
+    }
+  }
+
   return res.json({ message: `Proof ${status.toLowerCase()}` });
 }
 
@@ -136,7 +177,10 @@ export async function listRedList(req: Request, res: Response) {
 export async function clearHold(req: Request, res: Response) {
   const sub = await prisma.appraisalSubmission.findUnique({
     where: { id: req.params.id },
-    include: { user: { select: { departmentId: true } } },
+    include: {
+      user: { select: { id: true, name: true, departmentId: true } },
+      academicYear: { select: { label: true } },
+    },
   });
   if (!sub) return res.status(404).json({ error: 'Not found' });
   if (!canVerify(req.user!, sub.userId, sub.user.departmentId)) {
@@ -155,6 +199,17 @@ export async function clearHold(req: Request, res: Response) {
       data: { userId: req.user!.id, action: 'HOLD_CLEARED', entityType: 'AppraisalSubmission', entityId: sub.id },
     });
   });
+
+  try {
+    await enqueueEmail({
+      toUserId: sub.userId,
+      template: 'hold_cleared',
+      payload: { name: sub.user.name, year: sub.academicYear.label, submissionNumber: sub.submissionNumber, submissionId: sub.id },
+      dedupeKey: `hold_cleared:${sub.id}:${Date.now()}`,
+    });
+  } catch (e) {
+    console.error('[email] enqueue hold cleared failed:', e);
+  }
 
   return res.json({ message: 'Hold cleared' });
 }

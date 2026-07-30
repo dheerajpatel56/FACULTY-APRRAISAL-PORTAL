@@ -30,7 +30,10 @@ export type EmailTemplateKey =
   | 'fpgp_signed'
   | 'fpgp_evaluated'
   | 'reviewer_daily_digest'
-  | 'password_otp';
+  | 'password_otp'
+  | 'proof_rejected'
+  | 'proof_rejected_hod'
+  | 'hold_cleared';
 
 interface EnqueueOpts {
   toUserId: string;

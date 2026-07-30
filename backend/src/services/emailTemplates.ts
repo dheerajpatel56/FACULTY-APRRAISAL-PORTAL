@@ -13,6 +13,9 @@ export const TEMPLATE_SUBJECTS: Record<EmailTemplateKey, (p: any) => string> = {
   fpgp_evaluated: (p) => `FPGP ${p.year} — ${p.autoAccepted ? 'Accepted (targets met)' : 'Needs review'}`,
   reviewer_daily_digest: (p) => `Pending Reviews — ${p.pendingCount} appraisal(s)`,
   password_otp: (_p) => `VNRVJIET Faculty Portal — Password Change OTP`,
+  proof_rejected: (p) => `Action needed — Proof rejected, appraisal ${p.year} on hold`,
+  proof_rejected_hod: (p) => `Red List — ${p.facultyName}'s ${p.year} appraisal held`,
+  hold_cleared: (p) => `Hold cleared — Appraisal ${p.year} back under review`,
 };
 
 function layout(title: string, body: string): string {
@@ -169,6 +172,39 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
         ${p.items.map((it: any, i: number) => `<tr ${i % 2 ? 'style="background:#f8fafc"' : ''}><td>${it.name}</td><td>${it.year}</td><td>${it.daysWaiting}</td></tr>`).join('')}
       </table>` : ''}
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/reviews" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">Open Review Queue</a></p>
+  `),
+
+  proof_rejected: (p) => layout('Proof Rejected — Action Needed', `
+    <h2 style="margin:0 0 8px;color:#dc2626">Proof Rejected</h2>
+    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>A proof on your Faculty Appraisal for <strong>${p.year}</strong> (Submission #${p.submissionNumber}) was <strong style="color:#dc2626">rejected</strong>, and your submission is now <strong>ON HOLD</strong>.</p>
+    <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
+      <tr><td style="color:#64748b;width:120px">Section</td><td style="color:#0f172a">${p.section}</td></tr>
+      <tr><td style="color:#64748b">Item</td><td style="color:#0f172a">${p.item}${p.field ? ` (${p.field})` : ''}</td></tr>
+      ${p.comment ? `<tr><td style="color:#64748b;vertical-align:top">Reason</td><td style="color:#dc2626">${p.comment}</td></tr>` : ''}
+    </table>
+    <p style="color:#64748b;font-size:13px">Please re-upload the correct proof (a file or a valid share link). Your HoD will clear the hold once the corrected proof is verified.</p>
+    <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}/edit" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">Fix Proof</a></p>
+  `),
+
+  proof_rejected_hod: (p) => layout('Red List — Submission Held', `
+    <h2 style="margin:0 0 8px;color:#dc2626">Submission Added to Red List</h2>
+    <p>Dear <strong>${p.name}</strong>,</p>
+    <p><strong>${p.facultyName}</strong> (${p.employeeCode}) has a rejected proof on their <strong>${p.year}</strong> appraisal (Submission #${p.submissionNumber}); the submission is now on hold.</p>
+    <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
+      <tr><td style="color:#64748b;width:120px">Section</td><td style="color:#0f172a">${p.section}</td></tr>
+      <tr><td style="color:#64748b">Item</td><td style="color:#0f172a">${p.item}${p.field ? ` (${p.field})` : ''}</td></tr>
+      ${p.comment ? `<tr><td style="color:#64748b;vertical-align:top">Reason</td><td style="color:#dc2626">${p.comment}</td></tr>` : ''}
+    </table>
+    <p style="color:#64748b;font-size:13px">Clear the hold from the Red List once the faculty re-uploads and the proof is verified.</p>
+    <p style="margin-top:16px"><a href="${FRONTEND_URL}/red-list" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">Open Red List</a></p>
+  `),
+
+  hold_cleared: (p) => layout('Hold Cleared', `
+    <h2 style="margin:0 0 8px;color:#059669">Hold Cleared</h2>
+    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>The hold on your Faculty Appraisal for <strong>${p.year}</strong> (Submission #${p.submissionNumber}) has been cleared. Your submission is back <strong>under review</strong>.</p>
+    <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Submission</a></p>
   `),
 };
 

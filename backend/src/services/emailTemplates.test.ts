@@ -11,6 +11,9 @@ const ALL_KEYS: EmailTemplateKey[] = [
   'fpgp_signed',
   'reviewer_daily_digest',
   'password_otp',
+  'proof_rejected',
+  'proof_rejected_hod',
+  'hold_cleared',
 ];
 
 const samplePayload: Record<string, any> = {
@@ -28,6 +31,8 @@ const samplePayload: Record<string, any> = {
   pendingCount: 3, items: [{ name: 'X', year: '2025-26', daysWaiting: 2 }],
   otp: '123456', expiresInMinutes: 10,
   windowCloses: '2026-03-31', daysLeft: 5,
+  section: '2.1 Journals', item: 'Paper Alpha', field: 'Proof', comment: 'blurry',
+  facultyName: 'Dr. Faculty', employeeCode: '98CSE011',
 };
 
 describe('TEMPLATE_SUBJECTS', () => {
