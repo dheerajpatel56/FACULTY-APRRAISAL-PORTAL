@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
-  BarChart2, FileText, BookOpen, User, Users, Settings, LayoutDashboard, Mail, Activity, Menu, X, Target,
+  BarChart2, FileText, BookOpen, User, Users, Settings, LayoutDashboard, Mail, Activity, Menu, X, Target, ShieldCheck,
 } from 'lucide-react';
 import BrandHeader from './BrandHeader';
 import Footer from './Footer';
@@ -48,6 +48,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {navLink('/admin/departments', 'Departments', Settings)}
           {navLink('/admin/academic-years', 'Academic Years', BookOpen)}
           {navLink('/admin/cadre-targets', 'Cadre Targets', Target)}
+          {navLink('/admin/incharges', 'Incharges', ShieldCheck)}
           {navLink('/admin/appraisals', 'All Appraisals', FileText)}
           {navLink('/admin/reports', 'Reports', BarChart2)}
           {navLink('/admin/emails', 'Emails', Mail)}
