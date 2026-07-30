@@ -11,6 +11,7 @@ import ReviewAppraisalPage from './pages/reviewer/ReviewAppraisalPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminAcademicYearsPage from './pages/admin/AdminAcademicYearsPage';
+import AdminCadreTargetsPage from './pages/admin/AdminCadreTargetsPage';
 import AdminAppraisalsPage from './pages/admin/AdminAppraisalsPage';
 import AdminDepartmentsPage from './pages/admin/AdminDepartmentsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
@@ -70,6 +71,9 @@ export default function App() {
         } />
         <Route path="/admin/academic-years" element={
           <ProtectedRoute roles={['ADMIN']}><AdminAcademicYearsPage /></ProtectedRoute>
+        } />
+        <Route path="/admin/cadre-targets" element={
+          <ProtectedRoute roles={['ADMIN']}><AdminCadreTargetsPage /></ProtectedRoute>
         } />
         <Route path="/admin/appraisals" element={
           <ProtectedRoute roles={['ADMIN']}><AdminAppraisalsPage /></ProtectedRoute>

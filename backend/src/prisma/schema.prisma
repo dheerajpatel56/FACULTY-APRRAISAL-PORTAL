@@ -83,6 +83,23 @@ enum EmailStatus {
   FAILED
 }
 
+// Faculty cadre bands (FAPA cadre-eligibility table). Assistant Professor splits
+// by experience (< 3 yr / >= 3 yr) via the CadreTarget exp bounds; the others
+// have a single band.
+enum Cadre {
+  ASSISTANT_PROFESSOR
+  SR_ASSISTANT_PROFESSOR
+  ASSOCIATE_PROFESSOR
+  PROFESSOR
+}
+
+// Patents/Projects/Consultancy requirement mode. DESIRABLE = suggested only
+// (never blocks a tier); MANDATORY = must be met.
+enum PpcRule {
+  DESIRABLE
+  MANDATORY
+}
+
 model User {
   id                    String    @id @default(uuid())
   employeeCode          String    @unique
@@ -177,6 +194,31 @@ model AcademicYear {
 
   deptSettings AcademicYearDept[]
   appraisals   AppraisalSubmission[]
+  cadreTargets CadreTarget[]
+}
+
+// W1 — admin-configured per-AY cadre eligibility targets (FAPA table).
+// Seeded from the FAPA AY2025-26 table, admin-editable. The eligibility/tier
+// engine (W3) reads actuals against these rows.
+model CadreTarget {
+  id               String   @id @default(uuid())
+  academicYearId   String
+  cadre            Cadre
+  minExpYears      Float    @default(0) // inclusive lower bound
+  maxExpYears      Float? // exclusive upper bound; null = no upper bound
+  totalScoreTarget Float
+  feedbackTarget   Float
+  indexedCount     Int
+  minJournal       Int      @default(0)
+  quartileSet      String? // e.g. "Q1-Q4", "Q1-Q3"; null = any quartile
+  ppcRule          PpcRule
+  ppcCount         Int // 1 or 2
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([academicYearId, cadre, minExpYears])
 }
 
 model AcademicYearDept {

@@ -17,6 +17,7 @@ import * as report from '../controllers/reportController';
 import * as email from '../controllers/emailController';
 import * as audit from '../controllers/auditController';
 import * as upload from '../controllers/uploadController';
+import * as cadreTarget from '../controllers/cadreTargetController';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 
@@ -74,6 +75,13 @@ router.get('/academic-years', authenticate, year.listAcademicYears);
 router.get('/admin/academic-years', authenticate, roleGuard([RoleType.ADMIN]), year.listAcademicYears);
 router.post('/admin/academic-years', authenticate, roleGuard([RoleType.ADMIN]), year.createAcademicYear);
 router.put('/admin/academic-years/:id', authenticate, roleGuard([RoleType.ADMIN]), year.updateAcademicYear);
+
+// Admin: cadre eligibility targets (W1)
+router.get('/admin/cadre-targets', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.listCadreTargets);
+router.post('/admin/cadre-targets', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.createCadreTarget);
+router.post('/admin/cadre-targets/seed-defaults', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.seedDefaultCadreTargets);
+router.put('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.updateCadreTarget);
+router.delete('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.deleteCadreTarget);
 
 // Appraisals
 router.get('/appraisals', authenticate, appraisal.listAppraisals);

@@ -1,4 +1,4 @@
-import { PrismaClient, RoleType } from '@prisma/client';
+import { PrismaClient, RoleType, Cadre, PpcRule } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -19,7 +19,7 @@ async function main() {
     prisma.department.upsert({ where: { code: 'EEE' }, create: { name: 'Electrical & Electronics Engineering', code: 'EEE' }, update: {} }),
   ]);
 
-  await prisma.academicYear.upsert({
+  const year = await prisma.academicYear.upsert({
     where: { label: '2025-26' },
     create: {
       label: '2025-26',
@@ -29,6 +29,22 @@ async function main() {
     },
     update: { submissionOpen: true },
   });
+
+  // W1 — FAPA AY2025-26 cadre eligibility targets (admin-editable later)
+  const cadreTargets = [
+    { cadre: Cadre.ASSISTANT_PROFESSOR, minExpYears: 0, maxExpYears: 3, totalScoreTarget: 325, feedbackTarget: 3.5, indexedCount: 2, minJournal: 0, quartileSet: null, ppcRule: PpcRule.DESIRABLE, ppcCount: 1 },
+    { cadre: Cadre.ASSISTANT_PROFESSOR, minExpYears: 3, maxExpYears: null, totalScoreTarget: 350, feedbackTarget: 3.5, indexedCount: 2, minJournal: 1, quartileSet: null, ppcRule: PpcRule.DESIRABLE, ppcCount: 1 },
+    { cadre: Cadre.SR_ASSISTANT_PROFESSOR, minExpYears: 0, maxExpYears: null, totalScoreTarget: 350, feedbackTarget: 3.5, indexedCount: 3, minJournal: 2, quartileSet: null, ppcRule: PpcRule.MANDATORY, ppcCount: 1 },
+    { cadre: Cadre.ASSOCIATE_PROFESSOR, minExpYears: 0, maxExpYears: null, totalScoreTarget: 375, feedbackTarget: 3.5, indexedCount: 3, minJournal: 2, quartileSet: 'Q1-Q4', ppcRule: PpcRule.MANDATORY, ppcCount: 2 },
+    { cadre: Cadre.PROFESSOR, minExpYears: 0, maxExpYears: null, totalScoreTarget: 375, feedbackTarget: 3.5, indexedCount: 3, minJournal: 2, quartileSet: 'Q1-Q3', ppcRule: PpcRule.MANDATORY, ppcCount: 2 },
+  ];
+  for (const t of cadreTargets) {
+    await prisma.cadreTarget.upsert({
+      where: { academicYearId_cadre_minExpYears: { academicYearId: year.id, cadre: t.cadre, minExpYears: t.minExpYears } },
+      create: { academicYearId: year.id, ...t },
+      update: { ...t },
+    });
+  }
 
   const hash = (pw: string) => bcrypt.hash(pw, 12);
 
