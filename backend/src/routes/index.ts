@@ -18,6 +18,7 @@ import * as email from '../controllers/emailController';
 import * as audit from '../controllers/auditController';
 import * as upload from '../controllers/uploadController';
 import * as cadreTarget from '../controllers/cadreTargetController';
+import * as tierRule from '../controllers/tierRuleController';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 
@@ -82,6 +83,11 @@ router.post('/admin/cadre-targets', authenticate, roleGuard([RoleType.ADMIN]), c
 router.post('/admin/cadre-targets/seed-defaults', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.seedDefaultCadreTargets);
 router.put('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.updateCadreTarget);
 router.delete('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.deleteCadreTarget);
+
+// Admin: tier rules (W1)
+router.get('/admin/tier-rules', authenticate, roleGuard([RoleType.ADMIN]), tierRule.listTierRules);
+router.put('/admin/tier-rules', authenticate, roleGuard([RoleType.ADMIN]), tierRule.upsertTierRule);
+router.delete('/admin/tier-rules/:id', authenticate, roleGuard([RoleType.ADMIN]), tierRule.deleteTierRule);
 
 // Appraisals
 router.get('/appraisals', authenticate, appraisal.listAppraisals);
