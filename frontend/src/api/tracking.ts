@@ -35,10 +35,20 @@ export interface TrackingRow {
   tierSatisfied: Record<'T1' | 'T2' | 'T3', boolean>;
 }
 
+export type TierKey = 'T1' | 'T2' | 'T3' | 'none';
+
+export interface Aggregates {
+  total: number;
+  eligible: number;
+  byTier: Record<TierKey, number>;
+  byCadre: Record<string, { total: number; eligible: number; tiers: Record<TierKey, number> }>;
+}
+
 export interface TrackingResponse {
   year: { id: string; label: string };
   hasTargets: boolean;
   hasTierRules: boolean;
+  aggregates: Aggregates;
   rows: TrackingRow[];
 }
 
@@ -47,4 +57,15 @@ export const trackingApi = {
     api.get('/tracking', { params: academicYearId ? { academicYearId } : {} }).then((r) => r.data),
   runSnapshot: (academicYearId?: string): Promise<{ message: string; quarter: string; faculty: number }> =>
     api.post('/admin/tracking/snapshot', academicYearId ? { academicYearId } : {}).then((r) => r.data),
+  exportExcel: async (academicYearId: string, label: string) => {
+    const blob = await api
+      .get('/tracking/export', { params: { academicYearId, format: 'excel' }, responseType: 'blob' })
+      .then((r) => r.data as Blob);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cadre-tier-${label}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };

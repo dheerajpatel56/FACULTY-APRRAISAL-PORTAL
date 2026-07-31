@@ -71,3 +71,52 @@ export function latestPerFaculty<T extends { userId: string }>(subs: T[]): T[] {
   for (const s of subs) if (!seen.has(s.userId)) seen.set(s.userId, s);
   return [...seen.values()];
 }
+
+export type TrackingRow = ReturnType<typeof computeRow>;
+
+// Resolve the AY + build the sorted per-faculty rows for a scope. Returns null
+// if the year can't be resolved.
+export async function buildTrackingRows(opts: { isAdmin: boolean; deptIds: string[]; academicYearId?: string }) {
+  const year = opts.academicYearId
+    ? await prisma.academicYear.findUnique({ where: { id: opts.academicYearId } })
+    : await prisma.academicYear.findFirst({ where: { submissionOpen: true }, orderBy: { startDate: 'desc' } });
+  if (!year) return null;
+
+  const [ctx, submissions] = await Promise.all([
+    loadTrackingContext(year.id),
+    prisma.appraisalSubmission.findMany({
+      where: { academicYearId: year.id, ...(opts.isAdmin ? {} : { user: { departmentId: { in: opts.deptIds } } }) },
+      include: TRACKING_INCLUDE,
+      orderBy: { submissionNumber: 'desc' },
+    }),
+  ]);
+
+  const rows = latestPerFaculty(submissions)
+    .map((sub) => computeRow(sub, ctx, year.startDate))
+    .sort((a, b) => a.faculty.name.localeCompare(b.faculty.name));
+
+  return { year, ctx, rows };
+}
+
+type TierKey = 'T1' | 'T2' | 'T3' | 'none';
+const emptyTiers = (): Record<TierKey, number> => ({ T1: 0, T2: 0, T3: 0, none: 0 });
+
+// Segregate rows by cadre + tier for the report summary.
+export function summarize(rows: TrackingRow[]) {
+  const byTier = emptyTiers();
+  const byCadre: Record<string, { total: number; eligible: number; tiers: Record<TierKey, number> }> = {};
+  let eligible = 0;
+
+  for (const r of rows) {
+    const t: TierKey = (r.tier as TierKey) ?? 'none';
+    byTier[t]++;
+    if (r.eligibility.eligible) eligible++;
+    const key = r.cadreLabel ?? 'Unassigned';
+    byCadre[key] = byCadre[key] ?? { total: 0, eligible: 0, tiers: emptyTiers() };
+    byCadre[key].total++;
+    if (r.eligibility.eligible) byCadre[key].eligible++;
+    byCadre[key].tiers[t]++;
+  }
+
+  return { total: rows.length, eligible, byTier, byCadre };
+}

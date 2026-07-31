@@ -112,6 +112,8 @@ router.post('/appraisals/:id/clear-hold', authenticate, roleGuard([RoleType.HOD,
 
 // W3 — criteria tracking / tier / eligibility
 router.get('/tracking', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), tracking.getTracking);
+// W5 — segregated cadre+tier report export
+router.get('/tracking/export', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), tracking.exportTracking);
 // W4 — quarterly snapshot manual trigger (cron runs it at quarter-end)
 router.post('/admin/tracking/snapshot', authenticate, roleGuard([RoleType.ADMIN]), tracking.runSnapshot);
 

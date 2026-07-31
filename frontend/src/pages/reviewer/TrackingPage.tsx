@@ -1,6 +1,6 @@
 import { useEffect, useState, Fragment } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight, CalendarClock } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, CalendarClock, Download } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../store/authStore';
@@ -66,6 +66,23 @@ export default function TrackingPage() {
     }
   };
 
+  const [fCadre, setFCadre] = useState('');
+  const [fTier, setFTier] = useState('');
+  const [fElig, setFElig] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const exportXlsx = async () => {
+    if (!data) return;
+    setExporting(true);
+    try {
+      await trackingApi.exportExcel(yearId, data.year.label);
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   useEffect(() => {
     userApi.listAcademicYears().then((ys: any[]) => {
       setYears(ys);
@@ -84,22 +101,46 @@ export default function TrackingPage() {
   const th = 'py-2 px-2 font-semibold text-left';
   const cell = (met: boolean) => `py-2 px-2 ${met ? 'text-ink-primary' : 'text-red-600'}`;
 
+  const cadreOptions = data ? Object.keys(data.aggregates.byCadre) : [];
+  const filtered = (data?.rows ?? []).filter((r) => {
+    if (fCadre && (r.cadreLabel ?? 'Unassigned') !== fCadre) return false;
+    if (fTier && (r.tier ?? 'none') !== fTier) return false;
+    if (fElig) {
+      const scored = r.eligibility.requirements.length > 0;
+      if (fElig === 'eligible' && !(scored && r.eligibility.eligible)) return false;
+      if (fElig === 'not' && !(scored && !r.eligibility.eligible)) return false;
+    }
+    return true;
+  });
+
   return (
     <div>
       <PageHeader
         title="Criteria Tracking"
         subtitle="Actuals vs cadre targets, eligibility and tier per faculty."
         breadcrumbs={[{ label: 'Criteria Tracking' }]}
-        actions={isAdmin() ? (
-          <button
-            onClick={runSnapshot}
-            disabled={snapshotting || !yearId}
-            className="flex items-center gap-2 border border-surface-border text-ink-secondary px-3 py-2 rounded text-sm font-medium hover:bg-surface-muted disabled:opacity-50"
-            title="Snapshot this quarter's standing and email each faculty their feedback"
-          >
-            <CalendarClock size={16} /> {snapshotting ? 'Running…' : 'Run quarterly snapshot'}
-          </button>
-        ) : undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportXlsx}
+              disabled={exporting || !data || data.rows.length === 0}
+              className="flex items-center gap-2 border border-surface-border text-ink-secondary px-3 py-2 rounded text-sm font-medium hover:bg-surface-muted disabled:opacity-50"
+              title="Download the cadre + tier report as Excel"
+            >
+              <Download size={16} /> {exporting ? 'Exporting…' : 'Export'}
+            </button>
+            {isAdmin() && (
+              <button
+                onClick={runSnapshot}
+                disabled={snapshotting || !yearId}
+                className="flex items-center gap-2 border border-surface-border text-ink-secondary px-3 py-2 rounded text-sm font-medium hover:bg-surface-muted disabled:opacity-50"
+                title="Snapshot this quarter's standing and email each faculty their feedback"
+              >
+                <CalendarClock size={16} /> {snapshotting ? 'Running…' : 'Run quarterly snapshot'}
+              </button>
+            )}
+          </div>
+        }
       />
 
       <div className="mb-4 max-w-xs">
@@ -120,10 +161,73 @@ export default function TrackingPage() {
         </div>
       )}
 
+      {data && data.rows.length > 0 && (
+        <>
+          <Card className="mb-4 overflow-x-auto">
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">Segregation by cadre &amp; tier</div>
+            <table className="text-sm min-w-[36rem]">
+              <thead>
+                <tr className="text-xs uppercase tracking-wider text-ink-muted border-b border-surface-border">
+                  <th className={th}>Cadre</th>
+                  <th className={th}>T1</th>
+                  <th className={th}>T2</th>
+                  <th className={th}>T3</th>
+                  <th className={th}>No tier</th>
+                  <th className={th}>Eligible</th>
+                  <th className={th}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(data.aggregates.byCadre).map(([cadre, a]) => (
+                  <tr key={cadre} className="border-b border-surface-border/50">
+                    <td className="py-1.5 px-2 font-medium text-ink-primary">{cadre}</td>
+                    <td className="py-1.5 px-2 text-ink-secondary">{a.tiers.T1}</td>
+                    <td className="py-1.5 px-2 text-ink-secondary">{a.tiers.T2}</td>
+                    <td className="py-1.5 px-2 text-ink-secondary">{a.tiers.T3}</td>
+                    <td className="py-1.5 px-2 text-ink-muted">{a.tiers.none}</td>
+                    <td className="py-1.5 px-2 text-emerald-700">{a.eligible}</td>
+                    <td className="py-1.5 px-2 font-medium">{a.total}</td>
+                  </tr>
+                ))}
+                <tr className="font-semibold">
+                  <td className="py-1.5 px-2">All</td>
+                  <td className="py-1.5 px-2">{data.aggregates.byTier.T1}</td>
+                  <td className="py-1.5 px-2">{data.aggregates.byTier.T2}</td>
+                  <td className="py-1.5 px-2">{data.aggregates.byTier.T3}</td>
+                  <td className="py-1.5 px-2 text-ink-muted">{data.aggregates.byTier.none}</td>
+                  <td className="py-1.5 px-2 text-emerald-700">{data.aggregates.eligible}</td>
+                  <td className="py-1.5 px-2">{data.aggregates.total}</td>
+                </tr>
+              </tbody>
+            </table>
+          </Card>
+
+          <div className="flex flex-wrap gap-2 mb-3">
+            <select value={fCadre} onChange={(e) => setFCadre(e.target.value)} className={inputCls}>
+              <option value="">All cadres</option>
+              {cadreOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={fTier} onChange={(e) => setFTier(e.target.value)} className={inputCls}>
+              <option value="">All tiers</option>
+              <option value="T1">T1</option>
+              <option value="T2">T2</option>
+              <option value="T3">T3</option>
+              <option value="none">No tier</option>
+            </select>
+            <select value={fElig} onChange={(e) => setFElig(e.target.value)} className={inputCls}>
+              <option value="">All eligibility</option>
+              <option value="eligible">Eligible</option>
+              <option value="not">Not eligible</option>
+            </select>
+            <span className="text-xs text-ink-muted self-center">{filtered.length} of {data.rows.length}</span>
+          </div>
+        </>
+      )}
+
       {loading ? (
         <div className="text-sm text-ink-muted">Loading…</div>
-      ) : !data || data.rows.length === 0 ? (
-        <Card><div className="text-sm text-ink-muted py-4 text-center">No submissions for this year.</div></Card>
+      ) : !data || filtered.length === 0 ? (
+        <Card><div className="text-sm text-ink-muted py-4 text-center">No matching faculty.</div></Card>
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -145,7 +249,7 @@ export default function TrackingPage() {
               </tr>
             </thead>
             <tbody>
-              {data.rows.map((r) => {
+              {filtered.map((r) => {
                 const req = (k: string) => r.eligibility.requirements.find((x) => x.key === k);
                 const isOpen = expanded === r.submissionId;
                 return (
