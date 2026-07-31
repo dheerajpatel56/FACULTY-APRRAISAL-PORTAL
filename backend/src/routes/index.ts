@@ -12,7 +12,6 @@ import * as dept from '../controllers/departmentController';
 import * as year from '../controllers/academicYearController';
 import * as appraisal from '../controllers/appraisalController';
 import * as review from '../controllers/reviewController';
-import * as fpgp from '../controllers/fpgpController';
 import * as report from '../controllers/reportController';
 import * as email from '../controllers/emailController';
 import * as audit from '../controllers/auditController';
@@ -113,24 +112,15 @@ router.post('/appraisals/:id/clear-hold', authenticate, roleGuard([RoleType.HOD,
 
 // W3 — criteria tracking / tier / eligibility
 router.get('/tracking', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), tracking.getTracking);
+// W4 — quarterly snapshot manual trigger (cron runs it at quarter-end)
+router.post('/admin/tracking/snapshot', authenticate, roleGuard([RoleType.ADMIN]), tracking.runSnapshot);
 
 // Admin force actions
 router.get('/appraisals/:id/pdf', authenticate, appraisal.downloadAppraisalPdf);
-router.get('/fpgp/:id/pdf', authenticate, fpgp.downloadFpgpPdf);
 router.post('/admin/appraisals/:id/unlock', authenticate, roleGuard([RoleType.ADMIN]), review.adminUnlock);
 router.post('/admin/appraisals/:id/assign-reviewer', authenticate, roleGuard([RoleType.ADMIN]), review.adminAssignReviewer);
 
-// FPGP v2
-router.get('/fpgp/template', authenticate, fpgp.getTemplate);
-router.get('/fpgp/me', authenticate, fpgp.getMyPlan);
-router.post('/fpgp', authenticate, fpgp.createPlan);
-router.put('/fpgp/:id/subsections', authenticate, fpgp.updateSubsections);
-router.post('/fpgp/:id/sign', authenticate, fpgp.facultySign);
-router.post('/fpgp/:id/hod-sign', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), fpgp.hodSign);
-router.get('/fpgp/department', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), fpgp.getDepartmentPlans);
-router.post('/fpgp/:id/review', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), fpgp.addReview);
-router.post('/fpgp/evaluate', authenticate, roleGuard([RoleType.ADMIN]), fpgp.evaluatePlans);
-router.get('/fpgp/:id', authenticate, fpgp.getPlanDetail);
+// FPGP v2 — routes retired (module off; controller + data kept, unreachable).
 
 // Reports
 router.get('/reports/department', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), report.getDeptReport);

@@ -45,4 +45,6 @@ export interface TrackingResponse {
 export const trackingApi = {
   get: (academicYearId?: string): Promise<TrackingResponse> =>
     api.get('/tracking', { params: academicYearId ? { academicYearId } : {} }).then((r) => r.data),
+  runSnapshot: (academicYearId?: string): Promise<{ message: string; quarter: string; faculty: number }> =>
+    api.post('/admin/tracking/snapshot', academicYearId ? { academicYearId } : {}).then((r) => r.data),
 };

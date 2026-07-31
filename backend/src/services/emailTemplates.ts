@@ -16,6 +16,7 @@ export const TEMPLATE_SUBJECTS: Record<EmailTemplateKey, (p: any) => string> = {
   proof_rejected: (p) => `Action needed — Proof rejected, appraisal ${p.year} on hold`,
   proof_rejected_hod: (p) => `Red List — ${p.facultyName}'s ${p.year} appraisal held`,
   hold_cleared: (p) => `Hold cleared — Appraisal ${p.year} back under review`,
+  quarterly_feedback: (p) => `${p.quarter} feedback — Appraisal ${p.year} (provisional)`,
 };
 
 function layout(title: string, body: string): string {
@@ -205,6 +206,21 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
     <p>Dear <strong>${p.name}</strong>,</p>
     <p>The hold on your Faculty Appraisal for <strong>${p.year}</strong> (Submission #${p.submissionNumber}) has been cleared. Your submission is back <strong>under review</strong>.</p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Submission</a></p>
+  `),
+
+  quarterly_feedback: (p) => layout('Quarterly Feedback', `
+    <h2 style="margin:0 0 8px;color:#1e3a5f">${p.quarter} Progress — ${p.year}</h2>
+    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Your provisional standing this quarter (cadre <strong>${p.cadre}</strong>):</p>
+    <p>Tier: <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${p.tier}</span>
+       &nbsp; Eligibility: <span style="background:${p.eligible ? '#d1fae5;color:#065f46' : '#fee2e2;color:#991b1b'};padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${p.eligible ? 'ON TRACK' : 'NOT YET'}</span></p>
+    ${Array.isArray(p.requirements) && p.requirements.length ? `
+      <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
+        <tr style="background:#1e3a5f;color:#fff"><th align="left" style="padding:8px">Criterion</th><th align="left" style="padding:8px">Target</th><th align="left" style="padding:8px">Actual</th><th align="left" style="padding:8px">Met</th></tr>
+        ${p.requirements.map((r: any, i: number) => `<tr ${i % 2 ? 'style="background:#f8fafc"' : ''}><td>${r.label}</td><td>${r.target}</td><td>${r.actual}</td><td>${r.met ? '✔' : '✘'}</td></tr>`).join('')}
+      </table>` : ''}
+    <p style="color:#64748b;font-size:13px">This is a provisional quarterly update; your final eligibility and tier are set at the annual submission.</p>
+    <p style="margin-top:24px;color:#94a3b8;font-size:11px">Sent per your email preferences. <a href="${FRONTEND_URL}/profile" style="color:#94a3b8">Manage preferences</a>.</p>
   `),
 };
 

@@ -14,6 +14,7 @@ const ALL_KEYS: EmailTemplateKey[] = [
   'proof_rejected',
   'proof_rejected_hod',
   'hold_cleared',
+  'quarterly_feedback',
 ];
 
 const samplePayload: Record<string, any> = {
@@ -33,6 +34,8 @@ const samplePayload: Record<string, any> = {
   windowCloses: '2026-03-31', daysLeft: 5,
   section: '2.1 Journals', item: 'Paper Alpha', field: 'Proof', comment: 'blurry',
   facultyName: 'Dr. Faculty', employeeCode: '98CSE011',
+  quarter: 'Q1', cadre: 'Assistant Professor', tier: 'T2', eligible: true,
+  requirements: [{ label: 'Total score', target: '>= 325', actual: '380', met: true }],
 };
 
 describe('TEMPLATE_SUBJECTS', () => {

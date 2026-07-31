@@ -7,7 +7,7 @@ import routes from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { startEmailWorker } from './services/emailWorker';
 import { startReminderCrons } from './cron/reminders';
-import { startFpgpEvaluationCron } from './cron/fpgpEvaluation';
+import { startQuarterlySnapshotCron } from './cron/quarterlySnapshot';
 import { httpLogger } from './middleware/logger';
 import { generalLimiter } from './middleware/rateLimit';
 import { metricsMiddleware, metricsHandler } from './middleware/metrics';
@@ -73,7 +73,8 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`Server running on port ${PORT}`);
     startEmailWorker();
     startReminderCrons();
-    startFpgpEvaluationCron();
+    startQuarterlySnapshotCron();
+    // FPGP evaluation cron disabled — module retired (data kept).
   });
 }
 

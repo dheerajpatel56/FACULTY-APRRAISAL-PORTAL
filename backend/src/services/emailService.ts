@@ -33,7 +33,8 @@ export type EmailTemplateKey =
   | 'password_otp'
   | 'proof_rejected'
   | 'proof_rejected_hod'
-  | 'hold_cleared';
+  | 'hold_cleared'
+  | 'quarterly_feedback';
 
 interface EnqueueOpts {
   toUserId: string;

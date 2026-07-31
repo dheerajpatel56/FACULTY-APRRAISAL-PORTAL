@@ -1,8 +1,9 @@
 import { useEffect, useState, Fragment } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, CalendarClock } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
+import { useAuthStore } from '../../store/authStore';
 import { userApi } from '../../api/users';
 import { trackingApi, type TrackingResponse, type TrackingRow } from '../../api/tracking';
 
@@ -50,6 +51,20 @@ export default function TrackingPage() {
   const [data, setData] = useState<TrackingResponse | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [snapshotting, setSnapshotting] = useState(false);
+  const { isAdmin } = useAuthStore();
+
+  const runSnapshot = async () => {
+    setSnapshotting(true);
+    try {
+      const res = await trackingApi.runSnapshot(yearId || undefined);
+      toast.success(res.message);
+    } catch (e: any) {
+      toast.error(e.response?.data?.error ?? 'Snapshot failed');
+    } finally {
+      setSnapshotting(false);
+    }
+  };
 
   useEffect(() => {
     userApi.listAcademicYears().then((ys: any[]) => {
@@ -75,6 +90,16 @@ export default function TrackingPage() {
         title="Criteria Tracking"
         subtitle="Actuals vs cadre targets, eligibility and tier per faculty."
         breadcrumbs={[{ label: 'Criteria Tracking' }]}
+        actions={isAdmin() ? (
+          <button
+            onClick={runSnapshot}
+            disabled={snapshotting || !yearId}
+            className="flex items-center gap-2 border border-surface-border text-ink-secondary px-3 py-2 rounded text-sm font-medium hover:bg-surface-muted disabled:opacity-50"
+            title="Snapshot this quarter's standing and email each faculty their feedback"
+          >
+            <CalendarClock size={16} /> {snapshotting ? 'Running…' : 'Run quarterly snapshot'}
+          </button>
+        ) : undefined}
       />
 
       <div className="mb-4 max-w-xs">
