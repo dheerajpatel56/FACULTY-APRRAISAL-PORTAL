@@ -522,20 +522,22 @@ model Cat2Citations {
 }
 
 model Cat2Patent {
-  id            String       @id @default(uuid())
-  submissionId  String
-  title         String
-  country       String
-  inventors     String
-  appNumber     String?
-  status        PatentStatus
-  iprType       String? // Patent/Copyright/Trademark/Design/Other
-  iprTypeOther  String? // free text when iprType = Other
-  dateOfFiling  DateTime? // separate from dateOfPub
-  dateOfPub     DateTime?
-  dateOfGrant   DateTime?
-  validDuration String?
-  proofFile     String?
+  id                   String       @id @default(uuid())
+  submissionId         String
+  title                String
+  country              String
+  inventors            String
+  appNumber            String?
+  status               PatentStatus
+  iprType              String? // Patent/Copyright/Trademark/Design/Other
+  iprTypeOther         String? // free text when iprType = Other
+  patentType           String? // Utility / Process — for the cadre eligibility rule
+  applicantIsInstitute Boolean      @default(false) // Institute-as-Applicant (eligibility rule)
+  dateOfFiling         DateTime? // separate from dateOfPub
+  dateOfPub            DateTime?
+  dateOfGrant          DateTime?
+  validDuration        String?
+  proofFile            String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }

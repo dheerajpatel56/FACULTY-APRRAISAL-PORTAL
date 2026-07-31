@@ -907,6 +907,20 @@ export default function AppraisalEditPage() {
                     {(watchedValues as any)?.cat2Patents?.[i]?.iprType === 'Other' && (
                       <div><label className={labelCls}>IPR Type — specify</label><input {...register(`cat2Patents.${i}.iprTypeOther`)} className={inputCls} /></div>
                     )}
+                    <div>
+                      <label className={labelCls}>Patent Type</label>
+                      <select {...register(`cat2Patents.${i}.patentType`)} className={inputCls}>
+                        <option value="">Select...</option>
+                        <option value="Utility">Utility</option>
+                        <option value="Process">Process</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end pb-1">
+                      <label className="flex items-center gap-2 text-sm text-ink-secondary">
+                        <input type="checkbox" {...register(`cat2Patents.${i}.applicantIsInstitute`)} />
+                        Institute is the applicant
+                      </label>
+                    </div>
                     <div><label className={labelCls}>Application Number</label><input {...register(`cat2Patents.${i}.appNumber`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Filing</label><input type="date" {...register(`cat2Patents.${i}.dateOfFiling`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Patents.${i}.dateOfPub`)} className={inputCls} /></div>
@@ -917,7 +931,7 @@ export default function AppraisalEditPage() {
                   <button type="button" onClick={() => patents.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Patent', () => patents.append({ title: '', country: 'India', inventors: '', status: 'FILED', iprType: '', iprTypeOther: '', appNumber: '', dateOfFiling: '', dateOfPub: '', dateOfGrant: '', validDuration: '' }))}
+              {addRowBtn('Add Patent', () => patents.append({ title: '', country: 'India', inventors: '', status: 'FILED', iprType: '', iprTypeOther: '', patentType: '', applicantIsInstitute: false, appNumber: '', dateOfFiling: '', dateOfPub: '', dateOfGrant: '', validDuration: '' }))}
             </div>
 
             <div>
