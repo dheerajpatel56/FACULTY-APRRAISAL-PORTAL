@@ -19,6 +19,7 @@ import AdminDepartmentsPage from './pages/admin/AdminDepartmentsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 import DeptReportsPage from './pages/reviewer/DeptReportsPage';
 import RedListPage from './pages/reviewer/RedListPage';
+import TrackingPage from './pages/reviewer/TrackingPage';
 import AdminEmailsPage from './pages/admin/AdminEmailsPage';
 import AdminAuditPage from './pages/admin/AdminAuditPage';
 import FPGPPage from './pages/fpgp/FPGPPage';
@@ -98,6 +99,9 @@ export default function App() {
         } />
         <Route path="/red-list" element={
           <ProtectedRoute roles={['HOD', 'ADMIN']}><RedListPage /></ProtectedRoute>
+        } />
+        <Route path="/tracking" element={
+          <ProtectedRoute roles={['HOD', 'ADMIN']}><TrackingPage /></ProtectedRoute>
         } />
         <Route path="/admin/emails" element={
           <ProtectedRoute roles={['ADMIN']}><AdminEmailsPage /></ProtectedRoute>

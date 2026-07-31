@@ -20,6 +20,7 @@ import * as upload from '../controllers/uploadController';
 import * as cadreTarget from '../controllers/cadreTargetController';
 import * as tierRule from '../controllers/tierRuleController';
 import * as verification from '../controllers/verificationController';
+import * as tracking from '../controllers/trackingController';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 
@@ -109,6 +110,9 @@ router.get('/appraisals/:id/proofs', authenticate, roleGuard([RoleType.HOD, Role
 router.post('/appraisals/:id/proofs/verify', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.verifyProof);
 router.get('/red-list', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), verification.listRedList);
 router.post('/appraisals/:id/clear-hold', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), verification.clearHold);
+
+// W3 — criteria tracking / tier / eligibility
+router.get('/tracking', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), tracking.getTracking);
 
 // Admin force actions
 router.get('/appraisals/:id/pdf', authenticate, appraisal.downloadAppraisalPdf);
