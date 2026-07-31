@@ -63,15 +63,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {navLink('/reviews', 'Review Queue', FileText)}
           {navLink('/tracking', 'Tracking', Gauge)}
           {navLink('/red-list', 'Red List', AlertTriangle)}
-          {navLink('/fpgp', 'My FPGP', BookOpen)}
-          {navLink('/fpgp/department', 'Dept FPGP', BookOpen)}
           {navLink('/reports/department', 'Reports', BarChart2)}
         </>
       ) : (
         <>
           {navLink('/dashboard', 'Dashboard', LayoutDashboard)}
           {navLink('/appraisal', 'Appraisals', FileText)}
-          {navLink('/fpgp', 'FPGP', BookOpen)}
           {navLink('/profile', 'Profile', User)}
         </>
       )}

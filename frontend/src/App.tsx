@@ -22,10 +22,6 @@ import RedListPage from './pages/reviewer/RedListPage';
 import TrackingPage from './pages/reviewer/TrackingPage';
 import AdminEmailsPage from './pages/admin/AdminEmailsPage';
 import AdminAuditPage from './pages/admin/AdminAuditPage';
-import FPGPPage from './pages/fpgp/FPGPPage';
-import FPGPFormPage from './pages/fpgp/FPGPFormPage';
-import FPGPViewPage from './pages/fpgp/FPGPViewPage';
-import FPGPDepartmentPage from './pages/fpgp/FPGPDepartmentPage';
 import ProfilePage from './pages/faculty/ProfilePage';
 
 export default function App() {
@@ -43,16 +39,6 @@ export default function App() {
         <Route path="/appraisal/:id/edit" element={<ProtectedRoute><AppraisalEditPage /></ProtectedRoute>} />
         <Route path="/appraisal/:id" element={<ProtectedRoute><AppraisalViewPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-
-        {/* FPGP */}
-        <Route path="/fpgp" element={<ProtectedRoute><FPGPPage /></ProtectedRoute>} />
-        <Route path="/fpgp/department" element={
-          <ProtectedRoute roles={['HOD', 'REVIEWER', 'ADMIN']}>
-            <FPGPDepartmentPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/fpgp/:id/edit" element={<ProtectedRoute><FPGPFormPage /></ProtectedRoute>} />
-        <Route path="/fpgp/:id" element={<ProtectedRoute><FPGPViewPage /></ProtectedRoute>} />
 
         {/* Reviewer / HoD */}
         <Route path="/reviews" element={

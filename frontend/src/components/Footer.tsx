@@ -14,7 +14,6 @@ export default function Footer() {
         <div>
           <div className="font-semibold text-white text-xs mb-1">Quick Links</div>
           <div>Faculty Appraisal Portal</div>
-          <div>FPGP Module</div>
           <div>
             <a href="https://vnrvjiet.ac.in" target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:text-accent-200">
               vnrvjiet.ac.in
