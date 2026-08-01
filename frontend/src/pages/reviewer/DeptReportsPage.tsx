@@ -7,7 +7,6 @@ import { Users, CheckCircle2, Clock, TrendingUp, Download } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import StatTile from '../../components/StatTile';
-import StatusBadge from '../../components/StatusBadge';
 import CriteriaCompare from '../../components/CriteriaCompare';
 import FacultyUploadsButton from '../../components/FacultyUploadsButton';
 
@@ -108,47 +107,53 @@ export default function DeptReportsPage() {
           <div className="px-5 py-3 border-b border-surface-border">
             <h2 className="text-sm font-semibold text-ink-primary">Faculty-wise Breakdown</h2>
           </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-primary-700 text-white text-xs">
-                <th className="text-left px-4 py-2.5 font-medium">Faculty</th>
-                <th className="text-left px-4 py-2.5 font-medium">Code</th>
-                <th className="text-left px-4 py-2.5 font-medium">Year</th>
-                <th className="text-left px-4 py-2.5 font-medium">Status</th>
-                <th className="text-left px-4 py-2.5 font-medium">Self Total</th>
-                <th className="text-left px-4 py-2.5 font-medium">Cat 6</th>
-                <th className="text-left px-4 py-2.5 font-medium">Grand Total</th>
-                <th className="px-4 py-2.5"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-border">
-              {reviews.map((r, i) => {
-                const cat6 = (r.cat6Punctuality ?? 0) + (r.cat6Professionalism ?? 0) + (r.cat6Willingness ?? 0) + (r.cat6Cordiality ?? 0) + (r.cat6Classroom ?? 0);
-                return (
-                  <tr key={r.id} className={i % 2 === 1 ? 'bg-surface-muted/50' : ''}>
-                    <td className="px-4 py-2.5 font-medium text-ink-primary">{r.submission?.user?.name}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-ink-secondary">{r.submission?.user?.employeeCode}</td>
-                    <td className="px-4 py-2.5 text-ink-secondary">{r.submission?.academicYear?.label}</td>
-                    <td className="px-4 py-2.5"><StatusBadge status={r.status} /></td>
-                    <td className="px-4 py-2.5 text-ink-secondary">{r.totalScore?.toFixed(1) ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-ink-secondary">{cat6.toFixed(1)}</td>
-                    <td className="px-4 py-2.5 text-primary-700 font-semibold">{r.grandTotal?.toFixed(1) ?? '—'}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          to={`/appraisal/${r.submissionId}`}
-                          className="text-xs text-primary-600 hover:underline font-medium"
-                        >
-                          View
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-primary-700 text-white text-xs">
+                  <th className="text-left px-4 py-2.5 font-medium">Faculty</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Designation</th>
+                  <th className="text-left px-3 py-2.5 font-medium">C1</th>
+                  <th className="text-left px-3 py-2.5 font-medium">C2</th>
+                  <th className="text-left px-3 py-2.5 font-medium">C3</th>
+                  <th className="text-left px-3 py-2.5 font-medium">C4</th>
+                  <th className="text-left px-3 py-2.5 font-medium">C5</th>
+                  <th className="text-left px-3 py-2.5 font-medium">Total</th>
+                  <th className="text-left px-3 py-2.5 font-medium">Score by HoD</th>
+                  <th className="text-left px-3 py-2.5 font-medium">Reviewed</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Uploads</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {reviews.map((r, i) => {
+                  const cat6 = (r.cat6Punctuality ?? 0) + (r.cat6Professionalism ?? 0) + (r.cat6Willingness ?? 0) + (r.cat6Cordiality ?? 0) + (r.cat6Classroom ?? 0);
+                  const fmt = (n: any) => (typeof n === 'number' ? n.toFixed(1) : '—');
+                  return (
+                    <tr key={r.id} className={i % 2 === 1 ? 'bg-surface-muted/50' : ''}>
+                      <td className="px-4 py-2.5">
+                        <Link to={`/appraisal/${r.submissionId}`} className="font-medium text-primary-700 hover:underline">
+                          {r.submission?.user?.name}
                         </Link>
+                        <div className="font-mono text-[11px] text-ink-muted">{r.submission?.user?.employeeCode}</div>
+                      </td>
+                      <td className="px-4 py-2.5 text-ink-secondary">{r.submission?.user?.designation ?? '—'}</td>
+                      <td className="px-3 py-2.5 text-ink-secondary">{fmt(r.cat1Score)}</td>
+                      <td className="px-3 py-2.5 text-ink-secondary">{fmt(r.cat2Score)}</td>
+                      <td className="px-3 py-2.5 text-ink-secondary">{fmt(r.cat3Score)}</td>
+                      <td className="px-3 py-2.5 text-ink-secondary">{fmt(r.cat4Score)}</td>
+                      <td className="px-3 py-2.5 text-ink-secondary">{fmt(r.cat5Score)}</td>
+                      <td className="px-3 py-2.5 font-medium text-ink-primary">{fmt(r.totalScore)}</td>
+                      <td className="px-3 py-2.5 text-ink-secondary">{cat6.toFixed(1)}</td>
+                      <td className="px-3 py-2.5 text-primary-700 font-semibold">{fmt(r.grandTotal)}</td>
+                      <td className="px-4 py-2.5">
                         <FacultyUploadsButton submissionId={r.submissionId} facultyName={r.submission?.user?.name ?? 'Faculty'} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
 

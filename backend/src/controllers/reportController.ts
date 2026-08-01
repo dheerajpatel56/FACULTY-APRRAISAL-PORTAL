@@ -25,7 +25,7 @@ export async function getDeptReport(req: Request, res: Response) {
     include: {
       submission: {
         include: {
-          user: { select: { id: true, name: true, employeeCode: true, departmentId: true, department: true } },
+          user: { select: { id: true, name: true, employeeCode: true, designation: true, departmentId: true, department: true } },
           academicYear: { select: { label: true } },
         },
       },
@@ -130,26 +130,28 @@ export async function exportReport(req: Request, res: Response) {
     include: {
       submission: {
         include: {
-          user: { select: { name: true, employeeCode: true, department: true } },
+          user: { select: { name: true, employeeCode: true, designation: true, department: true } },
           academicYear: { select: { label: true } },
         },
       },
     },
   });
 
+  // Columns mirror the Faculty-wise Breakdown table.
   const rows = reviews.map((r) => ({
-    'Employee Code': r.submission.user.employeeCode,
     'Name': r.submission.user.name,
+    'Employee Code': r.submission.user.employeeCode,
+    'Designation': r.submission.user.designation ?? '',
     'Department': r.submission.user.department?.name ?? '',
     'Academic Year': r.submission.academicYear.label,
-    'Cat 1 (Teaching)': r.cat1Score ?? '',
-    'Cat 2 (Research)': r.cat2Score ?? '',
-    'Cat 3 (Dev)': r.cat3Score ?? '',
-    'Cat 4 (Governance)': r.cat4Score ?? '',
-    'Cat 5 (Supplementary)': r.cat5Score ?? '',
-    'Cat 6 (Core Values)': ((r.cat6Punctuality ?? 0) + (r.cat6Professionalism ?? 0) + (r.cat6Willingness ?? 0) + (r.cat6Cordiality ?? 0) + (r.cat6Classroom ?? 0)),
-    'Total Score': r.totalScore ?? '',
-    'Grand Total': r.grandTotal ?? '',
+    'C1': r.cat1Score ?? '',
+    'C2': r.cat2Score ?? '',
+    'C3': r.cat3Score ?? '',
+    'C4': r.cat4Score ?? '',
+    'C5': r.cat5Score ?? '',
+    'Total': r.totalScore ?? '',
+    'Score by HoD': ((r.cat6Punctuality ?? 0) + (r.cat6Professionalism ?? 0) + (r.cat6Willingness ?? 0) + (r.cat6Cordiality ?? 0) + (r.cat6Classroom ?? 0)),
+    'Reviewed': r.grandTotal ?? '',
     'Status': r.status,
   }));
 
