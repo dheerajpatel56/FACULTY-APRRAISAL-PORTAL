@@ -101,6 +101,7 @@ export async function getCriteriaReport(req: Request, res: Response) {
     .map((sub) => {
       const u = (sub as any).user;
       return {
+        submissionId: sub.id,
         faculty: { id: u.id, name: u.name, employeeCode: u.employeeCode, department: u.department },
         status: sub.status,
         grandTotal: (sub as any).review?.grandTotal ?? null,

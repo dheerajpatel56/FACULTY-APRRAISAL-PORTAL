@@ -9,6 +9,7 @@ import Card from '../../components/Card';
 import StatTile from '../../components/StatTile';
 import StatusBadge from '../../components/StatusBadge';
 import CriteriaCompare from '../../components/CriteriaCompare';
+import FacultyUploadsButton from '../../components/FacultyUploadsButton';
 
 export default function DeptReportsPage() {
   const [reviews, setReviews] = useState<any[]>([]);
@@ -133,12 +134,15 @@ export default function DeptReportsPage() {
                     <td className="px-4 py-2.5 text-ink-secondary">{cat6.toFixed(1)}</td>
                     <td className="px-4 py-2.5 text-primary-700 font-semibold">{r.grandTotal?.toFixed(1) ?? '—'}</td>
                     <td className="px-4 py-2.5">
-                      <Link
-                        to={`/appraisal/${r.submissionId}`}
-                        className="text-xs text-primary-600 hover:underline font-medium"
-                      >
-                        View
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link
+                          to={`/appraisal/${r.submissionId}`}
+                          className="text-xs text-primary-600 hover:underline font-medium"
+                        >
+                          View
+                        </Link>
+                        <FacultyUploadsButton submissionId={r.submissionId} facultyName={r.submission?.user?.name ?? 'Faculty'} />
+                      </div>
                     </td>
                   </tr>
                 );

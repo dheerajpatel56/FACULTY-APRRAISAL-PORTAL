@@ -17,6 +17,7 @@ export interface ScoreBreakdown {
   cat4: CategoryBreakdown; cat5: CategoryBreakdown; selfTotal: number;
 }
 export interface CriteriaRow {
+  submissionId: string;
   faculty: { id: string; name: string; employeeCode: string; department?: { name: string; code: string } | null };
   status: string;
   grandTotal: number | null;

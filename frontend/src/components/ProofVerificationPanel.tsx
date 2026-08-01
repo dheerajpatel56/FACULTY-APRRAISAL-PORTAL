@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { CheckCircle, XCircle, Eye, ShieldCheck, AlertTriangle, Clock } from 'lucide-react';
 import Card from './Card';
+import { useAuthStore } from '../store/authStore';
 import { uploadApi } from '../api/uploads';
 import { verificationApi, type ProofListResponse, type ProofRow } from '../api/verification';
 
@@ -30,12 +31,17 @@ async function openProof(url: string) {
 export default function ProofVerificationPanel({
   submissionId,
   onChanged,
+  readOnly,
 }: {
   submissionId: string;
   onChanged?: (allVerified: boolean) => void;
+  readOnly?: boolean;
 }) {
   const [data, setData] = useState<ProofListResponse | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const { hasRole } = useAuthStore();
+  // Only HoD or incharge (REVIEWER) may change approve/reject.
+  const canEdit = !readOnly && (hasRole('HOD') || hasRole('REVIEWER'));
 
   const load = useCallback(() => {
     verificationApi
@@ -98,7 +104,7 @@ export default function ProofVerificationPanel({
         </div>
       )}
 
-      {!summary.allVerified && summary.total > 0 && (
+      {canEdit && !summary.allVerified && summary.total > 0 && (
         <p className="mb-3 text-xs text-amber-700">Approval is blocked until every proof is verified.</p>
       )}
 
@@ -126,20 +132,24 @@ export default function ProofVerificationPanel({
                         {p.status}
                       </span>
                       <div className="flex-1" />
-                      <button
-                        onClick={() => act(p, 'VERIFIED')}
-                        disabled={busy === p.url || p.status === 'VERIFIED'}
-                        className="inline-flex items-center gap-1 rounded border border-emerald-300 text-emerald-700 px-2 py-1 hover:bg-emerald-50 disabled:opacity-40"
-                      >
-                        <CheckCircle size={12} /> Verify
-                      </button>
-                      <button
-                        onClick={() => act(p, 'REJECTED')}
-                        disabled={busy === p.url || p.status === 'REJECTED'}
-                        className="inline-flex items-center gap-1 rounded border border-red-300 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-40"
-                      >
-                        <XCircle size={12} /> Reject
-                      </button>
+                      {canEdit && (
+                        <>
+                          <button
+                            onClick={() => act(p, 'VERIFIED')}
+                            disabled={busy === p.url || p.status === 'VERIFIED'}
+                            className="inline-flex items-center gap-1 rounded border border-emerald-300 text-emerald-700 px-2 py-1 hover:bg-emerald-50 disabled:opacity-40"
+                          >
+                            <CheckCircle size={12} /> Verify
+                          </button>
+                          <button
+                            onClick={() => act(p, 'REJECTED')}
+                            disabled={busy === p.url || p.status === 'REJECTED'}
+                            className="inline-flex items-center gap-1 rounded border border-red-300 text-red-700 px-2 py-1 hover:bg-red-50 disabled:opacity-40"
+                          >
+                            <XCircle size={12} /> Reject
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
               </div>

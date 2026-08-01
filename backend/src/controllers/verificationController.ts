@@ -6,8 +6,17 @@ import { canViewUserResource } from '../utils/access';
 import { syncProofVerifications } from '../services/proofService';
 import { enqueueEmail } from '../services/emailService';
 
-// A verifier (incharge/HoD/admin) of the faculty's department — never the owner.
-function canVerify(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
+// Who may CHANGE a proof's approve/reject status: HoD or incharge (REVIEWER)
+// of the faculty's department only — never the owner, and not a plain admin.
+function canVerifyProof(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
+  if (user.id === ownerId) return false;
+  return user.roles.some(
+    (r) => (r.role === RoleType.HOD || r.role === RoleType.REVIEWER) && r.departmentId != null && r.departmentId === ownerDept
+  );
+}
+
+// Who may manage the red-list / clear a hold: HoD or admin of the dept.
+function canManage(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
   if (user.id === ownerId) return false;
   if (user.roles.some((r) => r.role === RoleType.ADMIN)) return true;
   return user.roles.some(
@@ -70,8 +79,8 @@ export async function verifyProof(req: Request, res: Response) {
     },
   });
   if (!sub) return res.status(404).json({ error: 'Not found' });
-  if (!canVerify(req.user!, sub.userId, sub.user.departmentId)) {
-    return res.status(403).json({ error: 'Forbidden' });
+  if (!canVerifyProof(req.user!, sub.userId, sub.user.departmentId)) {
+    return res.status(403).json({ error: 'Only the HoD or incharge can verify uploads' });
   }
 
   const { url, status, comment } = verifySchema.parse(req.body);
@@ -183,7 +192,7 @@ export async function clearHold(req: Request, res: Response) {
     },
   });
   if (!sub) return res.status(404).json({ error: 'Not found' });
-  if (!canVerify(req.user!, sub.userId, sub.user.departmentId)) {
+  if (!canManage(req.user!, sub.userId, sub.user.departmentId)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   if (!sub.redListed && sub.status !== SubmissionStatus.HOLD) {

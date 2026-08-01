@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Download } from 'lucide-react';
 import Card from './Card';
+import FacultyUploadsButton from './FacultyUploadsButton';
 import { reportApi, type CriteriaReport, type CriteriaRow } from '../api/reports';
 
 type Crit = { group: string; key: string; label: string; max?: number; get: (r: CriteriaRow) => number | null };
@@ -133,6 +134,7 @@ export default function CriteriaCompare({ academicYearId }: { academicYearId?: s
               <th className="text-left px-4 py-2.5 font-medium">Code</th>
               <th className="text-left px-4 py-2.5 font-medium">Department</th>
               <th className="text-left px-4 py-2.5 font-medium">{crit.label}</th>
+              <th className="text-left px-4 py-2.5 font-medium">Uploads</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border">
@@ -144,6 +146,9 @@ export default function CriteriaCompare({ academicYearId }: { academicYearId?: s
                 <td className="px-4 py-2.5 text-ink-secondary">{r.faculty.department?.name ?? '—'}</td>
                 <td className="px-4 py-2.5 text-primary-700 font-semibold">
                   {typeof v === 'number' ? v.toFixed(1) : '—'}{crit.max ? <span className="text-ink-subtle font-normal"> / {crit.max}</span> : null}
+                </td>
+                <td className="px-4 py-2.5">
+                  <FacultyUploadsButton submissionId={r.submissionId} facultyName={r.faculty.name} />
                 </td>
               </tr>
             ))}
