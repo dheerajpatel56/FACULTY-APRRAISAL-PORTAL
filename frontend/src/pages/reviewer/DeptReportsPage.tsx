@@ -9,10 +9,26 @@ import Card from '../../components/Card';
 import StatTile from '../../components/StatTile';
 import StatusBadge from '../../components/StatusBadge';
 
+const cat6Sum = (r: any) =>
+  (r.cat6Punctuality ?? 0) + (r.cat6Professionalism ?? 0) + (r.cat6Willingness ?? 0) + (r.cat6Cordiality ?? 0) + (r.cat6Classroom ?? 0);
+
+// Category-level criteria available in the reviewed data (AppraisalReview).
+const CRITERIA: { key: string; label: string; max: number; get: (r: any) => number | null | undefined }[] = [
+  { key: 'cat1', label: 'Cat 1 — Teaching', max: 150, get: (r) => r.cat1Score },
+  { key: 'cat2', label: 'Cat 2 — Research', max: 150, get: (r) => r.cat2Score },
+  { key: 'cat3', label: 'Cat 3 — Development', max: 100, get: (r) => r.cat3Score },
+  { key: 'cat4', label: 'Cat 4 — Governance', max: 50, get: (r) => r.cat4Score },
+  { key: 'cat5', label: 'Cat 5 — Supplementary', max: 50, get: (r) => r.cat5Score },
+  { key: 'cat6', label: 'Cat 6 — Core Values', max: 50, get: cat6Sum },
+  { key: 'total', label: 'Self Total', max: 500, get: (r) => r.totalScore },
+  { key: 'grand', label: 'Grand Total', max: 550, get: (r) => r.grandTotal },
+];
+
 export default function DeptReportsPage() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [years, setYears] = useState<any[]>([]);
   const [yearFilter, setYearFilter] = useState('');
+  const [criterion, setCriterion] = useState('');
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
@@ -43,6 +59,8 @@ export default function DeptReportsPage() {
     const avgScore = grandTotals.length ? (grandTotals.reduce((a, b) => a + b, 0) / grandTotals.length) : 0;
     return { total, approved, rejected, pending, avgScore };
   }, [reviews]);
+
+  const selected = CRITERIA.find((c) => c.key === criterion) ?? null;
 
   const exportExcel = async () => {
     setExporting(true);
@@ -77,6 +95,15 @@ export default function DeptReportsPage() {
               <option value="">All Years</option>
               {years.map((y) => <option key={y.id} value={y.label}>{y.label}</option>)}
             </select>
+            <select
+              value={criterion}
+              onChange={(e) => setCriterion(e.target.value)}
+              className="border border-surface-border rounded px-3 py-2 text-sm bg-surface-base"
+              title="Show one criterion across all faculty"
+            >
+              <option value="">All criteria (full table)</option>
+              {CRITERIA.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
             <button
               onClick={exportExcel}
               disabled={exporting}
@@ -100,6 +127,40 @@ export default function DeptReportsPage() {
       ) : reviews.length === 0 ? (
         <Card className="text-center py-8">
           <p className="text-ink-muted text-sm">No reviewed appraisals yet.</p>
+        </Card>
+      ) : selected ? (
+        <Card padding="none">
+          <div className="px-5 py-3 border-b border-surface-border flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink-primary">{selected.label} — all faculty</h2>
+            <span className="text-xs text-ink-muted">sorted high → low · out of {selected.max}</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-primary-700 text-white text-xs">
+                <th className="text-left px-4 py-2.5 font-medium">#</th>
+                <th className="text-left px-4 py-2.5 font-medium">Faculty</th>
+                <th className="text-left px-4 py-2.5 font-medium">Code</th>
+                <th className="text-left px-4 py-2.5 font-medium">Year</th>
+                <th className="text-left px-4 py-2.5 font-medium">{selected.label}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-border">
+              {[...reviews]
+                .map((r) => ({ r, v: selected.get(r) }))
+                .sort((a, b) => (typeof b.v === 'number' ? b.v : -1) - (typeof a.v === 'number' ? a.v : -1))
+                .map(({ r, v }, i) => (
+                  <tr key={r.id} className={i % 2 === 1 ? 'bg-surface-muted/50' : ''}>
+                    <td className="px-4 py-2.5 text-ink-muted">{i + 1}</td>
+                    <td className="px-4 py-2.5 font-medium text-ink-primary">{r.submission?.user?.name}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-ink-secondary">{r.submission?.user?.employeeCode}</td>
+                    <td className="px-4 py-2.5 text-ink-secondary">{r.submission?.academicYear?.label}</td>
+                    <td className="px-4 py-2.5 text-primary-700 font-semibold">
+                      {typeof v === 'number' ? v.toFixed(1) : '—'} <span className="text-ink-subtle font-normal">/ {selected.max}</span>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         </Card>
       ) : (
         <Card padding="none">
