@@ -81,7 +81,7 @@ export default function App() {
           <ProtectedRoute roles={['ADMIN']}><AdminReportsPage /></ProtectedRoute>
         } />
         <Route path="/reports/department" element={
-          <ProtectedRoute roles={['HOD', 'REVIEWER', 'ADMIN']}><DeptReportsPage /></ProtectedRoute>
+          <ProtectedRoute roles={['HOD', 'ADMIN']}><DeptReportsPage /></ProtectedRoute>
         } />
         <Route path="/red-list" element={
           <ProtectedRoute roles={['HOD', 'ADMIN']}><RedListPage /></ProtectedRoute>

@@ -8,7 +8,7 @@ import BrandHeader from './BrandHeader';
 import Footer from './Footer';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { isAdmin, isHodOrReviewer } = useAuthStore();
+  const { isAdmin, isHodOrReviewer, hasRole } = useAuthStore();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -59,11 +59,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </>
       ) : isHodOrReviewer() ? (
         <>
+          {/* Incharge (REVIEWER, not HOD) verifies uploads only — Dashboard +
+              Review Queue. Tracking / Red List / Reports are HoD-only. */}
           {navLink('/dashboard', 'Dashboard', LayoutDashboard)}
           {navLink('/reviews', 'Review Queue', FileText)}
-          {navLink('/tracking', 'Tracking', Gauge)}
-          {navLink('/red-list', 'Red List', AlertTriangle)}
-          {navLink('/reports/department', 'Reports', BarChart2)}
+          {hasRole('HOD') && navLink('/tracking', 'Tracking', Gauge)}
+          {hasRole('HOD') && navLink('/red-list', 'Red List', AlertTriangle)}
+          {hasRole('HOD') && navLink('/reports/department', 'Reports', BarChart2)}
         </>
       ) : (
         <>
