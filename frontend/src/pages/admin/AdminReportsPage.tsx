@@ -6,6 +6,7 @@ import { Users, FileText, CheckCircle2, TrendingUp, Download } from 'lucide-reac
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import StatTile from '../../components/StatTile';
+import CriteriaCompare from '../../components/CriteriaCompare';
 
 export default function AdminReportsPage() {
   const [data, setData] = useState<any>(null);
@@ -153,6 +154,8 @@ export default function AdminReportsPage() {
               </tbody>
             </table>
           </Card>
+
+          <CriteriaCompare academicYearId={years.find((y) => y.label === yearFilter)?.id} />
         </>
       )}
     </div>
