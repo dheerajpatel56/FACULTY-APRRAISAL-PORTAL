@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { RoleType, SubmissionStatus } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import * as XLSX from 'xlsx';
+import { computeScore } from '../services/scoringEngine';
+import { TRACKING_INCLUDE } from '../services/trackingService';
 
 export async function getDeptReport(req: Request, res: Response) {
   const { year, dept } = req.query;
@@ -54,6 +56,60 @@ export async function getInstituteReport(req: Request, res: Response) {
   });
 
   return res.json({ statusBreakdown: stats, submissions: deptStats });
+}
+
+// GET /reports/criteria?academicYearId=&dept=  (HoD -> own dept, Admin -> all/filter)
+// Per-faculty full subsection breakdown (from scoringEngine) so the frontend can
+// show every faculty's mark for any chosen subsection. Uses the reviewed
+// submission when present, else the latest.
+export async function getCriteriaReport(req: Request, res: Response) {
+  const user = req.user!;
+  const isAdmin = user.roles.some((r) => r.role === RoleType.ADMIN);
+  const deptIds = user.roles
+    .filter((r) => r.role === RoleType.HOD || r.role === RoleType.REVIEWER)
+    .map((r) => r.departmentId)
+    .filter(Boolean) as string[];
+
+  const academicYearId = typeof req.query.academicYearId === 'string' ? req.query.academicYearId : undefined;
+  const deptFilter = typeof req.query.dept === 'string' ? req.query.dept : undefined;
+
+  const year = academicYearId
+    ? await prisma.academicYear.findUnique({ where: { id: academicYearId } })
+    : await prisma.academicYear.findFirst({ where: { submissionOpen: true }, orderBy: { startDate: 'desc' } });
+  if (!year) return res.status(404).json({ error: 'Academic year not found' });
+
+  // Dept scope: HoD/reviewer limited to their dept(s); admin sees all (or a filter).
+  const deptWhere = isAdmin
+    ? (deptFilter ? { departmentId: deptFilter } : {})
+    : { departmentId: { in: deptIds } };
+
+  const submissions = await prisma.appraisalSubmission.findMany({
+    where: { academicYearId: year.id, user: deptWhere },
+    include: TRACKING_INCLUDE,
+    orderBy: { submissionNumber: 'desc' },
+  });
+
+  // Reviewed-preferred, else latest, per faculty (submissions are desc).
+  const picked = new Map<string, (typeof submissions)[number]>();
+  for (const s of submissions) {
+    const cur = picked.get(s.userId);
+    if (!cur) picked.set(s.userId, s);
+    else if (cur.status !== SubmissionStatus.APPROVED && s.status === SubmissionStatus.APPROVED) picked.set(s.userId, s);
+  }
+
+  const rows = [...picked.values()]
+    .map((sub) => {
+      const u = (sub as any).user;
+      return {
+        faculty: { id: u.id, name: u.name, employeeCode: u.employeeCode, department: u.department },
+        status: sub.status,
+        grandTotal: (sub as any).review?.grandTotal ?? null,
+        breakdown: computeScore(sub as any),
+      };
+    })
+    .sort((a, b) => a.faculty.name.localeCompare(b.faculty.name));
+
+  return res.json({ year: { id: year.id, label: year.label }, rows });
 }
 
 export async function exportReport(req: Request, res: Response) {

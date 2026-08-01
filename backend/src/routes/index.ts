@@ -126,6 +126,7 @@ router.post('/admin/appraisals/:id/assign-reviewer', authenticate, roleGuard([Ro
 
 // Reports
 router.get('/reports/department', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), report.getDeptReport);
+router.get('/reports/criteria', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), report.getCriteriaReport);
 router.get('/reports/institute', authenticate, roleGuard([RoleType.ADMIN]), report.getInstituteReport);
 router.get('/reports/export', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), report.exportReport);
 
