@@ -17,6 +17,7 @@ export const TEMPLATE_SUBJECTS: Record<EmailTemplateKey, (p: any) => string> = {
   proof_rejected_hod: (p) => `Red List — ${p.facultyName}'s ${p.year} appraisal held`,
   hold_cleared: (p) => `Hold cleared — Appraisal ${p.year} back under review`,
   quarterly_feedback: (p) => `${p.quarter} feedback — Appraisal ${p.year} (provisional)`,
+  feedback_issued: (p) => `Your ${p.year} appraisal feedback is ready`,
 };
 
 function layout(title: string, body: string): string {
@@ -221,6 +222,13 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
       </table>` : ''}
     <p style="color:#64748b;font-size:13px">This is a provisional quarterly update; your final eligibility and tier are set at the annual submission.</p>
     <p style="margin-top:24px;color:#94a3b8;font-size:11px">Sent per your email preferences. <a href="${FRONTEND_URL}/profile" style="color:#94a3b8">Manage preferences</a>.</p>
+  `),
+
+  feedback_issued: (p) => layout('Appraisal Feedback', `
+    <h2 style="margin:0 0 8px;color:#1e3a5f">Your Feedback is Ready</h2>
+    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Your HoD has issued the annual feedback for your <strong>${p.year}</strong> appraisal — including your standing and growth guidance.</p>
+    <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Feedback</a></p>
   `),
 };
 

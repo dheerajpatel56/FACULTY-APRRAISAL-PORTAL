@@ -15,6 +15,7 @@ const ALL_KEYS: EmailTemplateKey[] = [
   'proof_rejected_hod',
   'hold_cleared',
   'quarterly_feedback',
+  'feedback_issued',
 ];
 
 const samplePayload: Record<string, any> = {

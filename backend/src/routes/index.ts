@@ -20,6 +20,7 @@ import * as cadreTarget from '../controllers/cadreTargetController';
 import * as tierRule from '../controllers/tierRuleController';
 import * as verification from '../controllers/verificationController';
 import * as tracking from '../controllers/trackingController';
+import * as feedback from '../controllers/feedbackController';
 import type { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 
@@ -116,6 +117,11 @@ router.get('/tracking', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]),
 router.get('/tracking/export', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), tracking.exportTracking);
 // W4 — quarterly snapshot manual trigger (cron runs it at quarter-end)
 router.post('/admin/tracking/snapshot', authenticate, roleGuard([RoleType.ADMIN]), tracking.runSnapshot);
+
+// W6 — annual HoD feedback
+router.get('/appraisals/:id/feedback', authenticate, feedback.getFeedback);
+router.put('/appraisals/:id/feedback', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), feedback.saveFeedback);
+router.post('/appraisals/:id/feedback/issue', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), feedback.issueFeedback);
 
 // Admin force actions
 router.get('/appraisals/:id/pdf', authenticate, appraisal.downloadAppraisalPdf);
