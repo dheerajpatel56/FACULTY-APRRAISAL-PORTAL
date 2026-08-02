@@ -49,7 +49,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {navLink('/admin/academic-years', 'Academic Years', BookOpen)}
           {navLink('/admin/cadre-targets', 'Cadre Targets', Target)}
           {navLink('/admin/incharges', 'Incharges', ShieldCheck)}
-          {navLink('/admin/tier-rules', 'Tier Rules', GitBranch)}
+          {navLink('/admin/cadre-tiers', 'Tier Thresholds', GitBranch)}
           {navLink('/tracking', 'Tracking', Gauge)}
           {navLink('/red-list', 'Red List', AlertTriangle)}
           {navLink('/admin/appraisals', 'All Appraisals', FileText)}
