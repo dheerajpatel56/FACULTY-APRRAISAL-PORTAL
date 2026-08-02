@@ -1,6 +1,7 @@
+import { Cadre } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { computeActuals } from './trackingEngine';
-import { assignTier, type RuleNode, type TierName } from './tierEngine';
+import { assignCadreTier, type TierName, type CadreTierCell, type TierCriteria } from './tierEngine';
 import { deriveCadre, computeExperienceYears, pickCadreTarget, checkEligibility, CADRE_LABEL } from './cadreEngine';
 
 // Shared per-faculty tracking computation, used by the tracking view
@@ -20,21 +21,31 @@ export const TRACKING_INCLUDE = {
 
 export interface TrackingContext {
   cadreTargets: any[];
-  rules: Array<{ tier: TierName; expression: RuleNode }>;
+  // W7 per-cadre tier cells, grouped by cadre. A faculty's cadre selects which
+  // set of T1/T2/T3 cells the tier engine evaluates.
+  cadreTiersByCadre: Map<Cadre, CadreTierCell[]>;
   hasTargets: boolean;
-  hasTierRules: boolean;
+  hasTierRules: boolean; // true when any cadre-tier cell is configured
 }
 
 export async function loadTrackingContext(academicYearId: string): Promise<TrackingContext> {
-  const [cadreTargets, tierRules] = await Promise.all([
+  const [cadreTargets, cadreTiers] = await Promise.all([
     prisma.cadreTarget.findMany({ where: { academicYearId } }),
-    prisma.tierRule.findMany({ where: { academicYearId } }),
+    prisma.cadreTierThreshold.findMany({ where: { academicYearId } }),
   ]);
+
+  const cadreTiersByCadre = new Map<Cadre, CadreTierCell[]>();
+  for (const row of cadreTiers) {
+    const cells = cadreTiersByCadre.get(row.cadre) ?? [];
+    cells.push({ tier: row.tier as TierName, criteria: row.criteria as unknown as TierCriteria });
+    cadreTiersByCadre.set(row.cadre, cells);
+  }
+
   return {
     cadreTargets,
-    rules: tierRules.map((r) => ({ tier: r.tier as TierName, expression: r.expression as unknown as RuleNode })),
+    cadreTiersByCadre,
     hasTargets: cadreTargets.length > 0,
-    hasTierRules: tierRules.length > 0,
+    hasTierRules: cadreTiers.length > 0,
   };
 }
 
@@ -47,7 +58,8 @@ export function computeRow(sub: any, ctx: TrackingContext, yearStart: Date) {
   const actuals = computeActuals(sub, sub.review?.grandTotal ?? null);
   const target = cadre ? pickCadreTarget(ctx.cadreTargets, cadre, expYears) : null;
   const eligibility = checkEligibility(actuals, target);
-  const tierResult = assignTier(ctx.rules, actuals);
+  const cells = cadre ? ctx.cadreTiersByCadre.get(cadre) ?? [] : [];
+  const tierResult = assignCadreTier(cells, actuals);
 
   return {
     submissionId: sub.id,

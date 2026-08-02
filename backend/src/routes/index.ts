@@ -18,6 +18,7 @@ import * as audit from '../controllers/auditController';
 import * as upload from '../controllers/uploadController';
 import * as cadreTarget from '../controllers/cadreTargetController';
 import * as tierRule from '../controllers/tierRuleController';
+import * as cadreTier from '../controllers/cadreTierController';
 import * as verification from '../controllers/verificationController';
 import * as tracking from '../controllers/trackingController';
 import * as feedback from '../controllers/feedbackController';
@@ -86,10 +87,16 @@ router.post('/admin/cadre-targets/seed-defaults', authenticate, roleGuard([RoleT
 router.put('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.updateCadreTarget);
 router.delete('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.deleteCadreTarget);
 
-// Admin: tier rules (W1)
+// Admin: tier rules (W1) — legacy global tier rules (retired by W7 cadre tiers)
 router.get('/admin/tier-rules', authenticate, roleGuard([RoleType.ADMIN]), tierRule.listTierRules);
 router.put('/admin/tier-rules', authenticate, roleGuard([RoleType.ADMIN]), tierRule.upsertTierRule);
 router.delete('/admin/tier-rules/:id', authenticate, roleGuard([RoleType.ADMIN]), tierRule.deleteTierRule);
+
+// Admin: per-cadre tier thresholds (W7)
+router.get('/admin/cadre-tiers', authenticate, roleGuard([RoleType.ADMIN]), cadreTier.listCadreTiers);
+router.put('/admin/cadre-tiers', authenticate, roleGuard([RoleType.ADMIN]), cadreTier.upsertCadreTier);
+router.post('/admin/cadre-tiers/seed-defaults', authenticate, roleGuard([RoleType.ADMIN]), cadreTier.seedDefaultCadreTiers);
+router.delete('/admin/cadre-tiers/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTier.deleteCadreTier);
 
 // Appraisals
 router.get('/appraisals', authenticate, appraisal.listAppraisals);

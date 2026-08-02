@@ -230,6 +230,7 @@ model AcademicYear {
   appraisals   AppraisalSubmission[]
   cadreTargets CadreTarget[]
   tierRules    TierRule[]
+  cadreTiers   CadreTierThreshold[]
   snapshots    TrackingSnapshot[]
   feedbacks    Feedback[]
 }
@@ -294,6 +295,25 @@ model TierRule {
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
 
   @@unique([academicYearId, tier])
+}
+
+// W7 — per-cadre tier thresholds. Replaces the global TierRule model: each
+// (academicYear, cadre, tier) cell holds a flat per-criterion threshold set
+// `{ [criterion]: { enabled, value } }` (see tierEngine TIER_CRITERIA). A tier
+// is assigned when every ENABLED criterion meets-or-exceeds its value (AND, >=).
+// Defaults seed from the cadre's CadreTarget row; admin-editable.
+model CadreTierThreshold {
+  id             String   @id @default(uuid())
+  academicYearId String
+  cadre          Cadre
+  tier           Tier
+  criteria       Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([academicYearId, cadre, tier])
 }
 
 // W1 — admin-configured per-AY cadre eligibility targets (FAPA table).
