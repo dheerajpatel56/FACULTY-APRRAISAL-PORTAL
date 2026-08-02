@@ -6,29 +6,31 @@ import { feedbackApi, type FeedbackResponse, type FeedbackSnapshot } from '../ap
 
 function SnapshotSummary({ s }: { s: FeedbackSnapshot }) {
   return (
-    <div className="rounded border border-surface-border bg-surface-muted/40 p-3 text-xs space-y-1.5">
+    <div className="rounded border border-surface-border bg-surface-muted/40 p-3 text-xs space-y-2">
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         <span><span className="text-ink-muted">Cadre:</span> <span className="font-medium text-ink-primary">{s.cadreLabel ?? '—'}</span></span>
-        <span><span className="text-ink-muted">Tier:</span> <span className="font-medium text-ink-primary">{s.tier ?? '—'}</span></span>
         <span className="inline-flex items-center gap-1">
-          <span className="text-ink-muted">Eligible:</span>
+          <span className="text-ink-muted">Meets ideal targets:</span>
           {s.eligible ? <CheckCircle2 size={13} className="text-emerald-600" /> : <XCircle size={13} className="text-red-500" />}
         </span>
       </div>
       {s.scores && (
         <div className="text-ink-secondary">
-          C1 {s.scores.cat1} · C2 {s.scores.cat2} · C3 {s.scores.cat3} · C4 {s.scores.cat4} · C5 {s.scores.cat5} ·
-          Cat6 {s.scores.cat6} · <span className="font-medium">Total {s.scores.total}</span> · <span className="font-semibold text-primary-700">Grand {s.scores.grand}</span>
+          <span className="text-ink-muted">Self-appraisal:</span> C1 {s.scores.cat1.toFixed(1)} · C2 {s.scores.cat2.toFixed(1)} · C3 {s.scores.cat3.toFixed(1)} · C4 {s.scores.cat4.toFixed(1)} · C5 {s.scores.cat5.toFixed(1)} ·
+          <span className="font-semibold text-primary-700"> Total {s.scores.total.toFixed(1)} / 500</span>
         </div>
       )}
       {s.requirements?.length > 0 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 pt-1">
-          {s.requirements.map((r) => (
-            <span key={r.key} className="inline-flex items-center gap-1 text-ink-secondary">
-              {r.met ? <CheckCircle2 size={11} className="text-emerald-600" /> : <XCircle size={11} className="text-red-500" />}
-              {r.label}
-            </span>
-          ))}
+        <div>
+          <div className="text-ink-muted mb-1">Ideal targets</div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {s.requirements.map((r) => (
+              <span key={r.key} className="inline-flex items-center gap-1 text-ink-secondary">
+                {r.met ? <CheckCircle2 size={11} className="text-emerald-600" /> : <XCircle size={11} className="text-red-500" />}
+                {r.label} <span className="text-ink-muted">{r.target}</span>
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>

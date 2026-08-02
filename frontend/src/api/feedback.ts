@@ -3,10 +3,9 @@ import api from './client';
 export interface FeedbackSnapshot {
   year: string;
   cadreLabel: string | null;
-  tier: string | null;
   eligible: boolean;
   requirements: { key: string; label: string; target: string; actual: string; met: boolean; gating: boolean }[];
-  scores: { cat1: number; cat2: number; cat3: number; cat4: number; cat5: number; cat6: number; total: number; grand: number } | null;
+  scores: { cat1: number; cat2: number; cat3: number; cat4: number; cat5: number; total: number } | null;
 }
 
 export interface FeedbackData {

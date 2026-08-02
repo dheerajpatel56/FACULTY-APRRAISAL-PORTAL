@@ -4,7 +4,10 @@ import { RoleType } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { canViewUserResource } from '../utils/access';
 import { enqueueEmail } from '../services/emailService';
-import { TRACKING_INCLUDE, loadTrackingContext, computeRow } from '../services/trackingService';
+import { TRACKING_INCLUDE, loadTrackingContext } from '../services/trackingService';
+import { computeScore } from '../services/scoringEngine';
+import { computeActuals } from '../services/trackingEngine';
+import { deriveCadre, computeExperienceYears, pickCadreTarget, checkEligibility, CADRE_LABEL } from '../services/cadreEngine';
 
 // Author of feedback: HoD of the faculty's dept, or admin — never the owner.
 function canAuthor(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
@@ -13,33 +16,41 @@ function canAuthor(user: NonNullable<Request['user']>, ownerId: string, ownerDep
   return user.roles.some((r) => r.role === RoleType.HOD && r.departmentId != null && r.departmentId === ownerDept);
 }
 
-// Auto-filled snapshot: HoD-reviewed scores + cadre/tier/eligibility standing.
+// Auto-filled snapshot for feedback: SELF-appraisal marks + cadre "ideal
+// targets" (eligibility). No tier, no reviewed/Cat6/grand — feedback shows the
+// faculty's own self-appraisal against the ideal targets.
 async function buildSnapshot(submissionId: string) {
   const sub = await prisma.appraisalSubmission.findUnique({ where: { id: submissionId }, include: TRACKING_INCLUDE });
   if (!sub) return null;
   const year = await prisma.academicYear.findUnique({ where: { id: sub.academicYearId } });
   if (!year) return null;
+
+  const u = (sub as any).user;
   const ctx = await loadTrackingContext(sub.academicYearId);
-  const row = computeRow(sub, ctx, year.startDate);
-  const rev = (sub as any).review;
-  const cat6 = rev
-    ? (rev.cat6Punctuality ?? 0) + (rev.cat6Professionalism ?? 0) + (rev.cat6Willingness ?? 0) + (rev.cat6Cordiality ?? 0) + (rev.cat6Classroom ?? 0)
-    : null;
+  const score = computeScore(sub as any); // self-appraisal breakdown
+  const actuals = computeActuals(sub as any, null); // force self total (not reviewed)
+  const expYears = computeExperienceYears(u.dateOfJoining, year.startDate);
+  const cadre = deriveCadre(u.designation);
+  const target = cadre ? pickCadreTarget(ctx.cadreTargets, cadre, expYears) : null;
+  const eligibility = checkEligibility(actuals, target);
 
   return {
     year: year.label,
-    faculty: row.faculty,
-    department: row.department,
-    cadre: row.cadre,
-    cadreLabel: row.cadreLabel,
-    expYears: row.expYears,
-    tier: row.tier,
-    eligible: row.eligibility.eligible,
-    requirements: row.eligibility.requirements,
-    actuals: row.actuals,
-    scores: rev
-      ? { cat1: rev.cat1Score, cat2: rev.cat2Score, cat3: rev.cat3Score, cat4: rev.cat4Score, cat5: rev.cat5Score, cat6, total: rev.totalScore, grand: rev.grandTotal }
-      : null,
+    faculty: { id: u.id, name: u.name, employeeCode: u.employeeCode, designation: u.designation },
+    department: u.department,
+    cadre,
+    cadreLabel: cadre ? CADRE_LABEL[cadre] : null,
+    expYears: Math.round(expYears * 10) / 10,
+    eligible: eligibility.eligible,
+    requirements: eligibility.requirements, // the ideal targets
+    scores: {
+      cat1: score.cat1.total,
+      cat2: score.cat2.total,
+      cat3: score.cat3.total,
+      cat4: score.cat4.total,
+      cat5: score.cat5.total,
+      total: score.selfTotal,
+    },
   };
 }
 
