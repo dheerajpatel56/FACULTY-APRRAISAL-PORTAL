@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Eye } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import ProofVerificationPanel from '../../components/ProofVerificationPanel';
+import FeedbackSection from '../../components/FeedbackSection';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -129,6 +130,8 @@ export default function ReviewAppraisalPage() {
           </Card>
 
           <ProofVerificationPanel submissionId={id!} />
+
+          <FeedbackSection submissionId={id!} />
 
         </div>
 

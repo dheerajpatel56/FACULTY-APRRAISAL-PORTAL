@@ -6,6 +6,7 @@ import { CheckCircle, Download } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
+import FeedbackSection from '../../components/FeedbackSection';
 
 export default function AppraisalViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -143,6 +144,11 @@ export default function AppraisalViewPage() {
           </div>
         </Card>
       )}
+
+      {/* Annual HoD feedback (visible once issued) */}
+      <div className="mb-4">
+        <FeedbackSection submissionId={id!} />
+      </div>
 
       {/* Status notice */}
       {['SUBMITTED', 'UNDER_REVIEW'].includes(submission.status) && (
