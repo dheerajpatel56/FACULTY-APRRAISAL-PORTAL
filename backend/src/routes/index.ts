@@ -17,7 +17,6 @@ import * as email from '../controllers/emailController';
 import * as audit from '../controllers/auditController';
 import * as upload from '../controllers/uploadController';
 import * as cadreTarget from '../controllers/cadreTargetController';
-import * as tierRule from '../controllers/tierRuleController';
 import * as cadreTier from '../controllers/cadreTierController';
 import * as verification from '../controllers/verificationController';
 import * as tracking from '../controllers/trackingController';
@@ -86,11 +85,6 @@ router.post('/admin/cadre-targets', authenticate, roleGuard([RoleType.ADMIN]), c
 router.post('/admin/cadre-targets/seed-defaults', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.seedDefaultCadreTargets);
 router.put('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.updateCadreTarget);
 router.delete('/admin/cadre-targets/:id', authenticate, roleGuard([RoleType.ADMIN]), cadreTarget.deleteCadreTarget);
-
-// Admin: tier rules (W1) — legacy global tier rules (retired by W7 cadre tiers)
-router.get('/admin/tier-rules', authenticate, roleGuard([RoleType.ADMIN]), tierRule.listTierRules);
-router.put('/admin/tier-rules', authenticate, roleGuard([RoleType.ADMIN]), tierRule.upsertTierRule);
-router.delete('/admin/tier-rules/:id', authenticate, roleGuard([RoleType.ADMIN]), tierRule.deleteTierRule);
 
 // Admin: per-cadre tier thresholds (W7)
 router.get('/admin/cadre-tiers', authenticate, roleGuard([RoleType.ADMIN]), cadreTier.listCadreTiers);

@@ -157,7 +157,7 @@ export default function TrackingPage() {
       )}
       {data && !data.hasTierRules && (
         <div className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-          No tier rules set for this year — tiers won't be assigned. Set them in Admin → Tier Rules.
+          No tier thresholds set for this year — tiers won't be assigned. Set them in Admin → Tier Thresholds.
         </div>
       )}
 

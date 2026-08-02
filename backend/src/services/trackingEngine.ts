@@ -2,7 +2,7 @@ import { computeScore } from './scoringEngine';
 
 // W3 criteria-tracking engine (pure, like scoringEngine). Computes the 7
 // target-table actuals for a faculty submission. Consumed by the tier engine
-// (evaluates admin TierRule trees) and the cadre-target eligibility check.
+// (per-cadre tier thresholds) and the cadre-target eligibility check.
 //
 // Locked decisions:
 //  - totalScore = HoD-reviewed grandTotal (/550) when a review exists,

@@ -4,7 +4,7 @@ import app from '../app';
 
 // V2 workflow (W1–W6) endpoint tests — real Express app + DB.
 // Covers the controllers that were previously only smoke-tested by hand:
-// cadreTarget, tierRule, verification/red-list, tracking, feedback, /reports/criteria.
+// cadreTarget, verification/red-list, tracking, feedback, /reports/criteria.
 //
 // Self-skips if the DB is unreachable or the expected users are missing, so
 // `npm test` still passes on a machine without a seeded database.
@@ -54,8 +54,6 @@ describe('V2 auth & role gating', () => {
   const noToken: Array<[string, string]> = [
     ['get', '/api/admin/cadre-targets'],
     ['post', '/api/admin/cadre-targets'],
-    ['get', '/api/admin/tier-rules'],
-    ['put', '/api/admin/tier-rules'],
     ['get', '/api/tracking'],
     ['get', '/api/tracking/export'],
     ['post', '/api/admin/tracking/snapshot'],
@@ -74,8 +72,6 @@ describe('V2 auth & role gating', () => {
     ['get', '/api/admin/cadre-targets'],
     ['post', '/api/admin/cadre-targets'],
     ['post', '/api/admin/cadre-targets/seed-defaults'],
-    ['get', '/api/admin/tier-rules'],
-    ['put', '/api/admin/tier-rules'],
     ['get', '/api/tracking'],
     ['get', '/api/tracking/export'],
     ['post', '/api/admin/tracking/snapshot'],
@@ -171,65 +167,7 @@ describe('W1 cadre targets', () => {
   });
 });
 
-// ─── W1: tier rules (admin upsert) ──────────────────────────────────────────
-describe('W1 tier rules', () => {
-  it('admin can list tier rules', async () => {
-    if (!ready) return;
-    const res = await request(app).get(`/api/admin/tier-rules?academicYearId=${openYearId}`).set(bearer(adminTok));
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-  });
-
-  it('upsert T3 rule, then restore prior config', async () => {
-    if (!ready) return;
-    // Snapshot any existing T3 rule so we can put it back.
-    const before = await request(app).get(`/api/admin/tier-rules?academicYearId=${openYearId}`).set(bearer(adminTok));
-    const priorT3 = before.body.find((r: any) => r.tier === 'T3');
-
-    const expression = { kind: 'group', op: 'AND', children: [{ kind: 'predicate', criterion: 'totalScore', op: 'GTE', value: 100 }] };
-    const up = await request(app)
-      .put('/api/admin/tier-rules')
-      .set(bearer(adminTok))
-      .send({ academicYearId: openYearId, tier: 'T3', expression });
-    expect(up.status).toBe(200);
-    expect(up.body.tier).toBe('T3');
-    expect(up.body.expression).toEqual(expression);
-    const newId = up.body.id;
-
-    // Restore: re-upsert prior expression, or delete the one we created.
-    if (priorT3) {
-      await request(app)
-        .put('/api/admin/tier-rules')
-        .set(bearer(adminTok))
-        .send({ academicYearId: openYearId, tier: 'T3', expression: priorT3.expression });
-    } else {
-      const del = await request(app).delete(`/api/admin/tier-rules/${newId}`).set(bearer(adminTok));
-      expect(del.status).toBe(204);
-    }
-  });
-
-  it('upsert against unknown academic year → 404', async () => {
-    if (!ready) return;
-    const res = await request(app)
-      .put('/api/admin/tier-rules')
-      .set(bearer(adminTok))
-      .send({
-        academicYearId: 'no-such-year',
-        tier: 'T1',
-        expression: { kind: 'group', op: 'AND', children: [{ kind: 'predicate', criterion: 'feedback', op: 'GTE', value: 3 }] },
-      });
-    expect(res.status).toBe(404);
-  });
-
-  it('rejects an empty group expression with 400', async () => {
-    if (!ready) return;
-    const res = await request(app)
-      .put('/api/admin/tier-rules')
-      .set(bearer(adminTok))
-      .send({ academicYearId: openYearId, tier: 'T1', expression: { kind: 'group', op: 'AND', children: [] } });
-    expect(res.status).toBe(400);
-  });
-});
+// W7 per-cadre tier thresholds are covered in cadreTierController.test.ts.
 
 // ─── W3/W5: tracking ────────────────────────────────────────────────────────
 describe('W3/W5 tracking', () => {

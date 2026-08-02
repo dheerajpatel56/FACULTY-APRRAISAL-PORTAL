@@ -13,7 +13,6 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminAcademicYearsPage from './pages/admin/AdminAcademicYearsPage';
 import AdminCadreTargetsPage from './pages/admin/AdminCadreTargetsPage';
 import AdminInchargesPage from './pages/admin/AdminInchargesPage';
-import AdminTierRulesPage from './pages/admin/AdminTierRulesPage';
 import AdminCadreTiersPage from './pages/admin/AdminCadreTiersPage';
 import AdminAppraisalsPage from './pages/admin/AdminAppraisalsPage';
 import AdminDepartmentsPage from './pages/admin/AdminDepartmentsPage';
@@ -68,9 +67,6 @@ export default function App() {
         } />
         <Route path="/admin/incharges" element={
           <ProtectedRoute roles={['ADMIN']}><AdminInchargesPage /></ProtectedRoute>
-        } />
-        <Route path="/admin/tier-rules" element={
-          <ProtectedRoute roles={['ADMIN']}><AdminTierRulesPage /></ProtectedRoute>
         } />
         <Route path="/admin/cadre-tiers" element={
           <ProtectedRoute roles={['ADMIN']}><AdminCadreTiersPage /></ProtectedRoute>
