@@ -1,6 +1,8 @@
 import type { EmailTemplateKey } from './emailService';
 
-const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+// FRONTEND_URL may be a comma-separated CORS allowlist (e.g. multiple dev
+// ports); email links need a single base, so use the first origin.
+const FRONTEND_URL = (process.env.FRONTEND_URL ?? 'http://localhost:5173').split(',')[0].trim();
 
 // Subject lines (function for dynamic substitution)
 export const TEMPLATE_SUBJECTS: Record<EmailTemplateKey, (p: any) => string> = {
