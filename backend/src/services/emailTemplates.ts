@@ -222,6 +222,12 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
         <tr style="background:#1e3a5f;color:#fff"><th align="left" style="padding:8px">Criterion</th><th align="left" style="padding:8px">Target</th><th align="left" style="padding:8px">Actual</th><th align="left" style="padding:8px">Met</th></tr>
         ${p.requirements.map((r: any, i: number) => `<tr ${i % 2 ? 'style="background:#f8fafc"' : ''}><td>${r.label}</td><td>${r.target}</td><td>${r.actual}</td><td>${r.met ? '✔' : '✘'}</td></tr>`).join('')}
       </table>` : ''}
+    ${p.strengths || p.improvements || p.growthTargets ? `
+      <div style="margin:12px 0;font-size:13px;line-height:1.5">
+        ${p.strengths ? `<p style="margin:0 0 6px"><strong style="color:#065f46">Strengths</strong><br />${String(p.strengths).replace(/\n/g, '<br />')}</p>` : ''}
+        ${p.improvements ? `<p style="margin:8px 0 6px"><strong style="color:#991b1b">Areas to improve</strong><br />${String(p.improvements).replace(/\n/g, '<br />')}</p>` : ''}
+        ${p.growthTargets ? `<p style="margin:8px 0 6px"><strong style="color:#1e40af">Growth targets</strong><br />${String(p.growthTargets).replace(/\n/g, '<br />')}</p>` : ''}
+      </div>` : ''}
     <p style="color:#64748b;font-size:13px">This is a provisional quarterly update; your final eligibility and tier are set at the annual submission.</p>
     <p style="margin-top:24px;color:#94a3b8;font-size:11px">Sent per your email preferences. <a href="${FRONTEND_URL}/profile" style="color:#94a3b8">Manage preferences</a>.</p>
   `),

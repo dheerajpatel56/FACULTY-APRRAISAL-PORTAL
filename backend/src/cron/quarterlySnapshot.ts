@@ -3,6 +3,7 @@ import { Quarter } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { enqueueEmail } from '../services/emailService';
 import { TRACKING_INCLUDE, loadTrackingContext, computeRow, latestPerFaculty } from '../services/trackingService';
+import { generateNarrative } from '../services/feedbackNarrative';
 
 /**
  * Quarterly criteria-tracking scheduler. On the last day of each fixed calendar
@@ -50,8 +51,14 @@ async function snapshotYear(academicYearId: string, quarter: Quarter): Promise<n
     });
     count++;
 
-    // Auto-feedback email (provisional quarterly standing).
+    // Auto-feedback email (provisional quarterly standing) — sent directly to
+    // the faculty, no HoD step. Includes the auto-generated narrative.
     try {
+      const narrative = generateNarrative({
+        cadreLabel: row.cadreLabel,
+        eligible: row.eligibility.eligible,
+        requirements: row.eligibility.requirements,
+      });
       await enqueueEmail({
         toUserId: row.faculty.id,
         template: 'quarterly_feedback',
@@ -63,6 +70,7 @@ async function snapshotYear(academicYearId: string, quarter: Quarter): Promise<n
           tier: row.tier ?? '—',
           eligible: row.eligibility.eligible,
           requirements: row.eligibility.requirements.map((r) => ({ label: r.label, target: r.target, actual: r.actual, met: r.met })),
+          ...narrative,
         },
         dedupeKey: `quarterly_feedback:${row.faculty.id}:${academicYearId}:${quarter}`,
         honorOptIn: true,
