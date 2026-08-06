@@ -8,6 +8,7 @@ import { TRACKING_INCLUDE, loadTrackingContext } from '../services/trackingServi
 import { computeScore } from '../services/scoringEngine';
 import { computeActuals } from '../services/trackingEngine';
 import { deriveCadre, computeExperienceYears, pickCadreTarget, checkEligibility, CADRE_LABEL } from '../services/cadreEngine';
+import { generateNarrative } from '../services/feedbackNarrative';
 
 // Author of feedback: HoD of the faculty's dept, or admin — never the owner.
 function canAuthor(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
@@ -78,9 +79,12 @@ export async function getFeedback(req: Request, res: Response) {
     return res.json({ feedback, editable: false });
   }
 
-  // Editors (HoD/admin) also get a fresh auto snapshot to preview current standing.
+  // Editors (HoD/admin) also get a fresh auto snapshot to preview current
+  // standing, plus an auto-generated narrative to pre-fill the editor — so the
+  // HoD reviews a ready draft and edits or issues it with one click.
   const autoSnapshot = editable ? await buildSnapshot(sub.id) : null;
-  return res.json({ feedback, autoSnapshot, editable });
+  const suggested = autoSnapshot ? generateNarrative(autoSnapshot) : null;
+  return res.json({ feedback, autoSnapshot, suggested, editable });
 }
 
 const saveSchema = z.object({

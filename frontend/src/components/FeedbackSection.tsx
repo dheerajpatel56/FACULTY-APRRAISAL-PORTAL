@@ -42,14 +42,26 @@ export default function FeedbackSection({ submissionId }: { submissionId: string
   const [form, setForm] = useState({ strengths: '', improvements: '', growthTargets: '' });
   const [busy, setBusy] = useState(false);
 
+  // True when the editor was pre-filled from the auto-generated draft (no HoD
+  // narrative saved yet) — drives the "auto-drafted" hint.
+  const [autofilled, setAutofilled] = useState(false);
+
   const load = () =>
     feedbackApi.get(submissionId).then((d) => {
       setData(d);
-      if (d.feedback) setForm({
-        strengths: d.feedback.strengths ?? '',
-        improvements: d.feedback.improvements ?? '',
-        growthTargets: d.feedback.growthTargets ?? '',
-      });
+      const saved = d.feedback && (d.feedback.strengths || d.feedback.improvements || d.feedback.growthTargets);
+      if (saved) {
+        setForm({
+          strengths: d.feedback!.strengths ?? '',
+          improvements: d.feedback!.improvements ?? '',
+          growthTargets: d.feedback!.growthTargets ?? '',
+        });
+        setAutofilled(false);
+      } else if (d.suggested) {
+        // Auto-generated draft — HoD edits or issues with one click.
+        setForm({ ...d.suggested });
+        setAutofilled(true);
+      }
     }).catch(() => toast.error('Failed to load feedback'));
 
   useEffect(() => { load(); }, [submissionId]);
@@ -103,6 +115,11 @@ export default function FeedbackSection({ submissionId }: { submissionId: string
 
       {editable ? (
         <div className="space-y-3">
+          {autofilled && (
+            <p className="text-xs text-primary-700 bg-primary-50 border border-primary-200 rounded px-3 py-2">
+              Auto-drafted from this faculty's targets. Edit if needed, or issue as-is with one click.
+            </p>
+          )}
           {([['strengths', 'Strengths'], ['improvements', 'Areas to improve'], ['growthTargets', 'Growth targets (next cycle)']] as const).map(([k, label]) => (
             <div key={k}>
               <label className="block text-xs font-medium text-ink-secondary mb-1">{label}</label>

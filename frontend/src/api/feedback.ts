@@ -22,6 +22,9 @@ export interface FeedbackData {
 export interface FeedbackResponse {
   feedback: FeedbackData | null;
   autoSnapshot?: FeedbackSnapshot | null;
+  // Auto-generated narrative (from the eligibility snapshot) to pre-fill the
+  // editor when no draft has been written yet.
+  suggested?: { strengths: string; improvements: string; growthTargets: string } | null;
   editable: boolean;
 }
 
