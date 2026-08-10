@@ -997,10 +997,11 @@ export default function AppraisalEditPage() {
                   <div><label className={labelCls}>Name</label><input {...register(`cat2Consultancy.${i}.name`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Sponsoring Agency</label><input {...register(`cat2Consultancy.${i}.agency`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Amount (Lakhs)</label><input type="number" step="0.1" {...register(`cat2Consultancy.${i}.amountLakhs`, { valueAsNumber: true })} className={inputCls} /></div>
+                  {proofField(`cat2Consultancy.${i}.proofFile`)}
                   <button type="button" onClick={() => consultancy.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Consultancy', () => consultancy.append({ name: '', agency: '', amountLakhs: 0 }))}
+              {addRowBtn('Add Consultancy', () => consultancy.append({ name: '', agency: '', amountLakhs: 0, proofFile: '' }))}
             </div>
 
             <div>
@@ -1019,10 +1020,11 @@ export default function AppraisalEditPage() {
                       Supervisor (unchecked = Co-Supervisor)
                     </label>
                   </div>
+                  {proofField(`cat2Guidance.${i}.proofFile`)}
                   <button type="button" onClick={() => guidance.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Guidance', () => guidance.append({ studentName: '', university: '', thesisTitle: '', isGuide: true }))}
+              {addRowBtn('Add Guidance', () => guidance.append({ studentName: '', university: '', thesisTitle: '', isGuide: true, proofFile: '' }))}
             </div>
 
             <div>
@@ -1035,10 +1037,11 @@ export default function AppraisalEditPage() {
                   <div><label className={labelCls}>Group Name</label><input {...register(`cat2ResearchGroups.${i}.groupName`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Size</label><input type="number" {...register(`cat2ResearchGroups.${i}.size`, { valueAsNumber: true })} className={inputCls} /></div>
                   <div><label className={labelCls}>Outcome</label><input {...register(`cat2ResearchGroups.${i}.outcome`)} className={inputCls} /></div>
+                  {proofField(`cat2ResearchGroups.${i}.proofFile`)}
                   <button type="button" onClick={() => researchGroups.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Research Group', () => researchGroups.append({ groupName: '', size: 1, outcome: '' }))}
+              {addRowBtn('Add Research Group', () => researchGroups.append({ groupName: '', size: 1, outcome: '', proofFile: '' }))}
             </div>
 
             <div>
@@ -1051,10 +1054,11 @@ export default function AppraisalEditPage() {
                   <div><label className={labelCls}>Institute Name</label><input {...register(`cat2Linkages.${i}.instituteName`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Contact Person</label><input {...register(`cat2Linkages.${i}.contactPerson`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Outcome</label><input {...register(`cat2Linkages.${i}.outcome`)} className={inputCls} /></div>
+                  {proofField(`cat2Linkages.${i}.proofFile`)}
                   <button type="button" onClick={() => linkages.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Linkage', () => linkages.append({ instituteName: '', contactPerson: '', outcome: '' }))}
+              {addRowBtn('Add Linkage', () => linkages.append({ instituteName: '', contactPerson: '', outcome: '', proofFile: '' }))}
             </div>
 
             <div>
@@ -1068,10 +1072,11 @@ export default function AppraisalEditPage() {
                   <div><label className={labelCls}>Industry Name</label><input {...register(`cat2IndustryLinkages.${i}.industryName`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Contact Person</label><input {...register(`cat2IndustryLinkages.${i}.contactPerson`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Outcome</label><input {...register(`cat2IndustryLinkages.${i}.outcome`)} className={inputCls} /></div>
+                  {proofField(`cat2IndustryLinkages.${i}.proofFile`)}
                   <button type="button" onClick={() => industryLinkages.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Industry Linkage', () => industryLinkages.append({ industryName: '', contactPerson: '', outcome: '' }))}
+              {addRowBtn('Add Industry Linkage', () => industryLinkages.append({ industryName: '', contactPerson: '', outcome: '', proofFile: '' }))}
             </div>
 
             <div>
@@ -1084,10 +1089,11 @@ export default function AppraisalEditPage() {
                   <div><label className={labelCls}>Group Name</label><input {...register(`cat2Startups.${i}.groupName`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Activity</label><input {...register(`cat2Startups.${i}.activity`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Outcome</label><input {...register(`cat2Startups.${i}.outcome`)} className={inputCls} /></div>
+                  {proofField(`cat2Startups.${i}.proofFile`)}
                   <button type="button" onClick={() => startups.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Startup', () => startups.append({ groupName: '', activity: '', outcome: '' }))}
+              {addRowBtn('Add Startup', () => startups.append({ groupName: '', activity: '', outcome: '', proofFile: '' }))}
             </div>
           </div>
         )}
@@ -1118,6 +1124,7 @@ export default function AppraisalEditPage() {
                   <option value="pgDiploma">PG Diploma</option>
                 </select>
               </div>
+              <div className="mt-3">{proofField('cat3AdvQual.proofFile', 'Degree / Proof')}</div>
             </div>
 
             <div>
@@ -1129,10 +1136,11 @@ export default function AppraisalEditPage() {
                   <div><label className={labelCls}>Authors</label><input {...register(`cat3ConferencesAttended.${i}.authors`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Conference / Seminar / Workshop</label><input {...register(`cat3ConferencesAttended.${i}.conferenceName`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Period</label><input {...register(`cat3ConferencesAttended.${i}.period`)} className={inputCls} /></div>
+                  {proofField(`cat3ConferencesAttended.${i}.proofFile`, 'Certificate')}
                   <button type="button" onClick={() => conferencesAttended.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Conference Attended', () => conferencesAttended.append({ paperTitle: '', authors: '', conferenceName: '', period: '' }))}
+              {addRowBtn('Add Conference Attended', () => conferencesAttended.append({ paperTitle: '', authors: '', conferenceName: '', period: '', proofFile: '' }))}
             </div>
 
             <div>
@@ -1155,10 +1163,11 @@ export default function AppraisalEditPage() {
                       <option value="Completed">Completed</option><option value="Ongoing">Ongoing</option>
                     </select>
                   </div>
+                  {proofField(`cat3Organised.${i}.proofFile`)}
                   <button type="button" onClick={() => organised.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Program', () => organised.append({ title: '', period: '', sponsor: '', scope: 'NATIONAL', status: 'Completed' }))}
+              {addRowBtn('Add Program', () => organised.append({ title: '', period: '', sponsor: '', scope: 'NATIONAL', status: 'Completed', proofFile: '' }))}
             </div>
 
             <div>
@@ -1181,11 +1190,12 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Duration</label><input {...register(`cat3ResourcePerson.${i}.duration`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Venue</label><input {...register(`cat3ResourcePerson.${i}.venue`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Organised By</label><input {...register(`cat3ResourcePerson.${i}.organisedBy`)} className={inputCls} /></div>
+                    {proofField(`cat3ResourcePerson.${i}.proofFile`, 'Certificate')}
                   </div>
                   <button type="button" onClick={() => resourcePerson.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Resource Person Role', () => resourcePerson.append({ programType: 'FDP', programName: '', topic: '', duration: '', venue: '', organisedBy: '' }))}
+              {addRowBtn('Add Resource Person Role', () => resourcePerson.append({ programType: 'FDP', programName: '', topic: '', duration: '', venue: '', organisedBy: '', proofFile: '' }))}
             </div>
 
             <div>
@@ -1211,11 +1221,12 @@ export default function AppraisalEditPage() {
                       </select>
                     </div>
                     <div><label className={labelCls}>Date / Duration</label><input {...register(`cat3Editorial.${i}.dateDuration`)} className={inputCls} /></div>
+                    {proofField(`cat3Editorial.${i}.proofFile`)}
                   </div>
                   <button type="button" onClick={() => editorial.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Editorial Role', () => editorial.append({ natureOfContrib: 'Editorial Board', orgOrJournal: '', scope: 'NATIONAL', dateDuration: '' }))}
+              {addRowBtn('Add Editorial Role', () => editorial.append({ natureOfContrib: 'Editorial Board', orgOrJournal: '', scope: 'NATIONAL', dateDuration: '', proofFile: '' }))}
             </div>
 
             <div>
@@ -1254,10 +1265,11 @@ export default function AppraisalEditPage() {
                       <option value="Sponsor">Sponsor</option>
                     </select>
                   </div>
+                  {proofField(`cat3IntlTravel.${i}.proofFile`)}
                   <button type="button" onClick={() => intlTravel.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Travel', () => intlTravel.append({ purpose: '', placeOrUniv: '', outcome: '', fundingSource: '' }))}
+              {addRowBtn('Add Travel', () => intlTravel.append({ purpose: '', placeOrUniv: '', outcome: '', fundingSource: '', proofFile: '' }))}
             </div>
           </div>
         )}
@@ -1284,10 +1296,11 @@ export default function AppraisalEditPage() {
                   </div>
                   <div><label className={labelCls}>Work Involved</label><input {...register(`cat4AdminResp.${i}.workInvolved`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Period</label><input {...register(`cat4AdminResp.${i}.period`)} className={inputCls} /></div>
+                  {proofField(`cat4AdminResp.${i}.proofFile`)}
                   <button type="button" onClick={() => adminResp.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Responsibility', () => adminResp.append({ responsibility: '', level: 'Department', workInvolved: '', period: '1 Semester' }))}
+              {addRowBtn('Add Responsibility', () => adminResp.append({ responsibility: '', level: 'Department', workInvolved: '', period: '1 Semester', proofFile: '' }))}
             </div>
 
             <div>
@@ -1299,10 +1312,11 @@ export default function AppraisalEditPage() {
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Activity</label><input {...register(`cat4StudentAct.${i}.activityName`)} className={inputCls} /></div>
                   <div><label className={labelCls}>Period</label><input {...register(`cat4StudentAct.${i}.period`)} className={inputCls} /></div>
+                  {proofField(`cat4StudentAct.${i}.proofFile`)}
                   <button type="button" onClick={() => studentAct.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Activity', () => studentAct.append({ activityName: '', period: '' }))}
+              {addRowBtn('Add Activity', () => studentAct.append({ activityName: '', period: '', proofFile: '' }))}
             </div>
           </div>
         )}
@@ -1330,10 +1344,11 @@ export default function AppraisalEditPage() {
                       <option value="life_member">Life Membership</option>
                     </select>
                   </div>
+                  {proofField(`cat5Memberships.${i}.proofFile`, 'Certificate')}
                   <button type="button" onClick={() => memberships.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Membership', () => memberships.append({ association: '', status: 'national_member' }))}
+              {addRowBtn('Add Membership', () => memberships.append({ association: '', status: 'national_member', proofFile: '' }))}
             </div>
 
             <div>
@@ -1375,10 +1390,11 @@ export default function AppraisalEditPage() {
                       <option value="initiating">Initiating</option>
                     </select>
                   </div>
+                  {proofField(`cat5Differentiators.${i}.proofFile`)}
                   <button type="button" onClick={() => differentiators.remove(i)} className="text-red-400 text-xs">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Differentiator', () => differentiators.append({ name: '', role: 'participating' }))}
+              {addRowBtn('Add Differentiator', () => differentiators.append({ name: '', role: 'participating', proofFile: '' }))}
             </div>
 
             <div>
@@ -1393,11 +1409,12 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Student Batch</label><input {...register(`cat5Internships.${i}.studentBatch`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Internship Details</label><input {...register(`cat5Internships.${i}.internshipDetails`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Period</label><input {...register(`cat5Internships.${i}.period`)} className={inputCls} /></div>
+                    {proofField(`cat5Internships.${i}.proofFile`)}
                   </div>
                   <button type="button" onClick={() => internships.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Internship', () => internships.append({ industryOrInst: '', studentBatch: '', internshipDetails: '', period: '' }))}
+              {addRowBtn('Add Internship', () => internships.append({ industryOrInst: '', studentBatch: '', internshipDetails: '', period: '', proofFile: '' }))}
             </div>
           </div>
         )}

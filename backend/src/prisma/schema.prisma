@@ -652,6 +652,7 @@ model Cat2Consultancy {
   name         String
   agency       String
   amountLakhs  Float
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -663,6 +664,7 @@ model Cat2Guidance {
   university   String
   thesisTitle  String
   isGuide      Boolean @default(true)
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -673,6 +675,7 @@ model Cat2ResearchGroup {
   groupName    String
   size         Int
   outcome      String
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -683,6 +686,7 @@ model Cat2Linkage {
   instituteName String
   contactPerson String
   outcome       String
+  proofFile     String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -693,6 +697,7 @@ model Cat2Startup {
   groupName    String
   activity     String
   outcome      String
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -704,6 +709,7 @@ model Cat2IndustryLinkage {
   industryName  String
   contactPerson String
   outcome       String
+  proofFile     String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -719,6 +725,7 @@ model Cat3AdvQual {
   postDoc          Boolean @default(false)
   pgDegree         Boolean @default(false)
   pgDiploma        Boolean @default(false)
+  proofFile        String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -731,6 +738,7 @@ model Cat3OrganisedProgram {
   sponsor      String?
   status       String
   scope        Scope
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -743,6 +751,7 @@ model Cat3ConferenceAttended {
   authors        String
   conferenceName String
   period         String
+  proofFile      String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -756,6 +765,7 @@ model Cat3ResourcePerson {
   duration     String
   venue        String
   organisedBy  String
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -767,6 +777,7 @@ model Cat3Editorial {
   orgOrJournal    String
   scope           Scope
   dateDuration    String
+  proofFile       String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -789,6 +800,7 @@ model Cat3IntlTravel {
   placeOrUniv   String
   outcome       String
   fundingSource String? // Self / Institute / Sponsor
+  proofFile     String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -800,6 +812,7 @@ model Cat4AdminResp {
   level          String
   workInvolved   String
   period         String
+  proofFile      String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -809,6 +822,7 @@ model Cat4StudentActivity {
   submissionId String
   activityName String
   period       String
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -818,6 +832,7 @@ model Cat5Membership {
   submissionId String
   association  String
   status       String
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -838,6 +853,7 @@ model Cat5Differentiator {
   submissionId String
   name         String
   role         String
+  proofFile    String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
@@ -849,6 +865,7 @@ model Cat5Internship {
   studentBatch      String
   internshipDetails String
   period            String
+  proofFile         String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }
