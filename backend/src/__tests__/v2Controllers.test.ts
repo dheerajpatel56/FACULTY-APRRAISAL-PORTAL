@@ -296,3 +296,33 @@ describe('reports/criteria', () => {
     expect(Array.isArray(res.body.rows)).toBe(true);
   });
 });
+
+// getDeptReport / exportReport used to read ?dept straight from the query with no
+// ownership check: a HoD could pass a foreign dept id (cross-dept read), and the
+// no-filter default returned EVERY department. Now a HoD is hard-scoped to their
+// own dept(s); admin keeps the optional filter.
+describe('reports/department dept-scope', () => {
+  const bogus = '00000000-0000-0000-0000-000000000000';
+
+  it('HoD report ignores a foreign ?dept — no cross-dept leak, no all-dept spill', async () => {
+    if (!ready || !hodTok) return;
+    const own = await request(app).get('/api/reports/department').set(bearer(hodTok));
+    const injected = await request(app).get(`/api/reports/department?dept=${bogus}`).set(bearer(hodTok));
+    expect(own.status).toBe(200);
+    expect(injected.status).toBe(200);
+    // ?dept is ignored for a HoD → identical result set (pre-fix the bogus dept
+    // filter returned [], and an unfiltered call spilled all departments).
+    expect(injected.body.length).toBe(own.body.length);
+    // A HoD only ever sees their own single department.
+    const deptIds = new Set(own.body.map((r: any) => r.submission.user.departmentId));
+    expect(deptIds.size).toBeLessThanOrEqual(1);
+  });
+
+  it('admin report still honours an explicit dept filter', async () => {
+    if (!ready) return;
+    const filtered = await request(app).get(`/api/reports/department?dept=${bogus}`).set(bearer(adminTok));
+    expect(filtered.status).toBe(200);
+    // Admin has no own-dept scoping, so a bogus filter is honoured → empty.
+    expect(filtered.body.length).toBe(0);
+  });
+});

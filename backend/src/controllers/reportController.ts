@@ -4,6 +4,21 @@ import prisma from '../utils/prismaClient';
 import * as XLSX from 'xlsx';
 import { computeScore } from '../services/scoringEngine';
 import { TRACKING_INCLUDE } from '../services/trackingService';
+import { AuthUser } from '../middleware/auth';
+
+// Dept scoping for report reads. Admins see every department (or an optional
+// single-dept filter); a HoD is hard-scoped to their own dept(s), so a foreign
+// ?dept can't leak another department's data — and the default no longer spills
+// all departments when the caller supplies no filter. Mirrors getCriteriaReport.
+function reportUserWhere(user: AuthUser, deptFilter?: string) {
+  const isAdmin = user.roles.some((r) => r.role === RoleType.ADMIN);
+  if (isAdmin) return deptFilter ? { departmentId: deptFilter } : {};
+  const deptIds = user.roles
+    .filter((r) => r.role === RoleType.HOD)
+    .map((r) => r.departmentId)
+    .filter(Boolean) as string[];
+  return { departmentId: { in: deptIds } };
+}
 
 export async function getDeptReport(req: Request, res: Response) {
   const { year, dept } = req.query;
@@ -12,14 +27,14 @@ export async function getDeptReport(req: Request, res: Response) {
     ? await prisma.academicYear.findUnique({ where: { label: year as string } })
     : null;
 
-  const deptFilter = dept as string | undefined;
   const yearFilter = academicYear?.id;
+  const userWhere = reportUserWhere(req.user!, typeof dept === 'string' ? dept : undefined);
 
   const reviews = await prisma.appraisalReview.findMany({
     where: {
       submission: {
         ...(yearFilter ? { academicYearId: yearFilter } : {}),
-        user: deptFilter ? { departmentId: deptFilter } : {},
+        user: userWhere,
       },
     },
     include: {
@@ -124,7 +139,7 @@ export async function exportReport(req: Request, res: Response) {
     where: {
       submission: {
         ...(academicYear ? { academicYearId: academicYear.id } : {}),
-        user: dept ? { departmentId: dept as string } : {},
+        user: reportUserWhere(req.user!, typeof dept === 'string' ? dept : undefined),
       },
     },
     include: {
