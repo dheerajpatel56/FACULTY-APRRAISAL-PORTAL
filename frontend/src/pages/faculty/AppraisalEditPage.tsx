@@ -889,9 +889,25 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Inventors</label><input {...register(`cat2Patents.${i}.inventors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Status</label>
-                      <select {...register(`cat2Patents.${i}.status`)} className={inputCls}>
-                        <option value="FILED">Filed</option><option value="PUBLISHED">Published</option><option value="GRANTED">Granted</option>
-                      </select>
+                      {(() => {
+                        const reg = register(`cat2Patents.${i}.status`);
+                        return (
+                          <select
+                            {...reg}
+                            className={inputCls}
+                            onChange={(e) => {
+                              reg.onChange(e); // keep RHF's own handler
+                              const v = e.target.value;
+                              // Drop dates the row no longer shows so a downgraded
+                              // status can't persist a stale publication/grant date.
+                              if (v !== 'GRANTED') setValue(`cat2Patents.${i}.dateOfGrant`, '', { shouldDirty: true });
+                              if (v === 'FILED') setValue(`cat2Patents.${i}.dateOfPub`, '', { shouldDirty: true });
+                            }}
+                          >
+                            <option value="FILED">Filed</option><option value="PUBLISHED">Published</option><option value="GRANTED">Granted</option>
+                          </select>
+                        );
+                      })()}
                     </div>
                     <div>
                       <label className={labelCls}>Type of IPR</label>
