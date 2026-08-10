@@ -923,8 +923,12 @@ export default function AppraisalEditPage() {
                     </div>
                     <div><label className={labelCls}>Application Number</label><input {...register(`cat2Patents.${i}.appNumber`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Filing</label><input type="date" {...register(`cat2Patents.${i}.dateOfFiling`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Patents.${i}.dateOfPub`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Date of Grant</label><input type="date" {...register(`cat2Patents.${i}.dateOfGrant`)} className={inputCls} /></div>
+                    {['PUBLISHED', 'GRANTED'].includes((watchedValues as any)?.cat2Patents?.[i]?.status) && (
+                      <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Patents.${i}.dateOfPub`)} className={inputCls} /></div>
+                    )}
+                    {(watchedValues as any)?.cat2Patents?.[i]?.status === 'GRANTED' && (
+                      <div><label className={labelCls}>Date of Grant</label><input type="date" {...register(`cat2Patents.${i}.dateOfGrant`)} className={inputCls} /></div>
+                    )}
                     <div><label className={labelCls}>Valid Duration</label><input {...register(`cat2Patents.${i}.validDuration`)} className={inputCls} /></div>
                     {proofField(`cat2Patents.${i}.proofFile`)}
                   </div>
