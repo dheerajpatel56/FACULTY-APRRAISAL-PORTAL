@@ -18,6 +18,7 @@ import * as audit from '../controllers/auditController';
 import * as upload from '../controllers/uploadController';
 import * as cadreTarget from '../controllers/cadreTargetController';
 import * as cadreTier from '../controllers/cadreTierController';
+import * as reviewWindow from '../controllers/reviewWindowController';
 import * as verification from '../controllers/verificationController';
 import * as tracking from '../controllers/trackingController';
 import * as feedback from '../controllers/feedbackController';
@@ -118,6 +119,11 @@ router.get('/tracking', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]),
 router.get('/tracking/export', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), tracking.exportTracking);
 // W4 — quarterly snapshot manual trigger (cron runs it at quarter-end)
 router.post('/admin/tracking/snapshot', authenticate, roleGuard([RoleType.ADMIN]), tracking.runSnapshot);
+
+// W8 — admin-configured quarterly review windows (automation fires on end date)
+router.get('/admin/review-windows', authenticate, roleGuard([RoleType.ADMIN]), reviewWindow.listReviewWindows);
+router.put('/admin/review-windows', authenticate, roleGuard([RoleType.ADMIN]), reviewWindow.upsertReviewWindow);
+router.delete('/admin/review-windows/:id', authenticate, roleGuard([RoleType.ADMIN]), reviewWindow.deleteReviewWindow);
 
 // W6 — annual HoD feedback
 router.get('/appraisals/:id/feedback', authenticate, feedback.getFeedback);

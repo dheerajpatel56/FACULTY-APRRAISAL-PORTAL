@@ -95,15 +95,33 @@ export async function runQuarterlySnapshot(academicYearId?: string, at: Date = n
   return { quarter, faculty: total };
 }
 
-export function startQuarterlySnapshotCron() {
-  // Last day of each fixed quarter, 09:00 server time.
-  const schedules = ['0 9 30 9 *', '0 9 31 12 *', '0 9 31 3 *', '0 9 30 6 *'];
-  for (const expr of schedules) {
-    cron.schedule(expr, async () => {
-      try { await runQuarterlySnapshot(); } catch (e) { console.error('[cron] Quarterly snapshot error:', e); }
-    });
+function sameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// W8 — fire the quarterly automation for any enabled review window whose end
+// date is `at`'s day and that hasn't already run today. Called by the daily cron.
+export async function runDueReviewWindows(at: Date = new Date()) {
+  const windows = await prisma.reviewWindow.findMany({ where: { enabled: true } });
+  const due = windows.filter(
+    (w) => sameLocalDay(new Date(w.endDate), at) && (!w.lastRunAt || !sameLocalDay(new Date(w.lastRunAt), at))
+  );
+  let faculty = 0;
+  for (const w of due) {
+    faculty += await snapshotYear(w.academicYearId, w.quarter);
+    await prisma.reviewWindow.update({ where: { id: w.id }, data: { lastRunAt: at } });
   }
-  console.log('[cron] Quarterly snapshot cron scheduled (quarter-end 09:00)');
+  if (due.length) console.log(`[cron] Review windows fired: ${due.length}, ${faculty} faculty`);
+  return { windows: due.length, faculty };
+}
+
+export function startQuarterlySnapshotCron() {
+  // Daily 09:00 — fire any enabled review window ending today. Admin-set
+  // windows take effect without a restart (the checker reads them each run).
+  cron.schedule('0 9 * * *', async () => {
+    try { await runDueReviewWindows(); } catch (e) { console.error('[cron] Review window error:', e); }
+  });
+  console.log('[cron] Review-window checker scheduled (daily 09:00)');
 }
 
 // Manual trigger (admin "Run snapshot now").

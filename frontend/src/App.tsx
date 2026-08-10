@@ -14,6 +14,7 @@ import AdminAcademicYearsPage from './pages/admin/AdminAcademicYearsPage';
 import AdminCadreTargetsPage from './pages/admin/AdminCadreTargetsPage';
 import AdminInchargesPage from './pages/admin/AdminInchargesPage';
 import AdminCadreTiersPage from './pages/admin/AdminCadreTiersPage';
+import AdminReviewWindowsPage from './pages/admin/AdminReviewWindowsPage';
 import AdminAppraisalsPage from './pages/admin/AdminAppraisalsPage';
 import AdminDepartmentsPage from './pages/admin/AdminDepartmentsPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
@@ -70,6 +71,9 @@ export default function App() {
         } />
         <Route path="/admin/cadre-tiers" element={
           <ProtectedRoute roles={['ADMIN']}><AdminCadreTiersPage /></ProtectedRoute>
+        } />
+        <Route path="/admin/review-windows" element={
+          <ProtectedRoute roles={['ADMIN']}><AdminReviewWindowsPage /></ProtectedRoute>
         } />
         <Route path="/admin/appraisals" element={
           <ProtectedRoute roles={['ADMIN']}><AdminAppraisalsPage /></ProtectedRoute>
