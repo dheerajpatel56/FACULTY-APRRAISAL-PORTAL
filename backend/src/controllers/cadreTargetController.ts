@@ -24,19 +24,35 @@ const FAPA_DEFAULTS: Array<{
   { cadre: Cadre.PROFESSOR, minExpYears: 0, maxExpYears: null, totalScoreTarget: 375, feedbackTarget: 3.5, indexedCount: 3, minJournal: 2, quartileSet: 'Q1-Q3', ppcRule: PpcRule.MANDATORY, ppcCount: 2 },
 ];
 
-const targetSchema = z.object({
+// Base shape WITHOUT Zod defaults. Defaults are applied only on the create path
+// below. This matters because Zod `.default()`s survive `.partial()` (Zod 4): a
+// partial parse re-materialises every defaulted key even when the client omits
+// it, so a single-field PUT would silently reset minExpYears/maxExpYears/
+// minJournal/quartileSet. The update path uses the defaults-free partial instead.
+const baseTargetShape = {
   academicYearId: z.string().min(1),
   cadre: z.nativeEnum(Cadre),
-  minExpYears: z.number().min(0).default(0),
-  maxExpYears: z.number().min(0).nullable().default(null),
+  minExpYears: z.number().min(0),
+  maxExpYears: z.number().min(0).nullable(),
   totalScoreTarget: z.number().min(0),
   feedbackTarget: z.number().min(0),
   indexedCount: z.number().int().min(0),
-  minJournal: z.number().int().min(0).default(0),
-  quartileSet: z.string().nullable().default(null),
+  minJournal: z.number().int().min(0),
+  quartileSet: z.string().nullable(),
   ppcRule: z.nativeEnum(PpcRule),
   ppcCount: z.number().int().min(0),
+} as const;
+
+// Create: optional-with-default fields may be omitted by the client.
+const createTargetSchema = z.object(baseTargetShape).extend({
+  minExpYears: z.number().min(0).default(0),
+  maxExpYears: z.number().min(0).nullable().default(null),
+  minJournal: z.number().int().min(0).default(0),
+  quartileSet: z.string().nullable().default(null),
 });
+
+// Update: every field optional, NO defaults — omitted keys are left untouched.
+const updateTargetSchema = z.object(baseTargetShape).partial();
 
 // GET /admin/cadre-targets?academicYearId=...
 export async function listCadreTargets(req: Request, res: Response) {
@@ -50,7 +66,7 @@ export async function listCadreTargets(req: Request, res: Response) {
 
 // POST /admin/cadre-targets
 export async function createCadreTarget(req: Request, res: Response) {
-  const data = targetSchema.parse(req.body);
+  const data = createTargetSchema.parse(req.body);
   if (data.maxExpYears !== null && data.maxExpYears <= data.minExpYears) {
     return res.status(400).json({ error: 'maxExpYears must be greater than minExpYears' });
   }
@@ -61,7 +77,7 @@ export async function createCadreTarget(req: Request, res: Response) {
 // PUT /admin/cadre-targets/:id
 export async function updateCadreTarget(req: Request, res: Response) {
   const { id } = req.params;
-  const data = targetSchema.partial().parse(req.body);
+  const data = updateTargetSchema.parse(req.body);
   const min = data.minExpYears;
   const max = data.maxExpYears;
   if (max !== null && max !== undefined && min !== undefined && max <= min) {

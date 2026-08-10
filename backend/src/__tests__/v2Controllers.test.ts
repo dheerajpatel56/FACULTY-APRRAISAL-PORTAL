@@ -122,15 +122,19 @@ describe('W1 cadre targets', () => {
     expect(created.body.id).toBeTruthy();
     const id = created.body.id;
 
-    // NOTE: the controller runs targetSchema.partial(), but Zod .default()s
-    // survive .partial() — omitting minExpYears would reset it to 0 and collide
-    // with the seeded 0-band row (P2002 → 400). Resend the band key to update safely.
+    // Regression: a single-field PUT must NOT reset the defaulted columns.
+    // (updateTargetSchema has no Zod defaults, so omitted keys are untouched.)
     const updated = await request(app)
       .put(`/api/admin/cadre-targets/${id}`)
       .set(bearer(adminTok))
-      .send({ minExpYears: 99, totalScoreTarget: 320 });
+      .send({ totalScoreTarget: 320 });
     expect(updated.status).toBe(200);
     expect(updated.body.totalScoreTarget).toBe(320);
+    // Band + other fields preserved, not reset to defaults.
+    expect(updated.body.minExpYears).toBe(99);
+    expect(updated.body.maxExpYears).toBeNull();
+    expect(updated.body.indexedCount).toBe(1);
+    expect(updated.body.feedbackTarget).toBe(3.5);
 
     const del = await request(app).delete(`/api/admin/cadre-targets/${id}`).set(bearer(adminTok));
     expect(del.status).toBe(204);
