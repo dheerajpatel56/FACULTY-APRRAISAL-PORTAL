@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { CalendarClock, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import { userApi } from '../../api/users';
