@@ -300,10 +300,10 @@ describe('Category 3 — Faculty Development', () => {
     expect(s.cat3.editorial).toBe(20); // 3*10=30, cap 20
   });
 
-  it('conferencesAttended is no longer scored (dropped from cat3 breakdown/total)', () => {
+  it('3.3 conferences attended: 10 each, capped 20', () => {
     const s = computeScore(emptySubmission({ cat3ConferencesAttended: [{}, {}, {}] }));
-    expect((s.cat3 as any).conferencesAttended).toBeUndefined();
-    expect(s.cat3.total).toBe(0);
+    expect(s.cat3.conferencesAttended).toBe(20); // 3*10=30, cap 20
+    expect(s.cat3.total).toBe(20);
   });
 
   it('3.5 training: >=5 days→10, <5→5, capped 25', () => {
@@ -457,8 +457,8 @@ describe('sample appraisal — form alignment', () => {
     cat2ResearchGroups: [{}],
     cat2Linkages: [{}, {}],
     cat2IndustryLinkages: [{}, {}, {}],
-    // 3.2 -> 20, 3.3 resourcePerson (1) -> 10, 3.4 editorial (1) -> 10, 3.5 (10+5+5+5)=25
-    // cat3ConferencesAttended included to prove it no longer contributes to the score.
+    // 3.2 -> 20, 3.3 conferences (2) -> 20, 3.3 resourcePerson (1) -> 10,
+    // 3.4 editorial (1) -> 10, 3.5 (10+5+5+5)=25  → cat3 = 85
     cat3Organised: [{}, {}],
     cat3ConferencesAttended: [{}, {}],
     cat3ResourcePerson: [{}],
@@ -482,8 +482,8 @@ describe('sample appraisal — form alignment', () => {
     expect(s.cat1.total).toBe(137);
   });
   it('Category 2 = 103', () => { expect(s.cat2.total).toBe(103); });
-  it('Category 3 = 65', () => { expect(s.cat3.total).toBe(65); });
+  it('Category 3 = 85', () => { expect(s.cat3.total).toBe(85); });
   it('Category 4 = 50', () => { expect(s.cat4.total).toBe(50); });
   it('Category 5 = 40', () => { expect(s.cat5.total).toBe(40); });
-  it('self total = 395', () => { expect(s.selfTotal).toBe(395); });
+  it('self total = 415', () => { expect(s.selfTotal).toBe(415); });
 });

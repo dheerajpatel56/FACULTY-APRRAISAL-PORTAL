@@ -186,6 +186,7 @@ export interface ScoreBreakdown {
   cat3: {
     advQual: number;
     organisedPrograms: number;
+    conferencesAttended: number;
     resourcePerson: number;
     editorial: number;
     training: number;
@@ -376,6 +377,9 @@ function scoreCategory3(v: ScoreFormValues) {
   // 3.2 Organised Programs (max 20)
   const organisedPrograms = Math.min(arr(v.cat3Organised).length * 10, 20);
 
+  // 3.3 Conferences / Seminars / Workshops Attended (max 20, 10 each)
+  const conferencesAttended = Math.min(arr(v.cat3ConferencesAttended).length * 10, 20);
+
   // 3.3 Resource Person (max 20, 10 each)
   const resourcePerson = Math.min(arr(v.cat3ResourcePerson).length * 10, 20);
 
@@ -395,10 +399,10 @@ function scoreCategory3(v: ScoreFormValues) {
   const intlTravel = Math.min(arr(v.cat3IntlTravel).length * 5, 5);
 
   const total = Math.min(
-    advQual + organisedPrograms + resourcePerson + editorial + training + intlTravel,
+    advQual + organisedPrograms + conferencesAttended + resourcePerson + editorial + training + intlTravel,
     100
   );
-  return { advQual, organisedPrograms, resourcePerson, editorial, training, intlTravel, total };
+  return { advQual, organisedPrograms, conferencesAttended, resourcePerson, editorial, training, intlTravel, total };
 }
 
 function scoreCategory4(v: ScoreFormValues) {

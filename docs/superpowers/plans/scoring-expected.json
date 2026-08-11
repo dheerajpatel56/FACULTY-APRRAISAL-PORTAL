@@ -24,11 +24,12 @@
   "cat3": {
     "advQual": 10,
     "organisedPrograms": 20,
+    "conferencesAttended": 20,
     "resourcePerson": 10,
     "editorial": 20,
     "training": 15,
     "intlTravel": 5,
-    "total": 80
+    "total": 100
   },
   "cat4": {
     "adminResp": 20,
@@ -42,5 +43,5 @@
     "internships": 5,
     "total": 50
   },
-  "selfTotal": 346.7
+  "selfTotal": 366.7
 }

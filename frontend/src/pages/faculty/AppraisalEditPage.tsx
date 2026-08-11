@@ -1128,8 +1128,11 @@ export default function AppraisalEditPage() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-ink-primary mb-3">Conferences / Seminars / Workshops Attended (retained — not scored)</h2>
-              <p className="text-xs text-ink-muted mb-3">Kept for record-keeping only; no longer contributes to the self-appraisal score.</p>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">3.3 Conferences / Seminars / Workshops Attended</h2>
+                <ScoreBadge value={live.cat3.conferencesAttended} max={20} />
+              </div>
+              <p className="text-xs text-ink-muted mb-3">Score 10 per entry, max 20.</p>
               {conferencesAttended.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-2 gap-3 mb-2">
                   <div><label className={labelCls}>Paper Title</label><input {...register(`cat3ConferencesAttended.${i}.paperTitle`)} className={inputCls} /></div>
