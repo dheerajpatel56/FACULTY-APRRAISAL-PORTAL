@@ -214,28 +214,21 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
   quarterly_feedback: (p) => layout('Quarterly Feedback', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">${p.quarter} Progress — ${p.year}</h2>
     <p>Dear <strong>${p.name}</strong>,</p>
-    <p>Your provisional standing this quarter (cadre <strong>${p.cadre}</strong>):</p>
-    <p>Tier: <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${p.tier}</span>
-       &nbsp; Eligibility: <span style="background:${p.eligible ? '#d1fae5;color:#065f46' : '#fee2e2;color:#991b1b'};padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${p.eligible ? 'ON TRACK' : 'NOT YET'}</span></p>
-    ${Array.isArray(p.requirements) && p.requirements.length ? `
-      <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
-        <tr style="background:#1e3a5f;color:#fff"><th align="left" style="padding:8px">Criterion</th><th align="left" style="padding:8px">Target</th><th align="left" style="padding:8px">Actual</th><th align="left" style="padding:8px">Met</th></tr>
-        ${p.requirements.map((r: any, i: number) => `<tr ${i % 2 ? 'style="background:#f8fafc"' : ''}><td>${r.label}</td><td>${r.target}</td><td>${r.actual}</td><td>${r.met ? '✔' : '✘'}</td></tr>`).join('')}
-      </table>` : ''}
+    <p>Here is a short summary of your progress this quarter, with a few pointers for the months ahead.</p>
     ${p.strengths || p.improvements || p.growthTargets ? `
       <div style="margin:12px 0;font-size:13px;line-height:1.5">
         ${p.strengths ? `<p style="margin:0 0 6px"><strong style="color:#065f46">Strengths</strong><br />${String(p.strengths).replace(/\n/g, '<br />')}</p>` : ''}
         ${p.improvements ? `<p style="margin:8px 0 6px"><strong style="color:#991b1b">Areas to improve</strong><br />${String(p.improvements).replace(/\n/g, '<br />')}</p>` : ''}
-        ${p.growthTargets ? `<p style="margin:8px 0 6px"><strong style="color:#1e40af">Growth targets</strong><br />${String(p.growthTargets).replace(/\n/g, '<br />')}</p>` : ''}
-      </div>` : ''}
-    <p style="color:#64748b;font-size:13px">This is a provisional quarterly update; your final eligibility and tier are set at the annual submission.</p>
+        ${p.growthTargets ? `<p style="margin:8px 0 6px"><strong style="color:#1e40af">Growth focus</strong><br />${String(p.growthTargets).replace(/\n/g, '<br />')}</p>` : ''}
+      </div>` : '<p style="color:#64748b;font-size:13px">Keep up your work this quarter — detailed guidance will follow at the annual review.</p>'}
+    <p style="color:#64748b;font-size:13px">This is a provisional quarterly update to help you plan ahead.</p>
     <p style="margin-top:24px;color:#94a3b8;font-size:11px">Sent per your email preferences. <a href="${FRONTEND_URL}/profile" style="color:#94a3b8">Manage preferences</a>.</p>
   `),
 
   feedback_issued: (p) => layout('Appraisal Feedback', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">Your Feedback is Ready</h2>
     <p>Dear <strong>${p.name}</strong>,</p>
-    <p>Your HoD has issued the annual feedback for your <strong>${p.year}</strong> appraisal — including your standing and growth guidance.</p>
+    <p>Your HoD has issued the annual feedback for your <strong>${p.year}</strong> appraisal — including personalised growth guidance.</p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Feedback</a></p>
   `),
 };

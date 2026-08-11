@@ -1,12 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { generateNarrative, type NarrativeSnapshot } from './feedbackNarrative';
+import { generateNarrative, type NarrativeSnapshot, type Narrative } from './feedbackNarrative';
 
 const req = (label: string, actual: string, target: string, met: boolean, gating = true) => ({
   key: label, label, actual, target, met, gating,
 });
 
+// The narrative is faculty-facing, so it must never leak the tier/eligibility/
+// cadre machinery or the target thresholds.
+const LEAK = /tier|eligib|cadre|assistant professor|professor|target|>=/i;
+const assertNoLeak = (n: Narrative) => {
+  for (const part of [n.strengths, n.improvements, n.growthTargets]) {
+    expect(part).not.toMatch(LEAK);
+  }
+};
+
 describe('generateNarrative', () => {
-  it('lists met targets as strengths and gating gaps as improvements/growth', () => {
+  it('lists met items as strengths and gating gaps as improvements/growth', () => {
     const snap: NarrativeSnapshot = {
       cadreLabel: 'Professor',
       eligible: false,
@@ -17,10 +26,13 @@ describe('generateNarrative', () => {
       ],
     };
     const n = generateNarrative(snap);
-    expect(n.strengths).toContain('Meets 2 of 3');
+    expect(n.strengths).toContain('Strong performance');
     expect(n.strengths).toContain('Total score');
+    expect(n.strengths).toContain('380');
     expect(n.improvements).toContain('Indexed journals');
-    expect(n.growthTargets).toContain('Reach Indexed journals >= 2 (currently 1)');
+    expect(n.improvements).toContain('currently 1');
+    expect(n.growthTargets).toContain('Build on your indexed journals');
+    assertNoLeak(n);
   });
 
   it('ignores non-gating (informational) gaps', () => {
@@ -33,8 +45,9 @@ describe('generateNarrative', () => {
       ],
     };
     const n = generateNarrative(snap);
-    expect(n.improvements).toContain('All eligibility targets are met');
-    expect(n.growthTargets).toContain('Sustain current performance');
+    expect(n.improvements).toContain('No major gaps');
+    expect(n.growthTargets).toContain('Sustain your current performance');
+    assertNoLeak(n);
   });
 
   it('handles the all-below case', () => {
@@ -44,8 +57,9 @@ describe('generateNarrative', () => {
       requirements: [req('Total score', '0', '>= 375', false)],
     };
     const n = generateNarrative(snap);
-    expect(n.strengths).toContain('No ideal targets');
+    expect(n.strengths).toContain('Keep building your portfolio');
     expect(n.improvements).toContain('Total score');
+    assertNoLeak(n);
   });
 
   it('handles an empty requirement set', () => {
@@ -53,5 +67,6 @@ describe('generateNarrative', () => {
     expect(n.strengths).toBeTruthy();
     expect(n.improvements).toBeTruthy();
     expect(n.growthTargets).toBeTruthy();
+    assertNoLeak(n);
   });
 });

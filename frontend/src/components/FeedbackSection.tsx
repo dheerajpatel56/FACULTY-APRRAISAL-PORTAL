@@ -111,7 +111,9 @@ export default function FeedbackSection({ submissionId }: { submissionId: string
         )}
       </div>
 
-      {snapshot && <div className="mb-3"><SnapshotSummary s={snapshot} /></div>}
+      {/* Cadre / eligibility / target snapshot is for editors (HoD/admin) only —
+          faculty must never see the tier/eligibility internals. */}
+      {editable && snapshot && <div className="mb-3"><SnapshotSummary s={snapshot} /></div>}
 
       {editable ? (
         <div className="space-y-3">

@@ -21,30 +21,31 @@ export interface Narrative {
   growthTargets: string;
 }
 
+// The narrative is faculty-facing (quarterly email + issued annual feedback), so
+// it must NOT expose the internal tier/eligibility/cadre machinery — no cadre
+// names, no "eligibility"/"tier" language, and no target thresholds. It reads as
+// plain qualitative growth guidance built from the faculty's own achievements.
 export function generateNarrative(snap: NarrativeSnapshot): Narrative {
   const reqs = snap.requirements ?? [];
-  const cadre = snap.cadreLabel ?? 'the cadre';
   // "manual check" rows (e.g. quartile) are placeholders, not real achievements
   // — keep them out of the strengths list.
   const met = reqs.filter((r) => r.met && r.actual !== 'manual check');
-  // Only gating gaps drive "must improve"; non-gating (informational) are omitted.
+  // Only gating gaps drive "areas to improve"; non-gating (informational) omitted.
   const unmet = reqs.filter((r) => !r.met && r.gating);
 
   const strengths = met.length
-    ? `Meets ${met.length} of ${reqs.length} ideal targets for ${cadre}:\n` +
-      met.map((r) => `• ${r.label} — ${r.actual} (target ${r.target})`).join('\n')
-    : `No ideal targets for ${cadre} are met yet this cycle.`;
+    ? `Strong performance this cycle:\n` +
+      met.map((r) => `• ${r.label} — ${r.actual}`).join('\n')
+    : `Keep building your portfolio across teaching, research and development this cycle.`;
 
   const improvements = unmet.length
-    ? `Currently below target on:\n` +
-      unmet.map((r) => `• ${r.label} — ${r.actual}, target ${r.target}`).join('\n')
-    : snap.eligible
-      ? 'All eligibility targets are met — no gaps this cycle.'
-      : 'No mandatory gaps outstanding.';
+    ? `A few areas to focus on next:\n` +
+      unmet.map((r) => `• ${r.label} — currently ${r.actual}`).join('\n')
+    : 'No major gaps this cycle — sustain your momentum.';
 
   const growthTargets = unmet.length
-    ? unmet.map((r) => `• Reach ${r.label} ${r.target} (currently ${r.actual})`).join('\n')
-    : '• Sustain current performance and aim for the next tier.';
+    ? unmet.map((r) => `• Build on your ${r.label.toLowerCase()}`).join('\n')
+    : '• Sustain your current performance and keep raising the bar.';
 
   return { strengths, improvements, growthTargets };
 }

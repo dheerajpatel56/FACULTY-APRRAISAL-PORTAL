@@ -73,10 +73,13 @@ export async function getFeedback(req: Request, res: Response) {
     include: { issuedBy: { select: { name: true } } },
   });
 
-  // Faculty (owner) only sees an issued feedback.
+  // Faculty (owner) only sees an issued feedback — and only the narrative. The
+  // snapshot carries cadre / eligibility / target internals, so strip it so
+  // faculty never see (or can inspect) the tier/eligibility machinery.
   if (isOwner) {
     if (!feedback || feedback.status !== 'ISSUED') return res.json({ feedback: null, editable: false });
-    return res.json({ feedback, editable: false });
+    const { snapshot: _snapshot, ...facultyFeedback } = feedback as any;
+    return res.json({ feedback: facultyFeedback, editable: false });
   }
 
   // Editors (HoD/admin) also get a fresh auto snapshot to preview current

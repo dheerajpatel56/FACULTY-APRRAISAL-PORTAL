@@ -90,6 +90,20 @@ describe('renderTemplate', () => {
     expect(html).toContain('3'); // pendingCount
   });
 
+  it('quarterly_feedback does not leak tier / eligibility / cadre to faculty', () => {
+    const html = renderTemplate('quarterly_feedback', {
+      ...samplePayload,
+      strengths: 'Strong teaching',
+      improvements: 'More journal publications',
+      growthTargets: 'Build on your research',
+    });
+    // Narrative is kept…
+    expect(html).toContain('Strong teaching');
+    expect(html).toContain('More journal publications');
+    // …but none of the tier/eligibility/cadre internals leak.
+    expect(html).not.toMatch(/tier|eligib|cadre|Assistant Professor|T2|ON TRACK|NOT YET/i);
+  });
+
   it('throws on unknown template', () => {
     expect(() => renderTemplate('nonexistent' as any, {})).toThrow();
   });
