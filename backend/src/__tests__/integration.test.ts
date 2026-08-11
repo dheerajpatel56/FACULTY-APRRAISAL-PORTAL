@@ -101,6 +101,14 @@ describe('Full appraisal workflow', () => {
     expect(created.status).toBe(201);
     const subId = created.body.id;
 
+    // One-appraisal-per-year guard: a 2nd create while one is active → 400.
+    const dup = await request(app)
+      .post('/api/appraisals')
+      .set('Authorization', `Bearer ${facTok}`)
+      .send({ academicYearId: year.id });
+    expect(dup.status).toBe(400);
+    expect(dup.body.error).toMatch(/already have an appraisal/i);
+
     // Fill (minimal — one SCI journal = 15 pts)
     const fill = await request(app)
       .put(`/api/appraisals/${subId}`)

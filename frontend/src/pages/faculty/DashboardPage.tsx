@@ -40,6 +40,11 @@ export default function DashboardPage() {
   };
 
   const currentYear = years.find((y) => y.id === selectedYear);
+  // One appraisal per faculty per year — hide "New Appraisal" once an active
+  // (non-REJECTED) one exists for the selected year (backend enforces this too).
+  const hasActiveThisYear = submissions.some(
+    (s: any) => ((s.academicYearId ?? s.academicYear?.id) === selectedYear) && s.status !== 'REJECTED'
+  );
 
   if (loading) {
     return (
@@ -73,13 +78,16 @@ export default function DashboardPage() {
                 <option key={y.id} value={y.id}>{y.label}</option>
               ))}
             </select>
-            {currentYear?.submissionOpen && (
+            {currentYear?.submissionOpen && !hasActiveThisYear && (
               <button
                 onClick={createNew}
                 className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-primary-700"
               >
                 <Plus size={16} /> New Appraisal
               </button>
+            )}
+            {currentYear?.submissionOpen && hasActiveThisYear && (
+              <span className="text-xs text-ink-muted max-w-[180px]">You already have an appraisal for this year.</span>
             )}
           </div>
         }

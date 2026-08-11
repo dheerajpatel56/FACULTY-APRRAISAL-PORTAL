@@ -191,6 +191,16 @@ export async function createAppraisal(req: Request, res: Response) {
     return res.status(400).json({ error: 'Submission window is closed' });
   }
 
+  // One appraisal per faculty per year. A faculty may only start a new one when
+  // they have none active — the sole exception is a REJECTED submission, which
+  // they correct and resubmit as a fresh draft.
+  const active = await prisma.appraisalSubmission.findFirst({
+    where: { userId, academicYearId, status: { not: SubmissionStatus.REJECTED } },
+  });
+  if (active) {
+    return res.status(400).json({ error: 'You already have an appraisal for this year' });
+  }
+
   const count = await prisma.appraisalSubmission.count({
     where: { userId, academicYearId },
   });
