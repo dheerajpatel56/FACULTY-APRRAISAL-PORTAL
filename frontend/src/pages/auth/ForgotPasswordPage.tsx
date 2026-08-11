@@ -65,16 +65,14 @@ export default function ForgotPasswordPage() {
         <div className="absolute -bottom-32 -right-16 w-80 h-80 rounded-full bg-accent-500/5" />
 
         <div className="relative z-10 text-center max-w-md">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-accent-500/20 border-2 border-accent-500/40 flex items-center justify-center">
-            <span className="text-2xl font-bold font-serif text-accent-400">VJ</span>
+          {/* Institute logo (light card so the black wordmark reads on the dark hero) */}
+          <div className="bg-white rounded-xl shadow-lg px-6 py-5 mb-8 inline-block">
+            <img
+              src="/vnrvjiet-logo.png"
+              alt="VNRVJIET — Vallurupalli Nageswara Rao Vignana Jyothi Institute of Engineering & Technology"
+              className="h-20 w-auto mx-auto"
+            />
           </div>
-
-          <h1 className="text-3xl font-bold font-serif leading-tight mb-2" style={{ color: '#f5d680' }}>
-            VALLURUPALLI NAGESWARA RAO<br />VIGNANA JYOTHI
-          </h1>
-          <h2 className="text-base font-semibold tracking-wide mb-6" style={{ color: '#ffffff' }}>
-            INSTITUTE OF ENGINEERING & TECHNOLOGY
-          </h2>
 
           <p className="text-xs text-primary-300 italic font-serif mt-12">TAMASOMA JYOTIRGAMAYA</p>
           <p className="text-[10px] text-primary-400 mt-1">"Lead me from darkness to light"</p>
@@ -85,10 +83,7 @@ export default function ForgotPasswordPage() {
       <div className="flex-1 flex items-center justify-center bg-surface-base p-6">
         <div className="w-full max-w-sm">
           <div className="lg:hidden text-center mb-8">
-            <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-primary-700 flex items-center justify-center">
-              <span className="text-lg font-bold font-serif text-accent-400">VJ</span>
-            </div>
-            <div className="text-sm font-bold text-ink-primary">VNRVJIET</div>
+            <img src="/vnrvjiet-logo.png" alt="VNRVJIET" className="h-12 w-auto mx-auto mb-3" />
             <div className="text-xs text-ink-muted">Faculty Appraisal Portal</div>
           </div>
 

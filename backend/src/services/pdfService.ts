@@ -1,4 +1,5 @@
 import puppeteer, { Browser } from 'puppeteer';
+import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -69,9 +70,8 @@ const BASE_STYLES = `
 
 function instituteHeader(): string {
   return `
-    <div class="institute">
-      <div class="name">VALLURUPALLI NAGESWARA RAO VIGNANA JYOTHI</div>
-      <div class="sub">INSTITUTE OF ENGINEERING &amp; TECHNOLOGY</div>
+    <div class="institute" style="text-align:center">
+      <img src="${VNRVJIET_LOGO_DATA_URI}" alt="VNRVJIET — Vallurupalli Nageswara Rao Vignana Jyothi Institute of Engineering &amp; Technology" style="height:58px;width:auto;margin-bottom:4px" />
     </div>
     <div class="accred">
       <span>NAAC A++</span><span>NBA Accredited</span><span>Autonomous Institution</span>

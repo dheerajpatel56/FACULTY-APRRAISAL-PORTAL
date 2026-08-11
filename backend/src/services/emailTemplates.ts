@@ -34,9 +34,11 @@ function layout(title: string, body: string): string {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
         <!-- Header -->
-        <tr><td style="background:#1e3a5f;padding:20px;text-align:center">
-          <div style="color:#f5d680;font-size:20px;font-weight:bold;letter-spacing:1px">VNRVJIET</div>
-          <div style="color:#ffffff;font-size:11px;margin-top:2px">Faculty Appraisal Portal</div>
+        <tr><td style="background:#ffffff;padding:16px 20px;text-align:center;border-bottom:1px solid #e2e8f0">
+          <img src="${FRONTEND_URL}/vnrvjiet-logo.png" alt="VNRVJIET — Vallurupalli Nageswara Rao Vignana Jyothi Institute of Engineering &amp; Technology" width="280" style="max-width:80%;height:auto;display:inline-block" />
+        </td></tr>
+        <tr><td style="background:#1e3a5f;padding:8px 20px;text-align:center">
+          <div style="color:#ffffff;font-size:11px;letter-spacing:0.5px">Faculty Appraisal Portal</div>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:24px">

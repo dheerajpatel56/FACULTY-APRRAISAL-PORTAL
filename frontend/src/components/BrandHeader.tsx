@@ -27,22 +27,13 @@ export default function BrandHeader() {
   return (
     <header className="bg-primary-700 text-white">
       <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 gap-2">
-        {/* Institute branding */}
+        {/* Institute branding — logo on a light chip so the black wordmark reads on the dark header */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-accent-500 flex items-center justify-center text-primary-800 font-bold text-xs sm:text-sm font-serif shrink-0">
-            VJ
+          <div className="bg-white rounded px-2 py-1 shrink-0">
+            <img src="/vnrvjiet-logo.png" alt="VNRVJIET" className="h-7 sm:h-9 w-auto" />
           </div>
-          <div className="border-l border-accent-500/40 pl-2 sm:pl-3 min-w-0">
-            <div className="text-xs sm:text-sm font-bold tracking-wide leading-tight">VNRVJIET</div>
-            <div className="hidden sm:block text-[10px] text-primary-200 leading-tight truncate">
-              VALLURUPALLI NAGESWARA RAO VIGNANA JYOTHI
-            </div>
-            <div className="hidden sm:block text-[10px] text-primary-200 leading-tight truncate">
-              INSTITUTE OF ENGINEERING & TECHNOLOGY
-            </div>
-            <div className="sm:hidden text-[9px] text-primary-200 leading-tight truncate">
-              Faculty Appraisal Portal
-            </div>
+          <div className="hidden md:block border-l border-accent-500/40 pl-3 min-w-0">
+            <div className="text-[11px] text-primary-200 leading-tight truncate">Faculty Appraisal Portal</div>
           </div>
         </div>
 
