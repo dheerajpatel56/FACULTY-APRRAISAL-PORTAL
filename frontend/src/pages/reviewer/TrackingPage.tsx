@@ -66,6 +66,18 @@ export default function TrackingPage() {
     }
   };
 
+  // Admin/dean assigns a faculty's tier by hand. Re-fetch so the segregation
+  // matrix + filters stay in sync.
+  const setTier = async (userId: string, tier: 'T1' | 'T2' | 'T3' | null) => {
+    try {
+      await trackingApi.setTier(userId, yearId, tier);
+      const fresh = await trackingApi.get(yearId);
+      setData(fresh);
+    } catch {
+      toast.error('Failed to set tier');
+    }
+  };
+
   const [fCadre, setFCadre] = useState('');
   const [fTier, setFTier] = useState('');
   const [fElig, setFElig] = useState('');
@@ -155,9 +167,9 @@ export default function TrackingPage() {
           No cadre targets set for this year — eligibility can't be computed. Set them in Admin → Cadre Targets.
         </div>
       )}
-      {data && !data.hasTierRules && (
-        <div className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-          No tier thresholds set for this year — tiers won't be assigned. Set them in Admin → Tier Thresholds.
+      {data && isAdmin() && data.rows.length > 0 && (
+        <div className="mb-3 text-xs text-ink-muted bg-surface-muted/40 border border-surface-border rounded px-3 py-2">
+          Review each faculty's actuals against their cadre targets (expand a row), then set their tier (T1/T2/T3) in the Tier column.
         </div>
       )}
 
@@ -265,7 +277,21 @@ export default function TrackingPage() {
                       </td>
                       <td className="py-2 px-2 text-ink-secondary">{r.cadreLabel ?? '—'}</td>
                       <td className="py-2 px-2 text-ink-secondary">{r.expYears}y</td>
-                      <td className="py-2 px-2"><TierBadge tier={r.tier} /></td>
+                      <td className="py-2 px-2" onClick={(e) => e.stopPropagation()}>
+                        {isAdmin() ? (
+                          <select
+                            value={r.tier ?? ''}
+                            onChange={(e) => setTier(r.faculty.id, (e.target.value || null) as 'T1' | 'T2' | 'T3' | null)}
+                            className="text-xs border border-surface-border rounded px-1.5 py-1 bg-surface-base focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            title="Assign tier"
+                          >
+                            <option value="">—</option>
+                            <option value="T1">T1</option>
+                            <option value="T2">T2</option>
+                            <option value="T3">T3</option>
+                          </select>
+                        ) : <TierBadge tier={r.tier} />}
+                      </td>
                       <td className="py-2 px-2">
                         {r.eligibility.requirements.length === 0
                           ? <span className="text-xs text-ink-muted">—</span>

@@ -318,6 +318,23 @@ model CadreTierThreshold {
   @@unique([academicYearId, cadre, tier])
 }
 
+// Manual tier assignment. Tiers are no longer auto-computed from thresholds — the
+// admin/dean reviews each faculty's achievements against their cadre targets and
+// assigns T1/T2/T3 by hand, once per academic year. `tier` null = unassigned.
+// Scalar keys (no relations) keep it decoupled; read by trackingService.
+model FacultyTier {
+  id             String   @id @default(uuid())
+  userId         String
+  academicYearId String
+  tier           Tier?
+  assignedById   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, academicYearId])
+  @@index([academicYearId])
+}
+
 // W1 — admin-configured per-AY cadre eligibility targets (FAPA table).
 // Seeded from the FAPA AY2025-26 table, admin-editable. The eligibility/tier
 // engine (W3) reads actuals against these rows.

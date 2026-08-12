@@ -129,7 +129,7 @@ describe('W7 cadre-tiers upsert', () => {
 });
 
 describe('W7 seed-defaults → tracking', () => {
-  it('seeds cadre×tier cells from targets and drives tracking, then cleans up', async () => {
+  it('seeds cadre×tier cells from targets, then cleans up', async () => {
     if (!ready) return;
     const before = await listCells();
 
@@ -147,11 +147,8 @@ describe('W7 seed-defaults → tracking', () => {
       expect(cells.length).toBe(seed.body.seededCadres.length * 3);
       const sample = cells[0];
       expect(sample.criteria.totalScore.enabled).toBe(true);
-
-      // Tracking now reports tier rules present.
-      const track = await request(app).get(`/api/tracking?academicYearId=${yearId}`).set(bearer(adminTok));
-      expect(track.status).toBe(200);
-      expect(track.body.hasTierRules).toBe(true);
+      // NOTE: thresholds no longer drive tracking — tiers are assigned manually
+      // (PUT /admin/faculty-tiers). This test only covers the threshold endpoints.
     }
 
     // Restore prior state (the table started empty in dev) to avoid leaking config.

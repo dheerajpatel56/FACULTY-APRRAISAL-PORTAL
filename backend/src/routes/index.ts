@@ -119,6 +119,8 @@ router.get('/tracking', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]),
 router.get('/tracking/export', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), tracking.exportTracking);
 // W4 — quarterly snapshot manual trigger (cron runs it at quarter-end)
 router.post('/admin/tracking/snapshot', authenticate, roleGuard([RoleType.ADMIN]), tracking.runSnapshot);
+// Manual tier assignment — admin/dean sets a faculty's T1/T2/T3 for the year.
+router.put('/admin/faculty-tiers', authenticate, roleGuard([RoleType.ADMIN]), tracking.setFacultyTier);
 
 // W8 — admin-configured quarterly review windows (automation fires on end date)
 router.get('/admin/review-windows', authenticate, roleGuard([RoleType.ADMIN]), reviewWindow.listReviewWindows);

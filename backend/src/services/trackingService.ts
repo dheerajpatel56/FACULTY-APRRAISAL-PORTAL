@@ -1,7 +1,6 @@
-import { Cadre } from '@prisma/client';
+import { Tier } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { computeActuals } from './trackingEngine';
-import { assignCadreTier, type TierName, type CadreTierCell, type TierCriteria } from './tierEngine';
 import { deriveCadre, computeExperienceYears, pickCadreTarget, checkEligibility, CADRE_LABEL } from './cadreEngine';
 
 // Shared per-faculty tracking computation, used by the tracking view
@@ -21,31 +20,25 @@ export const TRACKING_INCLUDE = {
 
 export interface TrackingContext {
   cadreTargets: any[];
-  // W7 per-cadre tier cells, grouped by cadre. A faculty's cadre selects which
-  // set of T1/T2/T3 cells the tier engine evaluates.
-  cadreTiersByCadre: Map<Cadre, CadreTierCell[]>;
+  // Manual tier assignments for the AY, keyed by faculty userId. Tiers are set
+  // by the admin/dean by hand (no auto-computation from thresholds).
+  manualTiers: Map<string, Tier>;
   hasTargets: boolean;
-  hasTierRules: boolean; // true when any cadre-tier cell is configured
 }
 
 export async function loadTrackingContext(academicYearId: string): Promise<TrackingContext> {
-  const [cadreTargets, cadreTiers] = await Promise.all([
+  const [cadreTargets, facultyTiers] = await Promise.all([
     prisma.cadreTarget.findMany({ where: { academicYearId } }),
-    prisma.cadreTierThreshold.findMany({ where: { academicYearId } }),
+    prisma.facultyTier.findMany({ where: { academicYearId } }),
   ]);
 
-  const cadreTiersByCadre = new Map<Cadre, CadreTierCell[]>();
-  for (const row of cadreTiers) {
-    const cells = cadreTiersByCadre.get(row.cadre) ?? [];
-    cells.push({ tier: row.tier as TierName, criteria: row.criteria as unknown as TierCriteria });
-    cadreTiersByCadre.set(row.cadre, cells);
-  }
+  const manualTiers = new Map<string, Tier>();
+  for (const ft of facultyTiers) if (ft.tier) manualTiers.set(ft.userId, ft.tier);
 
   return {
     cadreTargets,
-    cadreTiersByCadre,
+    manualTiers,
     hasTargets: cadreTargets.length > 0,
-    hasTierRules: cadreTiers.length > 0,
   };
 }
 
@@ -58,8 +51,6 @@ export function computeRow(sub: any, ctx: TrackingContext, yearStart: Date) {
   const actuals = computeActuals(sub, sub.review?.grandTotal ?? null);
   const target = cadre ? pickCadreTarget(ctx.cadreTargets, cadre, expYears) : null;
   const eligibility = checkEligibility(actuals, target);
-  const cells = cadre ? ctx.cadreTiersByCadre.get(cadre) ?? [] : [];
-  const tierResult = assignCadreTier(cells, actuals);
 
   return {
     submissionId: sub.id,
@@ -72,8 +63,8 @@ export function computeRow(sub: any, ctx: TrackingContext, yearStart: Date) {
     expYears: Math.round(expYears * 10) / 10,
     actuals,
     eligibility,
-    tier: tierResult.tier,
-    tierSatisfied: tierResult.satisfied,
+    // Manual assignment (admin/dean), null until assigned.
+    tier: ctx.manualTiers.get(u.id) ?? null,
   };
 }
 

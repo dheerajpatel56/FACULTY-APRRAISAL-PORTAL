@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
-import { RoleType } from '@prisma/client';
+import { RoleType, Tier } from '@prisma/client';
+import { z } from 'zod';
 import * as XLSX from 'xlsx';
+import prisma from '../utils/prismaClient';
 import { buildTrackingRows, summarize, type TrackingRow } from '../services/trackingService';
 import { triggerQuarterlySnapshot } from '../cron/quarterlySnapshot';
 
@@ -25,10 +27,28 @@ export async function getTracking(req: Request, res: Response) {
   return res.json({
     year: { id: built.year.id, label: built.year.label },
     hasTargets: built.ctx.hasTargets,
-    hasTierRules: built.ctx.hasTierRules,
     aggregates: summarize(built.rows),
     rows: built.rows,
   });
+}
+
+const setTierSchema = z.object({
+  userId: z.string().min(1),
+  academicYearId: z.string().min(1),
+  tier: z.nativeEnum(Tier).nullable(),
+});
+
+// PUT /admin/faculty-tiers  { userId, academicYearId, tier|null } — admin/dean
+// assigns a faculty's tier for the year by hand (no auto-computation).
+// tier=null clears the assignment.
+export async function setFacultyTier(req: Request, res: Response) {
+  const { userId, academicYearId, tier } = setTierSchema.parse(req.body);
+  const row = await prisma.facultyTier.upsert({
+    where: { userId_academicYearId: { userId, academicYearId } },
+    create: { userId, academicYearId, tier, assignedById: req.user!.id },
+    update: { tier, assignedById: req.user!.id },
+  });
+  return res.json(row);
 }
 
 function exportRow(r: TrackingRow) {

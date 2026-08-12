@@ -181,9 +181,38 @@ describe('W3/W5 tracking', () => {
     expect(res.status).toBe(200);
     expect(res.body.year?.id).toBe(openYearId);
     expect(typeof res.body.hasTargets).toBe('boolean');
-    expect(typeof res.body.hasTierRules).toBe('boolean');
     expect(Array.isArray(res.body.rows)).toBe(true);
     expect(res.body.aggregates).toBeTruthy();
+  });
+
+  it('admin sets a manual tier by hand and tracking reflects it', async () => {
+    if (!ready) return;
+    const track1 = await request(app).get(`/api/tracking?academicYearId=${openYearId}`).set(bearer(adminTok));
+    const row = track1.body.rows?.[0];
+    if (!row) return; // no faculty in scope
+    const userId = row.faculty.id;
+
+    const set = await request(app).put('/api/admin/faculty-tiers').set(bearer(adminTok))
+      .send({ userId, academicYearId: openYearId, tier: 'T2' });
+    expect(set.status).toBe(200);
+    expect(set.body.tier).toBe('T2');
+
+    const track2 = await request(app).get(`/api/tracking?academicYearId=${openYearId}`).set(bearer(adminTok));
+    expect(track2.body.rows.find((r: any) => r.faculty.id === userId).tier).toBe('T2');
+
+    // Clear it back to unassigned (restore).
+    const clr = await request(app).put('/api/admin/faculty-tiers').set(bearer(adminTok))
+      .send({ userId, academicYearId: openYearId, tier: null });
+    expect(clr.status).toBe(200);
+    const track3 = await request(app).get(`/api/tracking?academicYearId=${openYearId}`).set(bearer(adminTok));
+    expect(track3.body.rows.find((r: any) => r.faculty.id === userId).tier).toBeNull();
+  });
+
+  it('non-admin cannot set a manual tier (403)', async () => {
+    if (!ready || !hodTok) return;
+    const res = await request(app).put('/api/admin/faculty-tiers').set(bearer(hodTok))
+      .send({ userId: 'x', academicYearId: openYearId, tier: 'T1' });
+    expect(res.status).toBe(403);
   });
 
   it('admin GET /tracking/export?format=excel returns an xlsx buffer', async () => {
