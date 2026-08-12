@@ -45,6 +45,56 @@ function RequirementRows({ row }: { row: TrackingRow }) {
   );
 }
 
+const TIER_GROUPS: { key: 'T1' | 'T2' | 'T3' | 'none'; label: string }[] = [
+  { key: 'T1', label: 'Tier 1' },
+  { key: 'T2', label: 'Tier 2' },
+  { key: 'T3', label: 'Tier 3' },
+  { key: 'none', label: 'Unassigned' },
+];
+
+// End-of-year tier-wise roster: faculty grouped under their assigned tier.
+function TierGroupedList({ rows }: { rows: TrackingRow[] }) {
+  const groups: Record<string, TrackingRow[]> = { T1: [], T2: [], T3: [], none: [] };
+  for (const r of rows) groups[r.tier ?? 'none'].push(r);
+  return (
+    <div className="space-y-4">
+      {TIER_GROUPS.map((g) => (
+        <Card key={g.key}>
+          <div className="flex items-center gap-2 mb-2">
+            {g.key === 'none'
+              ? <span className="text-sm font-semibold text-ink-secondary">Unassigned</span>
+              : <span className={`text-sm font-semibold px-2 py-0.5 rounded border ${TIER_STYLE[g.key]}`}>{g.label}</span>}
+            <span className="text-xs text-ink-muted">{groups[g.key].length} faculty</span>
+          </div>
+          {groups[g.key].length === 0 ? (
+            <div className="text-xs text-ink-muted py-1">None.</div>
+          ) : (
+            <ul className="divide-y divide-surface-border/60">
+              {groups[g.key].map((r) => (
+                <li key={r.submissionId} className="flex items-center justify-between py-1.5 text-sm">
+                  <div>
+                    <span className="font-medium text-ink-primary">{r.faculty.name}</span>
+                    <span className="text-xs text-ink-muted ml-2">{r.faculty.employeeCode}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-ink-secondary">
+                    <span>{r.cadreLabel ?? '—'}</span>
+                    <span className="text-ink-muted">{r.actuals.totalScore}/550</span>
+                    {r.eligibility.requirements.length > 0 && (
+                      r.eligibility.eligible
+                        ? <CheckCircle2 size={14} className="text-emerald-600" />
+                        : <XCircle size={14} className="text-red-500" />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function TrackingPage() {
   const [years, setYears] = useState<any[]>([]);
   const [yearId, setYearId] = useState('');
@@ -81,6 +131,7 @@ export default function TrackingPage() {
   const [fCadre, setFCadre] = useState('');
   const [fTier, setFTier] = useState('');
   const [fElig, setFElig] = useState('');
+  const [view, setView] = useState<'table' | 'tiers'>('table');
   const [exporting, setExporting] = useState(false);
 
   const exportXlsx = async () => {
@@ -214,18 +265,30 @@ export default function TrackingPage() {
             </table>
           </Card>
 
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-3 items-center">
+            <div className="inline-flex rounded border border-surface-border overflow-hidden text-sm">
+              <button
+                onClick={() => setView('table')}
+                className={`px-3 py-1.5 ${view === 'table' ? 'bg-primary-600 text-white' : 'text-ink-secondary hover:bg-surface-muted'}`}
+              >Table</button>
+              <button
+                onClick={() => setView('tiers')}
+                className={`px-3 py-1.5 border-l border-surface-border ${view === 'tiers' ? 'bg-primary-600 text-white' : 'text-ink-secondary hover:bg-surface-muted'}`}
+              >By tier</button>
+            </div>
             <select value={fCadre} onChange={(e) => setFCadre(e.target.value)} className={inputCls}>
               <option value="">All cadres</option>
               {cadreOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select value={fTier} onChange={(e) => setFTier(e.target.value)} className={inputCls}>
-              <option value="">All tiers</option>
-              <option value="T1">T1</option>
-              <option value="T2">T2</option>
-              <option value="T3">T3</option>
-              <option value="none">No tier</option>
-            </select>
+            {view === 'table' && (
+              <select value={fTier} onChange={(e) => setFTier(e.target.value)} className={inputCls}>
+                <option value="">All tiers</option>
+                <option value="T1">T1</option>
+                <option value="T2">T2</option>
+                <option value="T3">T3</option>
+                <option value="none">No tier</option>
+              </select>
+            )}
             <select value={fElig} onChange={(e) => setFElig(e.target.value)} className={inputCls}>
               <option value="">All eligibility</option>
               <option value="eligible">Eligible</option>
@@ -240,6 +303,8 @@ export default function TrackingPage() {
         <div className="text-sm text-ink-muted">Loading…</div>
       ) : !data || filtered.length === 0 ? (
         <Card><div className="text-sm text-ink-muted py-4 text-center">No matching faculty.</div></Card>
+      ) : view === 'tiers' ? (
+        <TierGroupedList rows={filtered} />
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
