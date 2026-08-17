@@ -135,3 +135,41 @@ chapter published-vs-edited input. Update tests for every new cap/bracket.
 - PDF layout polish for the new/removed sections.
 - Backfill/data-migration for any real (non-test) submissions — current DB is
   test data, so destructive column changes are acceptable.
+
+---
+
+## 2026-08-12 — Second alignment pass against the official FPAS PDF
+
+Source of truth re-read subsection by subsection: *FACULTY ANNUAL PERFORMANCE
+SELF APPRAISAL (AY 2025-2026)*. Seven discrepancies found and fixed; everything
+else (1.1, 1.3, 1.4, 1.5, 2.2, 2.3, 2.5, 2.7, 2.8, 3.1-3.4, 3.6, 4.1, 4.2,
+5.1-5.4) already matched.
+
+| # | Subsection | Was | Now (per PDF) |
+|---|---|---|---|
+| 1 | 2.1 Publications | ESCI/ICI scored 15; non-indexed got 5 | WoS/Scopus journals 15, ESCI/ICI 10, non-indexed 0 |
+| 2 | 2.4 Patents | Filed scored 5 | Granted 10, Published 5, Filed 0 |
+| 3 | 2.6 Consultancy | exactly 10 L scored 10 | exactly 10 L is the 5-10 band (8); only >10 L scores 10 |
+| 4 | 3.5 Training | exactly 5 days scored 10 | >5 days 10, 5 days or fewer 5 |
+| 5 | 2.9 / 2.10 | institutes (cap 10) + industry (cap 10) as two subsections, start-ups unnumbered | 2.9 = institutes **and** industry sharing one cap of 10; start-ups is 2.10 (cap 5) |
+| 6 | 1.2 Attendance/Results | A and C derived from student-count bands | PDF formulas: A = (avg attendance % / 100) x 5, C = (pass % / 100) x 10 |
+| 7 | Cat 3 numbering | local "Conferences Attended" occupied 3.2, shifting every real subsection down one | PDF numbering restored (3.1-3.6); the local section is un-numbered |
+
+**Product-owner decisions taken during this pass:**
+- 1.2 follows the PDF formulas. The five band columns (`attnGte75`,
+  `attnLt75Gte65`, `gradeOAPlus`, `gradeAB`, `gradeCD`) were dropped from
+  `Cat1CourseResults` and replaced by `avgAttendancePct` + `passPercentage`.
+  `classSize` is retained for display only.
+- "Conferences / Seminars / Workshops Attended" is **deliberately kept scored**
+  (10 per row, max 20) even though the PDF has no such subsection. It is shown
+  un-numbered so it cannot be confused with a PDF subsection.
+- 2.1 follows the PDF strictly, so non-indexed publications no longer earn a
+  consolation score.
+
+**Resulting maxima:** Cat 1 = 150 (40+80+20+5+5), Cat 2 = 150
+(60+5+10+20+20+10+5+5+10+5), Cat 4 = 50 (40+10), Cat 5 = 50 (15+10+20+5).
+Cat 3's category cap stays **100**; its subsection maxima sum to 120 only
+because of the deliberate local Conferences Attended addition, and the category
+cap still clamps the total.
+
+Plan: `docs/superpowers/plans/2026-08-12-fpas-pdf-alignment.md`.

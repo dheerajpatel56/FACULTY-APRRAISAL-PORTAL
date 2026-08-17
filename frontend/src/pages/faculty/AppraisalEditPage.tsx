@@ -1048,7 +1048,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.9 Industry Linkage</h2>
+                <h2 className="font-semibold text-ink-primary">2.9 Industry Linkage (contd.)</h2>
                 <ScoreBadge value={live.cat2.linkages} max={10} />
               </div>
               <p className="text-xs text-ink-muted mb-3">Scored with Institute Linkages — 5 per linkage, 10 max across both.</p>
@@ -1494,6 +1494,7 @@ export default function AppraisalEditPage() {
                     ['Category 3 — Faculty Development', score.cat3, 100, [
                       ['3.1 Advanced Qualification', score.cat3.advQual, 10],
                       ['3.2 Programs Organised', score.cat3.organisedPrograms, 20],
+                      ['Conferences Attended', score.cat3.conferencesAttended, 20],
                       ['3.3 Resource Person', score.cat3.resourcePerson, 20],
                       ['3.4 Editorial', score.cat3.editorial, 20],
                       ['3.5 Training', score.cat3.training, 25],
