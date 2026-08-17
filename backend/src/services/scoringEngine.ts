@@ -205,12 +205,12 @@ function scoreCategory2(s: FullSubmission) {
   for (const bc of s.cat2BookChapters) books += bookRowScore(bc.scope, bc.isEdited);
   books = Math.min(books, 10);
 
-  // 2.4 Patents (max 20) — Granted 10, Published 5, Filed 5
+  // 2.4 Patents / IPR (max 20) — PDF scores Granted 10 and Published 5 only;
+  // a patent that is merely Filed carries no score.
   let patents = 0;
   for (const p of s.cat2Patents) {
     if (p.status === PatentStatus.GRANTED) patents += 10;
     else if (p.status === PatentStatus.PUBLISHED) patents += 5;
-    else if (p.status === PatentStatus.FILED) patents += 5;
   }
   patents = Math.min(patents, 20);
 

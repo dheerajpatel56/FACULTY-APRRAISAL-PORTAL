@@ -11,7 +11,7 @@
     "publications": 35,
     "citations": 3,
     "books": 10,
-    "patents": 20,
+    "patents": 15,
     "sponsoredProjects": 20,
     "consultancy": 10,
     "guidance": 5,
@@ -19,7 +19,7 @@
     "linkages": 5,
     "industryLinkages": 10,
     "startups": 5,
-    "total": 128
+    "total": 123
   },
   "cat3": {
     "advQual": 10,
@@ -43,5 +43,5 @@
     "internships": 5,
     "total": 50
   },
-  "selfTotal": 356.7
+  "selfTotal": 351.7
 }

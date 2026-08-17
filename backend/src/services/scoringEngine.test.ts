@@ -187,11 +187,11 @@ describe('Category 2 — Research', () => {
     expect(s.cat2.books).toBe(10);
   });
 
-  it('patents: granted=10, published=5, filed=5, capped 20', () => {
+  it('2.4 patents: granted 10, published 5, filed 0', () => {
     const s = computeScore(emptySubmission({
       cat2Patents: [{ status: 'GRANTED' }, { status: 'PUBLISHED' }, { status: 'FILED' }],
     }));
-    expect(s.cat2.patents).toBe(20); // 10 + 5 + 5 = 20
+    expect(s.cat2.patents).toBe(15);
   });
 
   it('patents capped at 20', () => {

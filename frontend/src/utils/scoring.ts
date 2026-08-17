@@ -311,12 +311,12 @@ function scoreCategory2(v: ScoreFormValues) {
   for (const bc of arr<Cat2BookChapterInput>(v.cat2BookChapters)) books += bookRowScore(bc?.scope, !!bc?.isEdited);
   books = Math.min(books, 10);
 
-  // 2.4 Patents (max 20) — Granted 10, Published 5, Filed 5
+  // 2.4 Patents / IPR (max 20) — Granted 10, Published 5; a merely Filed
+  // patent carries no score.
   let patents = 0;
   for (const p of arr<Cat2PatentInput>(v.cat2Patents)) {
     if (p?.status === 'GRANTED') patents += 10;
     else if (p?.status === 'PUBLISHED') patents += 5;
-    else if (p?.status === 'FILED') patents += 5;
   }
   patents = Math.min(patents, 20);
 
