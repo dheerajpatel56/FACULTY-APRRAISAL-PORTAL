@@ -8,6 +8,8 @@ import AppraisalEditPage from './pages/faculty/AppraisalEditPage';
 import AppraisalViewPage from './pages/faculty/AppraisalViewPage';
 import ReviewQueuePage from './pages/reviewer/ReviewQueuePage';
 import FinalReviewPage from './pages/reviewer/FinalReviewPage';
+import UploadsPage from './pages/reviewer/UploadsPage';
+import FacultyUploadsPage from './pages/reviewer/FacultyUploadsPage';
 import ReviewAppraisalPage from './pages/reviewer/ReviewAppraisalPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
@@ -43,6 +45,14 @@ export default function App() {
 
         {/* Dean-assigned final review (above the HoD) — any user may be assigned. */}
         <Route path="/final-review" element={<ProtectedRoute><FinalReviewPage /></ProtectedRoute>} />
+
+        {/* Faculty-wise uploads (HoD / incharge verify here; admin views) */}
+        <Route path="/uploads" element={
+          <ProtectedRoute roles={['HOD', 'REVIEWER', 'ADMIN']}><UploadsPage /></ProtectedRoute>
+        } />
+        <Route path="/uploads/:submissionId" element={
+          <ProtectedRoute roles={['HOD', 'REVIEWER', 'ADMIN']}><FacultyUploadsPage /></ProtectedRoute>
+        } />
 
         {/* Reviewer / HoD */}
         <Route path="/reviews" element={

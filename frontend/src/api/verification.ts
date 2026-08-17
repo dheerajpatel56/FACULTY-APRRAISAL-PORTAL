@@ -40,7 +40,24 @@ export interface RedListRow {
   academicYear: { label: string };
 }
 
+// One row per faculty for the faculty-wise Uploads page.
+export interface UploadsOverviewRow {
+  submissionId: string;
+  status: string;
+  redListed: boolean;
+  submissionNumber: number;
+  faculty: { id: string; name: string; employeeCode: string; department?: { name: string; code: string } | null };
+  counts: { total: number; verified: number; rejected: number; pending: number };
+}
+
+export interface UploadsOverview {
+  year: { id: string; label: string };
+  rows: UploadsOverviewRow[];
+}
+
 export const verificationApi = {
+  overview: (academicYearId?: string): Promise<UploadsOverview> =>
+    api.get('/proofs/overview', { params: academicYearId ? { academicYearId } : {} }).then((r) => r.data),
   listProofs: (submissionId: string): Promise<ProofListResponse> =>
     api.get(`/appraisals/${submissionId}/proofs`).then((r) => r.data),
   verifyProof: (submissionId: string, url: string, status: 'VERIFIED' | 'REJECTED', comment?: string) =>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
-  BarChart2, FileText, BookOpen, User, Users, Settings, LayoutDashboard, Mail, Activity, Menu, X, Target, ShieldCheck, AlertTriangle, Gauge, CalendarClock, Gavel,
+  BarChart2, FileText, BookOpen, User, Users, Settings, LayoutDashboard, Mail, Activity, Menu, X, Target, ShieldCheck, AlertTriangle, Gauge, CalendarClock, Gavel, UploadCloud,
 } from 'lucide-react';
 import BrandHeader from './BrandHeader';
 import Footer from './Footer';
@@ -59,6 +59,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {navLink('/admin/incharges', 'Incharges', ShieldCheck)}
           {navLink('/admin/review-windows', 'Review Windows', CalendarClock)}
           {navLink('/tracking', 'Tracking', Gauge)}
+          {navLink('/uploads', 'Uploads', UploadCloud)}
           {navLink('/red-list', 'Red List', AlertTriangle)}
           {navLink('/admin/appraisals', 'All Appraisals', FileText)}
           {navLink('/admin/reports', 'Reports', BarChart2)}
@@ -72,6 +73,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               Review Queue. Tracking / Red List / Reports are HoD-only. */}
           {navLink('/dashboard', 'Dashboard', LayoutDashboard)}
           {navLink('/reviews', 'Review Queue', FileText)}
+          {navLink('/uploads', 'Uploads', UploadCloud)}
           {hasRole('HOD') && navLink('/tracking', 'Tracking', Gauge)}
           {hasRole('HOD') && navLink('/red-list', 'Red List', AlertTriangle)}
           {hasRole('HOD') && navLink('/reports/department', 'Reports', BarChart2)}

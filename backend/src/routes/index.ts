@@ -117,6 +117,8 @@ router.post('/appraisals/:id/final-review', authenticate, finalReview.submitFina
 // W2 — proof verification + red-list
 router.get('/appraisals/:id/proofs', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.listProofs);
 router.post('/appraisals/:id/proofs/verify', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.verifyProof);
+// Faculty-wise uploads overview (counts per faculty) for the Uploads page.
+router.get('/proofs/overview', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.proofsOverview);
 router.get('/red-list', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), verification.listRedList);
 router.post('/appraisals/:id/clear-hold', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), verification.clearHold);
 

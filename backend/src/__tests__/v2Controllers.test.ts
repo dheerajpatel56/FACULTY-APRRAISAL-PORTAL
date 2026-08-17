@@ -215,6 +215,33 @@ describe('W3/W5 tracking', () => {
     expect(res.status).toBe(403);
   });
 
+  it('GET /proofs/overview returns per-faculty upload counts, dept-scoped', async () => {
+    if (!ready) return;
+    const res = await request(app).get(`/api/proofs/overview?academicYearId=${openYearId}`).set(bearer(adminTok));
+    expect(res.status).toBe(200);
+    expect(res.body.year?.id).toBe(openYearId);
+    expect(Array.isArray(res.body.rows)).toBe(true);
+    for (const r of res.body.rows) {
+      expect(r.faculty?.employeeCode).toBeTruthy();
+      const c = r.counts;
+      // total is the sum of the three states — no proof is double-counted or lost
+      expect(c.verified + c.rejected + c.pending).toBe(c.total);
+    }
+    // A HoD only ever sees their own department.
+    if (hodTok) {
+      const scoped = await request(app).get(`/api/proofs/overview?academicYearId=${openYearId}`).set(bearer(hodTok));
+      expect(scoped.status).toBe(200);
+      const depts = new Set(scoped.body.rows.map((r: any) => r.faculty.department?.code));
+      expect(depts.size).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('FACULTY cannot read the uploads overview (403)', async () => {
+    if (!ready) return;
+    const res = await request(app).get('/api/proofs/overview').set(bearer(facTok));
+    expect(res.status).toBe(403);
+  });
+
   it('admin GET /tracking/export?format=excel returns an xlsx buffer', async () => {
     if (!ready) return;
     const res = await request(app).get(`/api/tracking/export?academicYearId=${openYearId}&format=excel`).set(bearer(adminTok));
