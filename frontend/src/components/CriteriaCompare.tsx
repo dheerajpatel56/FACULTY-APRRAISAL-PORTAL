@@ -31,9 +31,8 @@ const CATALOG: Crit[] = [
   { group: 'Cat 2 — Research', key: 'c2_cons', label: 'Consultancy', get: (r) => r.breakdown.cat2.consultancy },
   { group: 'Cat 2 — Research', key: 'c2_guid', label: 'Guidance', get: (r) => r.breakdown.cat2.guidance },
   { group: 'Cat 2 — Research', key: 'c2_rg', label: 'Research Groups', get: (r) => r.breakdown.cat2.researchGroups },
-  { group: 'Cat 2 — Research', key: 'c2_link', label: 'Linkages', get: (r) => r.breakdown.cat2.linkages },
-  { group: 'Cat 2 — Research', key: 'c2_ind', label: 'Industry Linkages', get: (r) => r.breakdown.cat2.industryLinkages },
-  { group: 'Cat 2 — Research', key: 'c2_start', label: 'Startups', get: (r) => r.breakdown.cat2.startups },
+  { group: 'Cat 2 — Research', key: 'c2_link', label: '2.9 Institute & Industry Linkages', get: (r) => r.breakdown.cat2.linkages },
+  { group: 'Cat 2 — Research', key: 'c2_start', label: '2.10 Innovation / Start-ups', get: (r) => r.breakdown.cat2.startups },
 
   { group: 'Cat 3 — Development', key: 'c3_aq', label: 'Advanced Qualification', get: (r) => r.breakdown.cat3.advQual },
   { group: 'Cat 3 — Development', key: 'c3_org', label: 'Organised Programs', get: (r) => r.breakdown.cat3.organisedPrograms },

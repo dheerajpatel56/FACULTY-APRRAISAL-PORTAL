@@ -206,11 +206,13 @@ describe('Category 2 — Research', () => {
     expect(s.cat2.guidance).toBe(5); // 5 + 3 = 8, capped 5
   });
 
-  it('industry linkage: 5 each, capped 10', () => {
+  it('2.9 institute + industry linkages share one cap of 10', () => {
     const s = computeScore(emptySubmission({
-      cat2IndustryLinkages: [{}, {}, {}],
+      cat2Linkages: [{}],
+      cat2IndustryLinkages: [{}, {}],
     }));
-    expect(s.cat2.industryLinkages).toBe(10);
+    expect(s.cat2.linkages).toBe(10); // 3 x 5 = 15, capped at 10
+    expect((s.cat2 as any).industryLinkages).toBeUndefined();
   });
 
   it('sponsored projects: ongoing=20 max (not additive), capped 20', () => {
@@ -220,12 +222,9 @@ describe('Category 2 — Research', () => {
     expect(s.cat2.sponsoredProjects).toBe(20);
   });
 
-  it('startups: 5 each, capped 5, counted in cat2 total', () => {
-    const s = computeScore(emptySubmission({
-      cat2Startups: [{}, {}],
-    }));
+  it('2.10 start-ups: 5 each, capped 5', () => {
+    const s = computeScore(emptySubmission({ cat2Startups: [{}, {}] }));
     expect(s.cat2.startups).toBe(5);
-    expect(s.cat2.total).toBe(5);
   });
 
   it('2.6 consultancy: exactly 10 lakhs is the 5-10 band (8), above 10 scores 10', () => {
@@ -430,7 +429,7 @@ describe('sample appraisal — form alignment', () => {
     cat2BookChapters: [{ isEdited: false }],
     // 2.4 — 1 published patent -> 5 (published tier, not granted)
     cat2Patents: [{ status: 'PUBLISHED' }],
-    // 2.8 -> 5, 2.9 -> 10, industry linkage -> 10
+    // 2.8 -> 5, 2.9 institute + industry linkages (2 + 3 = 5 x 5 = 25) -> capped 10
     cat2ResearchGroups: [{}],
     cat2Linkages: [{}, {}],
     cat2IndustryLinkages: [{}, {}, {}],
@@ -458,9 +457,9 @@ describe('sample appraisal — form alignment', () => {
     expect(s.cat1.projects).toBe(17);
     expect(s.cat1.total).toBe(137);
   });
-  it('Category 2 = 103', () => { expect(s.cat2.total).toBe(103); });
+  it('Category 2 = 93', () => { expect(s.cat2.total).toBe(93); });
   it('Category 3 = 85', () => { expect(s.cat3.total).toBe(85); });
   it('Category 4 = 50', () => { expect(s.cat4.total).toBe(50); });
   it('Category 5 = 40', () => { expect(s.cat5.total).toBe(40); });
-  it('self total = 415', () => { expect(s.selfTotal).toBe(415); });
+  it('self total = 405', () => { expect(s.selfTotal).toBe(405); });
 });

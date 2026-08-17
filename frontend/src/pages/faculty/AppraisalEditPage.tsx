@@ -1046,7 +1046,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.9 Institute Linkages</h2>
+                <h2 className="font-semibold text-ink-primary">2.9 Institute &amp; Industry Linkages</h2>
                 <ScoreBadge value={live.cat2.linkages} max={10} />
               </div>
               {linkages.fields.map((field, i) => (
@@ -1063,10 +1063,10 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.10 Industry Linkage</h2>
-                <ScoreBadge value={live.cat2.industryLinkages} max={10} />
+                <h2 className="font-semibold text-ink-primary">2.9 Industry Linkage</h2>
+                <ScoreBadge value={live.cat2.linkages} max={10} />
               </div>
-              <p className="text-xs text-ink-muted mb-3">Score 5 per linkage, max 10.</p>
+              <p className="text-xs text-ink-muted mb-3">Scored with Institute Linkages — 5 per linkage, 10 max across both.</p>
               {industryLinkages.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Industry Name</label><input {...register(`cat2IndustryLinkages.${i}.industryName`)} className={inputCls} /></div>
@@ -1081,7 +1081,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">Startups / Innovation (supplementary)</h2>
+                <h2 className="font-semibold text-ink-primary">2.10 Innovation / Start-ups</h2>
                 <ScoreBadge value={live.cat2.startups} max={5} />
               </div>
               {startups.fields.map((field, i) => (
@@ -1129,7 +1129,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">3.2 Conferences / Seminars / Workshops Attended</h2>
+                <h2 className="font-semibold text-ink-primary">Conferences / Seminars / Workshops Attended</h2>
                 <ScoreBadge value={live.cat3.conferencesAttended} max={20} />
               </div>
               <p className="text-xs text-ink-muted mb-3">Score 10 per entry, max 20.</p>
@@ -1148,7 +1148,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">3.3 Programs Organised</h2>
+                <h2 className="font-semibold text-ink-primary">3.2 Programs Organised</h2>
                 <ScoreBadge value={live.cat3.organisedPrograms} max={20} />
               </div>
               {organised.fields.map((field, i) => (
@@ -1175,7 +1175,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">3.4 Resource Person</h2>
+                <h2 className="font-semibold text-ink-primary">3.3 Resource Person</h2>
                 <ScoreBadge value={live.cat3.resourcePerson} max={20} />
               </div>
               {resourcePerson.fields.map((field, i) => (
@@ -1203,7 +1203,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">3.5 Editorial / Review Roles</h2>
+                <h2 className="font-semibold text-ink-primary">3.4 Editorial / Review Roles</h2>
                 <ScoreBadge value={live.cat3.editorial} max={20} />
               </div>
               {editorial.fields.map((field, i) => (
@@ -1234,7 +1234,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">3.6 Training Attended</h2>
+                <h2 className="font-semibold text-ink-primary">3.5 Training Attended</h2>
                 <ScoreBadge value={live.cat3.training} max={25} />
               </div>
               <p className="text-xs text-ink-muted mb-3">Score 10 for more than 5 days, 5 for 5 days or fewer. Max 25.</p>
@@ -1252,7 +1252,7 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">3.7 International Travel</h2>
+                <h2 className="font-semibold text-ink-primary">3.6 International Travel</h2>
                 <ScoreBadge value={live.cat3.intlTravel} max={5} />
               </div>
               {intlTravel.fields.map((field, i) => (
@@ -1503,9 +1503,8 @@ export default function AppraisalEditPage() {
                       ['2.6 Consultancy', score.cat2.consultancy, 10],
                       ['2.7 Guidance', score.cat2.guidance, 5],
                       ['2.8 Research Groups', score.cat2.researchGroups, 5],
-                      ['2.9 Linkages', score.cat2.linkages, 10],
-                      ['2.10 Industry Linkages', score.cat2.industryLinkages, 10],
-                      ['2.10 Startups', score.cat2.startups, 5],
+                      ['2.9 Institute & Industry Linkages', score.cat2.linkages, 10],
+                      ['2.10 Innovation / Start-ups', score.cat2.startups, 5],
                     ]],
                     ['Category 3 — Faculty Development', score.cat3, 100, [
                       ['3.1 Advanced Qualification', score.cat3.advQual, 10],

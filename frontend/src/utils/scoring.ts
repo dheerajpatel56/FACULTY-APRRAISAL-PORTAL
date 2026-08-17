@@ -179,7 +179,6 @@ export interface ScoreBreakdown {
     guidance: number;
     researchGroups: number;
     linkages: number;
-    industryLinkages: number;
     startups: number;
     total: number;
   };
@@ -346,21 +345,19 @@ function scoreCategory2(v: ScoreFormValues) {
   // 2.8 Research Groups (max 5)
   const researchGroups = arr(v.cat2ResearchGroups).length > 0 ? 5 : 0;
 
-  // 2.9 Linkages — institutes (max 10)
-  const linkages = Math.min(arr(v.cat2Linkages).length * 5, 10);
+  // 2.9 Interaction/association with institutes AND industry linkage — ONE
+  // subsection in the PDF, 5 per linkage, max 10 shared across both tables.
+  const linkages = Math.min((arr(v.cat2Linkages).length + arr(v.cat2IndustryLinkages).length) * 5, 10);
 
-  // 2.10 Industry linkage (max 10)
-  const industryLinkages = Math.min(arr(v.cat2IndustryLinkages).length * 5, 10);
-
-  // Startups — retained extra bucket (max 5)
+  // 2.10 Initiation/motivation/guidance towards innovation & start-ups (max 5).
   const startups = Math.min(arr(v.cat2Startups).length * 5, 5);
 
   const total = Math.min(
     publications + citations + books + patents + sponsoredProjects +
-    consultancy + guidance + researchGroups + linkages + industryLinkages + startups,
+    consultancy + guidance + researchGroups + linkages + startups,
     150
   );
-  return { publications, citations, books, patents, sponsoredProjects, consultancy, guidance, researchGroups, linkages, industryLinkages, startups, total };
+  return { publications, citations, books, patents, sponsoredProjects, consultancy, guidance, researchGroups, linkages, startups, total };
 }
 
 function scoreCategory3(v: ScoreFormValues) {
