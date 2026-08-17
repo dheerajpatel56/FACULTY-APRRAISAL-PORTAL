@@ -13,7 +13,7 @@ import { SkeletonTable } from '../../components/Skeleton';
 
 const PAGE_SIZE = 50;
 
-const STATUS_OPTIONS = ['', 'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'];
+const STATUS_OPTIONS = ['', 'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'FINAL_REVIEW', 'HOLD', 'APPROVED', 'REJECTED'];
 
 export default function AdminAppraisalsPage() {
   const [appraisals, setAppraisals] = useState<any[]>([]);

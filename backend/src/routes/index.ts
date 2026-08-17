@@ -12,6 +12,7 @@ import * as dept from '../controllers/departmentController';
 import * as year from '../controllers/academicYearController';
 import * as appraisal from '../controllers/appraisalController';
 import * as review from '../controllers/reviewController';
+import * as finalReview from '../controllers/finalReviewController';
 import * as report from '../controllers/reportController';
 import * as email from '../controllers/emailController';
 import * as audit from '../controllers/auditController';
@@ -106,6 +107,12 @@ router.get('/appraisals/:id/score', authenticate, appraisal.getScore);
 router.get('/reviews/pending', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), review.listPendingReviews);
 router.post('/appraisals/:id/review', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), reviewerGuard, review.submitReview);
 router.get('/appraisals/:id/review', authenticate, review.getReview);
+
+// Final review — the dean-assigned 2-reviewer layer above the HoD.
+router.post('/admin/appraisals/:id/final-reviewers', authenticate, roleGuard([RoleType.ADMIN]), finalReview.assignFinalReviewers);
+router.get('/appraisals/:id/final-reviews', authenticate, finalReview.getFinalReviews);
+router.get('/final-reviews/pending', authenticate, finalReview.getPendingFinalReviews);
+router.post('/appraisals/:id/final-review', authenticate, finalReview.submitFinalReview);
 
 // W2 — proof verification + red-list
 router.get('/appraisals/:id/proofs', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.listProofs);

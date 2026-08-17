@@ -2,15 +2,23 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
-  BarChart2, FileText, BookOpen, User, Users, Settings, LayoutDashboard, Mail, Activity, Menu, X, Target, ShieldCheck, AlertTriangle, Gauge, CalendarClock,
+  BarChart2, FileText, BookOpen, User, Users, Settings, LayoutDashboard, Mail, Activity, Menu, X, Target, ShieldCheck, AlertTriangle, Gauge, CalendarClock, Gavel,
 } from 'lucide-react';
 import BrandHeader from './BrandHeader';
 import Footer from './Footer';
+import { finalReviewApi } from '../api/appraisals';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { isAdmin, isHodOrReviewer, hasRole } = useAuthStore();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Any user can be a dean-assigned final reviewer, so surface the link only to
+  // those who actually have something awaiting their sign-off.
+  const [finalCount, setFinalCount] = useState(0);
+
+  useEffect(() => {
+    finalReviewApi.pending().then((r) => setFinalCount(r.length)).catch(() => setFinalCount(0));
+  }, [location.pathname]);
 
   // Close drawer on route change
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
@@ -56,6 +64,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {navLink('/admin/reports', 'Reports', BarChart2)}
           {navLink('/admin/emails', 'Emails', Mail)}
           {navLink('/admin/audit', 'Audit Log', Activity)}
+          {finalCount > 0 && navLink('/final-review', `Final Review (${finalCount})`, Gavel)}
         </>
       ) : isHodOrReviewer() ? (
         <>
@@ -66,11 +75,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {hasRole('HOD') && navLink('/tracking', 'Tracking', Gauge)}
           {hasRole('HOD') && navLink('/red-list', 'Red List', AlertTriangle)}
           {hasRole('HOD') && navLink('/reports/department', 'Reports', BarChart2)}
+          {finalCount > 0 && navLink('/final-review', `Final Review (${finalCount})`, Gavel)}
         </>
       ) : (
         <>
           {navLink('/dashboard', 'Dashboard', LayoutDashboard)}
           {navLink('/appraisal', 'Appraisals', FileText)}
+          {finalCount > 0 && navLink('/final-review', `Final Review (${finalCount})`, Gavel)}
           {navLink('/profile', 'Profile', User)}
         </>
       )}

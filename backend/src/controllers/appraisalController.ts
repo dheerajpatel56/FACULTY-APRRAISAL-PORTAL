@@ -238,7 +238,12 @@ export async function getAppraisal(req: Request, res: Response) {
   if (!sub) return res.status(404).json({ error: 'Not found' });
 
   if (!canViewUserResource(req.user!, sub.userId, (sub.user as any)?.departmentId ?? null)) {
-    return res.status(403).json({ error: 'Forbidden' });
+    // A dean-assigned final reviewer may view the appraisal they must sign off,
+    // even if they aren't the owner / an HoD / a dept reviewer.
+    const assigned = await prisma.finalReview.findUnique({
+      where: { submissionId_reviewerId: { submissionId: sub.id, reviewerId: req.user!.id } },
+    });
+    if (!assigned) return res.status(403).json({ error: 'Forbidden' });
   }
 
   return res.json(serializeByRole(req, sub));

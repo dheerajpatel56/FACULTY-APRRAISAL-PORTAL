@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { userApi } from '../api/users';
-import { adminApi } from '../api/appraisals';
+import { finalReviewApi } from '../api/appraisals';
 
 interface Props {
   open: boolean;
@@ -13,7 +13,8 @@ interface Props {
 
 export default function AssignReviewerModal({ open, submission, onClose, onAssigned }: Props) {
   const [reviewers, setReviewers] = useState<any[]>([]);
-  const [selected, setSelected] = useState('');
+  // Exactly two final reviewers (the layer above the HoD).
+  const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -29,10 +30,13 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
           setReviewers(filtered);
         })
         .catch(() => toast.error('Failed to load reviewers'));
-      setSelected('');
+      setSelected([]);
       setSearch('');
     }
   }, [open]);
+
+  const toggle = (id: string) =>
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 2 ? cur : [...cur, id]));
 
   if (!open || !submission) return null;
 
@@ -47,14 +51,14 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
   });
 
   const assign = async () => {
-    if (!selected) {
-      toast.error('Select a reviewer');
+    if (selected.length !== 2) {
+      toast.error('Select exactly two reviewers');
       return;
     }
     setBusy(true);
     try {
-      await adminApi.assignReviewer(submission.id, selected);
-      toast.success('Reviewer assigned · status set to UNDER_REVIEW');
+      await finalReviewApi.assign(submission.id, selected);
+      toast.success('Final reviewers assigned — both must approve to finalise');
       onAssigned();
       onClose();
     } catch (e: any) {
@@ -69,7 +73,7 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
       <div className="bg-surface-card rounded-md max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-surface-border bg-primary-700 text-white rounded-t-md">
           <h2 className="font-bold font-serif flex items-center gap-2">
-            <UserCheck size={18} /> Assign Reviewer
+            <UserCheck size={18} /> Assign Final Reviewers
           </h2>
           <button onClick={onClose} className="text-white/70 hover:text-white"><X size={18} /></button>
         </div>
@@ -84,6 +88,11 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
               {submission.user?.department?.name ?? '—'} · {submission.academicYear?.label ?? '—'}
             </div>
           </div>
+
+          <p className="text-xs text-ink-muted mb-3">
+            Pick <strong>two</strong> reviewers for the final annual review (above the HoD). Both must approve to
+            finalise; either rejection sends the appraisal back on hold. <span className="text-ink-secondary">{selected.length}/2 selected</span>
+          </p>
 
           <div className="mb-3">
             <input
@@ -107,13 +116,14 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
                   <label
                     key={r.id}
                     className={`flex items-center gap-3 px-3 py-2 border-b border-surface-border last:border-b-0 cursor-pointer hover:bg-surface-muted ${
-                      selected === r.id ? 'bg-primary-50' : ''
+                      selected.includes(r.id) ? 'bg-primary-50' : ''
                     }`}
                   >
                     <input
-                      type="radio"
-                      checked={selected === r.id}
-                      onChange={() => setSelected(r.id)}
+                      type="checkbox"
+                      checked={selected.includes(r.id)}
+                      disabled={!selected.includes(r.id) && selected.length >= 2}
+                      onChange={() => toggle(r.id)}
                       className="accent-primary-600"
                     />
                     <div className="flex-1 min-w-0">
@@ -134,10 +144,10 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
             <button onClick={onClose} className="text-sm text-ink-secondary px-4 py-2 border border-surface-border rounded hover:bg-surface-muted">Cancel</button>
             <button
               onClick={assign}
-              disabled={busy || !selected}
+              disabled={busy || selected.length !== 2}
               className="text-sm bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700 disabled:opacity-50"
             >
-              {busy ? 'Assigning...' : 'Assign Reviewer'}
+              {busy ? 'Assigning...' : 'Assign Final Reviewers'}
             </button>
           </div>
         </div>

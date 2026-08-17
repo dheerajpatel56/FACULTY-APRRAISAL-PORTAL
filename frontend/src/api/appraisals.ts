@@ -26,6 +26,29 @@ export const reviewApi = {
   listPending: () => api.get('/reviews/pending').then((r) => r.data),
 };
 
+export interface FinalReviewRow {
+  id: string;
+  submissionId: string;
+  reviewerId: string;
+  decision: 'PENDING' | 'APPROVED' | 'REJECTED';
+  comment: string | null;
+  decidedAt: string | null;
+  reviewer?: { id: string; name: string; employeeCode: string };
+  submission?: any;
+}
+
+// The dean-assigned 2-reviewer layer above the HoD.
+export const finalReviewApi = {
+  assign: (id: string, reviewerIds: string[]) =>
+    api.post(`/admin/appraisals/${id}/final-reviewers`, { reviewerIds }).then((r) => r.data),
+  list: (id: string): Promise<FinalReviewRow[]> =>
+    api.get(`/appraisals/${id}/final-reviews`).then((r) => r.data),
+  pending: (): Promise<FinalReviewRow[]> =>
+    api.get('/final-reviews/pending').then((r) => r.data),
+  decide: (id: string, decision: 'APPROVED' | 'REJECTED', comment?: string) =>
+    api.post(`/appraisals/${id}/final-review`, { decision, comment }).then((r) => r.data),
+};
+
 export const adminApi = {
   unlock: (id: string) =>
     api.post(`/admin/appraisals/${id}/unlock`).then((r) => r.data),

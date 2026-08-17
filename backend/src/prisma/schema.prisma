@@ -18,10 +18,18 @@ enum SubmissionStatus {
   DRAFT
   SUBMITTED
   UNDER_REVIEW
+  FINAL_REVIEW // HoD approved; awaiting the 2 dean-assigned final reviewers
   APPROVED
   REJECTED
   WITHDRAWN
   HOLD
+}
+
+// Decision of a dean-assigned final reviewer (the layer above the HoD).
+enum FinalDecision {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // W2 — per-proof verification state (incharge/HoD marks each proof link/file).
@@ -174,6 +182,7 @@ model User {
   snapshots        TrackingSnapshot[]
   feedbacks        Feedback[]          @relation("FeedbackFaculty")
   feedbacksIssued  Feedback[]          @relation("FeedbackIssuer")
+  finalReviews     FinalReview[]       @relation("FinalReviewReviewer")
 }
 
 // Proof/evidence file ownership — used to authorize downloads (prevents IDOR
@@ -434,6 +443,7 @@ model AppraisalSubmission {
   review             AppraisalReview?
   proofVerifications ProofVerification[]
   feedback           Feedback?
+  finalReviews       FinalReview[]
 
   @@unique([userId, academicYearId, submissionNumber])
 }
@@ -920,6 +930,26 @@ model AppraisalReview {
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   reviewer   User                @relation(fields: [reviewerId], references: [id])
+}
+
+// A dean-assigned final reviewer's sign-off on an annual appraisal — the review
+// layer ABOVE the HoD. The admin/dean assigns exactly two per submission; both
+// must APPROVE to finalise. Either REJECT sends the submission back (HOLD).
+model FinalReview {
+  id           String        @id @default(uuid())
+  submissionId String
+  reviewerId   String
+  decision     FinalDecision @default(PENDING)
+  comment      String?
+  assignedById String?
+  decidedAt    DateTime?
+  createdAt    DateTime      @default(now())
+
+  submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer   User                @relation("FinalReviewReviewer", fields: [reviewerId], references: [id])
+
+  @@unique([submissionId, reviewerId])
+  @@index([reviewerId])
 }
 
 model FPGPPlan {

@@ -7,6 +7,8 @@ const statusStyles: Record<string, string> = {
   DRAFT:              'bg-surface-muted text-ink-muted border-surface-border',
   SUBMITTED:          'bg-primary-50 text-primary-700 border-primary-200',
   UNDER_REVIEW:       'bg-amber-50 text-amber-700 border-amber-200',
+  FINAL_REVIEW:       'bg-purple-50 text-purple-700 border-purple-200',
+  HOLD:               'bg-orange-50 text-orange-700 border-orange-200',
   APPROVED:           'bg-emerald-50 text-emerald-700 border-emerald-200',
   REJECTED:           'bg-red-50 text-red-700 border-red-200',
   REVISION_REQUESTED: 'bg-orange-50 text-orange-700 border-orange-200',

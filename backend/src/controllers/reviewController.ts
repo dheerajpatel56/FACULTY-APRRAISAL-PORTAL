@@ -94,6 +94,15 @@ export async function submitReview(req: Request, res: Response) {
   const isHod = req.user!.roles.some((r) => r.role === RoleType.HOD);
   const reviewerRole: ReviewerRole = isHod ? ReviewerRole.HOD : ReviewerRole.REVIEWER;
 
+  // If the admin/dean has assigned final reviewers, an APPROVE by the HoD does
+  // NOT finalise — it hands off to the 2-reviewer layer above the HoD.
+  const finalReviewerCount = data.status === 'APPROVED'
+    ? await prisma.finalReview.count({ where: { submissionId: sub.id } })
+    : 0;
+  const effectiveStatus: SubmissionStatus = data.status === 'APPROVED' && finalReviewerCount > 0
+    ? SubmissionStatus.FINAL_REVIEW
+    : (data.status as SubmissionStatus);
+
   const computedScore = computeScore(sub as any);
 
   const cat6Total = (data.cat6Punctuality ?? 0) + (data.cat6Professionalism ?? 0) +
@@ -134,8 +143,16 @@ export async function submitReview(req: Request, res: Response) {
 
     await tx.appraisalSubmission.update({
       where: { id: sub.id },
-      data: { status: data.status as SubmissionStatus },
+      data: { status: effectiveStatus },
     });
+
+    // Entering the final-review layer: (re)set both assigned reviewers to pending.
+    if (effectiveStatus === SubmissionStatus.FINAL_REVIEW) {
+      await tx.finalReview.updateMany({
+        where: { submissionId: sub.id },
+        data: { decision: 'PENDING', comment: null, decidedAt: null },
+      });
+    }
 
     await tx.auditLog.create({
       data: {
@@ -147,8 +164,10 @@ export async function submitReview(req: Request, res: Response) {
     });
   });
 
-  // Email faculty on APPROVED or REJECTED
-  if (data.status === 'APPROVED' || data.status === 'REJECTED') {
+  // Email faculty only on a FINAL decision. A HoD APPROVE that hands off to the
+  // final-review layer (effectiveStatus FINAL_REVIEW) does not notify the faculty
+  // yet — the 2 reviewers' verdict does.
+  if (effectiveStatus === SubmissionStatus.APPROVED || effectiveStatus === SubmissionStatus.REJECTED) {
     try {
       const [reviewer, facultyUser, year] = await Promise.all([
         prisma.user.findUnique({ where: { id: req.user!.id } }),
@@ -186,7 +205,7 @@ export async function submitReview(req: Request, res: Response) {
     }
   }
 
-  return res.json({ message: `Submission ${data.status.toLowerCase()}` });
+  return res.json({ message: `Submission ${effectiveStatus.toLowerCase().replace('_', ' ')}` });
 }
 
 export async function getReview(req: Request, res: Response) {

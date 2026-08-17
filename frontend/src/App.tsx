@@ -7,6 +7,7 @@ import DashboardPage from './pages/faculty/DashboardPage';
 import AppraisalEditPage from './pages/faculty/AppraisalEditPage';
 import AppraisalViewPage from './pages/faculty/AppraisalViewPage';
 import ReviewQueuePage from './pages/reviewer/ReviewQueuePage';
+import FinalReviewPage from './pages/reviewer/FinalReviewPage';
 import ReviewAppraisalPage from './pages/reviewer/ReviewAppraisalPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
@@ -39,6 +40,9 @@ export default function App() {
         <Route path="/appraisal/:id/edit" element={<ProtectedRoute><AppraisalEditPage /></ProtectedRoute>} />
         <Route path="/appraisal/:id" element={<ProtectedRoute><AppraisalViewPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+        {/* Dean-assigned final review (above the HoD) — any user may be assigned. */}
+        <Route path="/final-review" element={<ProtectedRoute><FinalReviewPage /></ProtectedRoute>} />
 
         {/* Reviewer / HoD */}
         <Route path="/reviews" element={
