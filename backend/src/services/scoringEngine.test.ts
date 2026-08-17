@@ -227,6 +227,13 @@ describe('Category 2 — Research', () => {
     expect(s.cat2.startups).toBe(5);
     expect(s.cat2.total).toBe(5);
   });
+
+  it('2.6 consultancy: exactly 10 lakhs is the 5-10 band (8), above 10 scores 10', () => {
+    const at10 = computeScore(emptySubmission({ cat2Consultancy: [{ amountLakhs: 10 }] }));
+    expect(at10.cat2.consultancy).toBe(8);
+    const above = computeScore(emptySubmission({ cat2Consultancy: [{ amountLakhs: 10.5 }] }));
+    expect(above.cat2.consultancy).toBe(10);
+  });
 });
 
 describe('Category 3 — Faculty Development', () => {

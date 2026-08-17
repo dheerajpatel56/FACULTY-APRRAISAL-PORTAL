@@ -328,11 +328,11 @@ function scoreCategory2(v: ScoreFormValues) {
   }
   sponsoredProjects = Math.min(sponsoredProjects, 20);
 
-  // 2.6 Consultancy (max 10)
+  // 2.6 Consultancy (max 10) — PDF bands: <=1L 2, 1-2L 4, 2-5L 6, 5-10L 8, >10L 10.
   let consultancy = 0;
   for (const c of arr<Cat2ConsultancyInput>(v.cat2Consultancy)) {
     const a = n(c?.amountLakhs);
-    consultancy += a >= 10 ? 10 : a >= 5 ? 8 : a >= 2 ? 6 : a >= 1 ? 4 : 2;
+    consultancy += a > 10 ? 10 : a >= 5 ? 8 : a >= 2 ? 6 : a >= 1 ? 4 : 2;
   }
   consultancy = Math.min(consultancy, 10);
 

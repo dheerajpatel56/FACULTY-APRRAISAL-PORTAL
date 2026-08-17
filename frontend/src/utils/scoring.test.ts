@@ -96,13 +96,14 @@ describe('computeScore — cat2 branch coverage', () => {
     expect(computeScore({ cat2BookChapters: [{ scope: 'NATIONAL', isEdited: true }] }).cat2.books).toBe(3);
   });
 
-  it('2.6 consultancy tiers: <1L->2, 1-2L->4, 2-5L->6, 5-10L->8, >=10L->10', () => {
+  it('2.6 consultancy tiers: <1L->2, 1-2L->4, 2-5L->6, 5-10L->8, >10L->10', () => {
     const mk = (amountLakhs: number) => computeScore({ cat2Consultancy: [{ amountLakhs }] }).cat2.consultancy;
     expect(mk(0.5)).toBe(2);
     expect(mk(1)).toBe(4);
     expect(mk(2)).toBe(6);
     expect(mk(5)).toBe(8);
-    expect(mk(10)).toBe(10);
+    expect(mk(10)).toBe(8);
+    expect(mk(10.5)).toBe(10);
   });
 });
 
