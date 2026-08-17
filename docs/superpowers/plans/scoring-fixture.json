@@ -4,7 +4,7 @@
     { "courseName": "Operating Systems", "level": "BTECH", "yearSem": "III-I", "periodPlanned": 100, "periodsConducted": 100, "novelPedagogyUsed": false, "novelPedagogyMethod": "" }
   ],
   "cat1CourseResults": [
-    { "courseName": "Data Structures", "classSize": 50, "attnGte75": 40, "attnLt75Gte65": 5, "feedbackReceived": 4.5, "gradeOAPlus": 20, "gradeAB": 15, "gradeCD": 5 }
+    { "courseName": "Data Structures", "classSize": 50, "avgAttendancePct": 85, "feedbackReceived": 4.5, "passPercentage": 80 }
   ],
   "cat1Projects": [
     { "course": "BTECH", "projectType": "MINI", "count": 2 },

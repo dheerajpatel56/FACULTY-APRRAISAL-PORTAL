@@ -111,9 +111,9 @@ export default function ReviewAppraisalPage() {
             <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">1.2 Attendance, Feedback &amp; Results ({submission.cat1CourseResults?.length ?? 0})</h2>
             {submission.cat1CourseResults?.map((c: any) => {
               const Y = c.classSize || 0;
-              const A = Y ? Math.min((c.attnGte75 * 5 + c.attnLt75Gte65 * 3) / Y, 5) : 0;
-              const B = Math.min(c.feedbackReceived ?? 0, 5);
-              const C = Y ? Math.min((c.gradeOAPlus * 10 + c.gradeAB * 8 + c.gradeCD * 5) / Y, 10) : 0;
+              const A = Math.min(Math.max(c.avgAttendancePct ?? 0, 0) / 100 * 5, 5);
+              const B = Math.min(Math.max(c.feedbackReceived ?? 0, 0), 5);
+              const C = Math.min(Math.max(c.passPercentage ?? 0, 0) / 100 * 10, 10);
               return (
                 <div key={c.id} className="text-xs text-ink-secondary mb-1">
                   {c.courseName} (Y={Y}) — A: {A.toFixed(2)} | B: {B.toFixed(2)} | C: {C.toFixed(2)} | Total: {Math.min(A + B + C, 20).toFixed(2)}

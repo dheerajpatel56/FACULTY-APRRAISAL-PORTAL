@@ -36,12 +36,9 @@ export interface Cat1CourseInput {
 
 export interface Cat1CourseResultInput {
   classSize?: number;
-  attnGte75?: number;
-  attnLt75Gte65?: number;
+  avgAttendancePct?: number;
   feedbackReceived?: number;
-  gradeOAPlus?: number;
-  gradeAB?: number;
-  gradeCD?: number;
+  passPercentage?: number;
 }
 
 export interface Cat1ProjectInput {
@@ -239,20 +236,14 @@ function scoreCategory1(v: ScoreFormValues) {
   }
   lectures = Math.min(lectures, 40);
 
-  // 1.2 Attendance / Feedback / Results (per course max 20, section max 80)
+  // 1.2 Attendance / Feedback / Results (per course max 20, section max 80).
+  // PDF: A = (avg attendance % / 100) * 5, B = feedback out of 5,
+  //      C = (pass % / 100) * 10.
   let attendanceFeedback = 0;
   for (const c of arr<Cat1CourseResultInput>(v.cat1CourseResults)) {
-    const classSize = n(c?.classSize);
-    if (classSize <= 0) continue;
-    const attnGte75 = n(c?.attnGte75);
-    const attnLt75Gte65 = n(c?.attnLt75Gte65);
-    const feedbackReceived = n(c?.feedbackReceived);
-    const gradeOAPlus = n(c?.gradeOAPlus);
-    const gradeAB = n(c?.gradeAB);
-    const gradeCD = n(c?.gradeCD);
-    const A = Math.min((attnGte75 * 5 + attnLt75Gte65 * 3) / classSize, 5);
-    const B = Math.min(feedbackReceived, 5);
-    const C = Math.min((gradeOAPlus * 10 + gradeAB * 8 + gradeCD * 5) / classSize, 10);
+    const A = Math.min(Math.max(n(c?.avgAttendancePct), 0) / 100 * 5, 5);
+    const B = Math.min(Math.max(n(c?.feedbackReceived), 0), 5);
+    const C = Math.min(Math.max(n(c?.passPercentage), 0) / 100 * 10, 10);
     attendanceFeedback += Math.min(A + B + C, 20);
   }
   attendanceFeedback = Math.min(attendanceFeedback, 80);

@@ -33,30 +33,27 @@ describe('computeScore — shared fixture parity', () => {
 // specific numbers (lifted from backend/src/services/scoringEngine.test.ts) so
 // the port can't silently diverge on a branch the fixture happens to skip.
 describe('computeScore — cat1 branch coverage', () => {
-  it('1.2 attendanceFeedback: per-row sub-caps A<=5, B<=5, C<=10 sum to a full row of 20', () => {
+  it('1.2 attendanceFeedback: A=(a/100)*5, B as given, C=(P/100)*10', () => {
     const s = computeScore({
       cat1CourseResults: [{
-        classSize: 10, attnGte75: 10, attnLt75Gte65: 0, feedbackReceived: 5,
-        gradeOAPlus: 10, gradeAB: 0, gradeCD: 0, // A=5 + B=5 + C=10 = 20
-      }],
+        classSize: 50, avgAttendancePct: 80, feedbackReceived: 4, passPercentage: 90,
+      }], // A=4 + B=4 + C=9 = 17
     });
-    expect(s.cat1.attendanceFeedback).toBe(20);
+    expect(s.cat1.attendanceFeedback).toBe(17);
   });
 
   it('1.2 attendanceFeedback: over-max inputs still clamp each sub-part and the row at 20', () => {
     const s = computeScore({
       cat1CourseResults: [{
-        classSize: 10, attnGte75: 100, attnLt75Gte65: 100, feedbackReceived: 50,
-        gradeOAPlus: 100, gradeAB: 100, gradeCD: 100, // A->cap 5, B->cap 5, C->cap 10
-      }],
+        classSize: 10, avgAttendancePct: 500, feedbackReceived: 50, passPercentage: 500,
+      }], // A->cap 5, B->cap 5, C->cap 10
     });
     expect(s.cat1.attendanceFeedback).toBe(20);
   });
 
   it('1.2 attendanceFeedback: section capped at 80 across rows', () => {
     const maxed = {
-      classSize: 10, attnGte75: 10, attnLt75Gte65: 0, feedbackReceived: 5,
-      gradeOAPlus: 10, gradeAB: 0, gradeCD: 0,
+      classSize: 10, avgAttendancePct: 100, feedbackReceived: 5, passPercentage: 100,
     };
     const five = Array.from({ length: 5 }, () => maxed); // 5 * 20 = 100, cap 80
     expect(computeScore({ cat1CourseResults: five }).cat1.attendanceFeedback).toBe(80);

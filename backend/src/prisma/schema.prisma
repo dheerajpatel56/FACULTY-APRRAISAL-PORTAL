@@ -487,20 +487,17 @@ model Cat1Course {
 }
 
 // 1.2 Courses Taught — Attendance, Feedback, Results (per-course max 20, section max 80)
-// A = (attnGte75*5 + attnLt75Gte65*3)/classSize  (max 5)
+// A = (avgAttendancePct/100) * 5  (max 5)
 // B = feedbackReceived  (max 5)
-// C = (gradeOAPlus*10 + gradeAB*8 + gradeCD*5)/classSize  (max 10)
+// C = (passPercentage/100) * 10  (max 10)
 model Cat1CourseResults {
-  id               String @id @default(uuid())
-  submissionId     String
-  courseName       String
-  classSize        Int // Y
-  attnGte75        Int    @default(0) // n1: students with % attendance >= 75
-  attnLt75Gte65    Int    @default(0) // n2: students with % attendance < 75 and >= 65
-  feedbackReceived Float  @default(0) // B (out of 5)
-  gradeOAPlus      Int    @default(0) // n3: Grade O, A+
-  gradeAB          Int    @default(0) // n4: Grade A, B
-  gradeCD          Int    @default(0) // n5: Grade C, D
+  id                String @id @default(uuid())
+  submissionId      String
+  courseName        String
+  classSize         Int // Y — size of the class
+  avgAttendancePct  Float  @default(0) // a — A = (a/100) * 5
+  feedbackReceived  Float  @default(0) // B (out of 5)
+  passPercentage    Float  @default(0) // P — C = (P/100) * 10
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 }

@@ -188,8 +188,8 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
     (sub.cat1Courses ?? []).map((c: any) => [c.courseName, c.level, c.yearSem, c.periodPlanned, c.periodsConducted, c.novelPedagogyUsed ? (c.novelPedagogyMethod || 'Yes') : 'No'])
   )}
   ${listTable('1.2 Courses Taught — Attendance, Feedback, Results',
-    ['Course', 'Class Size', '≥75%', '<75 & ≥65%', 'Feedback', 'Grade O,A+', 'Grade A,B', 'Grade C,D'],
-    (sub.cat1CourseResults ?? []).map((c: any) => [c.courseName, c.classSize, c.attnGte75, c.attnLt75Gte65, c.feedbackReceived, c.gradeOAPlus, c.gradeAB, c.gradeCD])
+    ['Course', 'Class Size', 'Avg. Attendance %', 'Feedback', 'Pass %'],
+    (sub.cat1CourseResults ?? []).map((c: any) => [c.courseName, c.classSize, c.avgAttendancePct, c.feedbackReceived, c.passPercentage])
   )}
   ${listTable('1.3 Academic Projects Guided',
     ['Course', 'Type', 'Count'],

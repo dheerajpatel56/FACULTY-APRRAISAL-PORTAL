@@ -79,25 +79,22 @@ describe('Category 1 — Teaching', () => {
     expect(computeScore(emptySubmission({ cat1Courses: courses })).cat1.lectures).toBe(40);
   });
 
-  it('1.2 attendance/feedback/results: A+B+C computed from raw counts', () => {
-    // Y=70, n1=65, n2=5 → A=(325+15)/70=4.857; B=4.7; n3=40,n4=28,n5=2 → C=(400+224+10)/70=9.057
+  it('1.2 uses the PDF formulas: A=(a/100)*5, B as given, C=(P/100)*10, capped 20/course', () => {
     const s = computeScore(emptySubmission({
-      cat1CourseResults: [{
-        classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.7,
-        gradeOAPlus: 40, gradeAB: 28, gradeCD: 2,
-      }],
+      cat1CourseResults: [
+        { courseName: 'DS', classSize: 50, avgAttendancePct: 80, feedbackReceived: 4, passPercentage: 90 },
+      ],
     }));
-    expect(s.cat1.attendanceFeedback).toBeCloseTo(18.61, 1);
+    // A = 4, B = 4, C = 9
+    expect(s.cat1.attendanceFeedback).toBe(17);
   });
 
-  it('1.2 per-course total capped at 20; section capped at 80', () => {
-    const maxed = {
-      classSize: 10, attnGte75: 10, attnLt75Gte65: 0, feedbackReceived: 5,
-      gradeOAPlus: 10, gradeAB: 0, gradeCD: 0, // A=5 + B=5 + C=10 = 20
-    };
-    expect(computeScore(emptySubmission({ cat1CourseResults: [maxed] })).cat1.attendanceFeedback).toBe(20);
-    const five = Array.from({ length: 5 }, () => maxed); // 5*20 = 100, cap 80
-    expect(computeScore(emptySubmission({ cat1CourseResults: five })).cat1.attendanceFeedback).toBe(80);
+  it('1.2 clamps a course to 20 and the section to 80', () => {
+    const row = { courseName: 'X', classSize: 10, avgAttendancePct: 100, feedbackReceived: 5, passPercentage: 100 };
+    const one = computeScore(emptySubmission({ cat1CourseResults: [row] }));
+    expect(one.cat1.attendanceFeedback).toBe(20); // 5 + 5 + 10
+    const many = computeScore(emptySubmission({ cat1CourseResults: Array(5).fill(row) }));
+    expect(many.cat1.attendanceFeedback).toBe(80); // 100 capped at 80
   });
 
   it('projects: BTECH MINI = 2/count, MTECH MAJOR = 5/count', () => {
@@ -375,7 +372,7 @@ describe('selfTotal', () => {
     const huge = Array.from({ length: 50 }, () => ({}));
     const s = computeScore(emptySubmission({
       cat1Courses: Array.from({ length: 50 }, () => ({ periodsConducted: 100, periodPlanned: 100, novelPedagogyUsed: true })),
-      cat1CourseResults: Array.from({ length: 50 }, () => ({ classSize: 10, attnGte75: 10, attnLt75Gte65: 0, feedbackReceived: 5, gradeOAPlus: 10, gradeAB: 0, gradeCD: 0 })),
+      cat1CourseResults: Array.from({ length: 50 }, () => ({ classSize: 10, avgAttendancePct: 100, feedbackReceived: 5, passPercentage: 100 })),
       cat1Projects: huge.map(() => ({ course: 'MTECH', projectType: 'MAJOR', count: 10 })),
       cat1EContent: huge, cat1ICT: huge,
       cat2Journals: huge.map(() => ({ indexed: 'ESCI' })),
@@ -404,14 +401,14 @@ describe('sample appraisal — form alignment', () => {
       { periodsConducted: 64, periodPlanned: 64, novelPedagogyUsed: true },
       { periodsConducted: 64, periodPlanned: 64, novelPedagogyUsed: true },
     ],
-    // 1.2 — 6 courses, per-course ~18.6-19.2 -> caps 80
+    // 1.2 — 6 courses, per-course ~18.6-19.5 -> caps 80
     cat1CourseResults: [
-      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.7, gradeOAPlus: 40, gradeAB: 28, gradeCD: 2 },
-      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.7, gradeOAPlus: 45, gradeAB: 23, gradeCD: 2 },
-      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.76, gradeOAPlus: 42, gradeAB: 25, gradeCD: 3 },
-      { classSize: 70, attnGte75: 65, attnLt75Gte65: 5, feedbackReceived: 4.6, gradeOAPlus: 45, gradeAB: 22, gradeCD: 3 },
-      { classSize: 70, attnGte75: 70, attnLt75Gte65: 0, feedbackReceived: 4.5, gradeOAPlus: 60, gradeAB: 9, gradeCD: 1 },
-      { classSize: 70, attnGte75: 70, attnLt75Gte65: 0, feedbackReceived: 4.5, gradeOAPlus: 60, gradeAB: 10, gradeCD: 0 },
+      { classSize: 70, avgAttendancePct: 95, feedbackReceived: 4.7, passPercentage: 92 },
+      { classSize: 70, avgAttendancePct: 95, feedbackReceived: 4.7, passPercentage: 94 },
+      { classSize: 70, avgAttendancePct: 96, feedbackReceived: 4.76, passPercentage: 93 },
+      { classSize: 70, avgAttendancePct: 95, feedbackReceived: 4.6, passPercentage: 94 },
+      { classSize: 70, avgAttendancePct: 100, feedbackReceived: 4.5, passPercentage: 97 },
+      { classSize: 70, avgAttendancePct: 100, feedbackReceived: 4.5, passPercentage: 100 },
     ],
     // 1.3 — BTech Mini 1 (2), BTech Major 2 (10), MTech Major 1 (5) = 17
     cat1Projects: [
