@@ -167,23 +167,23 @@ function scoreCategory1(s: FullSubmission) {
 }
 
 function scoreCategory2(s: FullSubmission) {
-  const INDEXED: PublicationIndex[] = [
-    PublicationIndex.ESCI, PublicationIndex.WOS, PublicationIndex.SCOPUS, PublicationIndex.ICI,
-  ];
+  // 2.1 Publications — journals + conferences + conference-derived book chapters (max 60).
+  // PDF: 15 for quality journals (SCI/WoS/Scopus), 10 for indexed conference
+  // proceedings and indexed book chapters from conferences. Non-indexed work
+  // carries no score.
+  const QUALITY_JOURNAL: PublicationIndex[] = [PublicationIndex.WOS, PublicationIndex.SCOPUS];
+  const OTHER_INDEXED: PublicationIndex[] = [PublicationIndex.ESCI, PublicationIndex.ICI];
+  const isIndexed = (i: PublicationIndex) => QUALITY_JOURNAL.includes(i) || OTHER_INDEXED.includes(i);
 
-  // 2.1 Publications — journals + conferences + conference-derived book chapters (max 60)
-  // Journals: indexed (ESCI/WoS/SCOPUS/ICI) = 15, other = 5.
-  // Conferences: indexed = 10, other = 5.
-  // Conference book chapters (2.1-C): indexed = 10, other = 5.
   let publications = 0;
   for (const j of s.cat2Journals) {
-    publications += INDEXED.includes(j.indexed) ? 15 : 5;
+    publications += QUALITY_JOURNAL.includes(j.indexed) ? 15 : OTHER_INDEXED.includes(j.indexed) ? 10 : 0;
   }
   for (const c of s.cat2Conferences) {
-    publications += INDEXED.includes(c.indexed) ? 10 : 5;
+    publications += isIndexed(c.indexed) ? 10 : 0;
   }
   for (const x of s.cat2ConfBookChapters) {
-    publications += INDEXED.includes(x.indexed) ? 10 : 5;
+    publications += isIndexed(x.indexed) ? 10 : 0;
   }
   publications = Math.min(publications, 60);
 

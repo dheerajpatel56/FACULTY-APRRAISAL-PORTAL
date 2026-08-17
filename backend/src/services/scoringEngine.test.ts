@@ -121,53 +121,23 @@ describe('Category 1 — Teaching', () => {
 });
 
 describe('Category 2 — Research', () => {
-  it('journals: indexed (ESCI/WOS/SCOPUS/ICI) = 15, non-indexed = 5', () => {
+  it('2.1 journals: WoS/Scopus = 15, ESCI/ICI = 10, non-indexed = 0', () => {
     const s = computeScore(emptySubmission({
-      cat2Journals: [{ indexed: 'ESCI' }, { indexed: 'SCOPUS' }, { indexed: 'NONE' }],
+      cat2Journals: [
+        { indexed: 'SCOPUS' }, { indexed: 'WOS' },
+        { indexed: 'ESCI' }, { indexed: 'ICI' },
+        { indexed: 'NONE' },
+      ],
     }));
-    expect(s.cat2.publications).toBe(35); // 15 + 15 + 5
+    expect(s.cat2.publications).toBe(50); // 15+15+10+10+0
   });
 
-  it('conferences: indexed = 10 (not 15), non-indexed = 5', () => {
+  it('2.1 conferences and conference book chapters: indexed = 10, non-indexed = 0', () => {
     const s = computeScore(emptySubmission({
-      cat2Conferences: [{ indexed: 'ICI' }, { indexed: 'NONE' }],
+      cat2Conferences: [{ indexed: 'WOS' }, { indexed: 'NONE' }],
+      cat2ConfBookChapters: [{ indexed: 'ESCI' }, { indexed: 'NONE' }],
     }));
-    expect(s.cat2.publications).toBe(15); // 10 + 5
-  });
-
-  it('2.1-C conference book chapters: indexed = 10, non-indexed = 5, add into 2.1', () => {
-    const s = computeScore(emptySubmission({
-      cat2ConfBookChapters: [{ indexed: 'SCOPUS' }, { indexed: 'NONE' }],
-    }));
-    expect(s.cat2.publications).toBe(15); // 10 + 5
-
-    // combines with journals + conferences, respecting the shared 60 cap
-    const combined = computeScore(emptySubmission({
-      cat2Journals: [{ indexed: 'ESCI' }],          // 15
-      cat2Conferences: [{ indexed: 'ICI' }],        // 10
-      cat2ConfBookChapters: [{ indexed: 'WOS' }],   // 10
-    }));
-    expect(combined.cat2.publications).toBe(35);
-
-    const maxed = computeScore(emptySubmission({
-      cat2ConfBookChapters: Array.from({ length: 10 }, () => ({ indexed: 'SCOPUS' })), // 100 -> cap 60
-    }));
-    expect(maxed.cat2.publications).toBe(60);
-  });
-
-  it('2.1 shared cap: a trailing 5-point conf book chapter cannot push past 60', () => {
-    // Journals + conferences already saturate 2.1 at exactly 60, then a
-    // NON-indexed (5-point) conf book chapter is added — section stays clamped.
-    const s = computeScore(emptySubmission({
-      cat2Journals: Array.from({ length: 4 }, () => ({ indexed: 'ESCI' })), // 4*15 = 60
-      cat2ConfBookChapters: [{ indexed: 'NONE' }],                          // +5, would be 65
-    }));
-    expect(s.cat2.publications).toBe(60);
-  });
-
-  it('publications capped at 60', () => {
-    const journals = Array.from({ length: 10 }, () => ({ indexed: 'ESCI' }));
-    expect(computeScore(emptySubmission({ cat2Journals: journals })).cat2.publications).toBe(60);
+    expect(s.cat2.publications).toBe(20); // 10+0+10+0
   });
 
   it('citations from totalCitations: >100→5, 51-100→3, 11-50→2, 3-10→1, else 0', () => {

@@ -222,7 +222,10 @@ function n(v: unknown): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
 
-const INDEXED: PublicationIndex[] = ['ESCI', 'WOS', 'SCOPUS', 'ICI'];
+const QUALITY_JOURNAL: PublicationIndex[] = ['WOS', 'SCOPUS'];
+const OTHER_INDEXED: PublicationIndex[] = ['ESCI', 'ICI'];
+const isIndexed = (i: PublicationIndex | undefined) =>
+  !!i && (QUALITY_JOURNAL.includes(i) || OTHER_INDEXED.includes(i));
 
 function scoreCategory1(v: ScoreFormValues) {
   // 1.1 Lectures (max 40)
@@ -277,16 +280,17 @@ function scoreCategory1(v: ScoreFormValues) {
 }
 
 function scoreCategory2(v: ScoreFormValues) {
-  // 2.1 Publications — journals + conferences + conference-derived book chapters (max 60)
+  // 2.1 Publications (max 60) — see backend scoringEngine.ts for the PDF rule.
   let publications = 0;
   for (const j of arr<Cat2JournalInput>(v.cat2Journals)) {
-    publications += j?.indexed && INDEXED.includes(j.indexed) ? 15 : 5;
+    const ix = j?.indexed;
+    publications += ix && QUALITY_JOURNAL.includes(ix) ? 15 : ix && OTHER_INDEXED.includes(ix) ? 10 : 0;
   }
   for (const c of arr<Cat2ConferenceInput>(v.cat2Conferences)) {
-    publications += c?.indexed && INDEXED.includes(c.indexed) ? 10 : 5;
+    publications += isIndexed(c?.indexed) ? 10 : 0;
   }
   for (const x of arr<Cat2ConfBookChapterInput>(v.cat2ConfBookChapters)) {
-    publications += x?.indexed && INDEXED.includes(x.indexed) ? 10 : 5;
+    publications += isIndexed(x?.indexed) ? 10 : 0;
   }
   publications = Math.min(publications, 60);
 
