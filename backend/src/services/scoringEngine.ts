@@ -284,11 +284,10 @@ function scoreCategory3(s: FullSubmission) {
   // 3.4 Editorial (max 20, 10 each)
   const editorial = Math.min(s.cat3Editorial.length * 10, 20);
 
-  // 3.5 Training (max 25) — >=5 days → 10, <5 days → 5
+  // 3.5 Training (max 25) — PDF: >5 days -> 10, a minimum of 5 days -> 5.
   let training = 0;
   for (const t of s.cat3Training) {
-    if (t.durationDays >= 5) training += 10;
-    else training += 5;
+    training += t.durationDays > 5 ? 10 : 5;
   }
   training = Math.min(training, 25);
 

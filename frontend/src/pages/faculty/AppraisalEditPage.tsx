@@ -1237,6 +1237,7 @@ export default function AppraisalEditPage() {
                 <h2 className="font-semibold text-ink-primary">3.6 Training Attended</h2>
                 <ScoreBadge value={live.cat3.training} max={25} />
               </div>
+              <p className="text-xs text-ink-muted mb-3">Score 10 for more than 5 days, 5 for 5 days or fewer. Max 25.</p>
               {training.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div><label className={labelCls}>Name</label><input {...register(`cat3Training.${i}.name`)} className={inputCls} /></div>

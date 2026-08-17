@@ -283,11 +283,11 @@ describe('Category 3 — Faculty Development', () => {
     expect(s.cat3.total).toBe(20);
   });
 
-  it('3.5 training: >=5 days→10, <5→5, capped 25', () => {
+  it('3.5 training: >5 days scores 10, exactly 5 days scores 5, capped 25', () => {
     const s = computeScore(emptySubmission({
-      cat3Training: [{ durationDays: 5 }, { durationDays: 4 }],
+      cat3Training: [{ durationDays: 6 }, { durationDays: 5 }, { durationDays: 2 }],
     }));
-    expect(s.cat3.training).toBe(15); // 10 + 5
+    expect(s.cat3.training).toBe(20); // 10 + 5 + 5
   });
 });
 
