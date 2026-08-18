@@ -3,9 +3,9 @@ import request from 'supertest';
 import app from '../app';
 import prisma from '../utils/prismaClient';
 
-// The dean-assigned 2-reviewer layer ABOVE the HoD. Admin assigns exactly two
-// final reviewers; both must APPROVE to finalise, and either REJECT sends the
-// submission back to HOLD.
+// The dean-assigned final-review layer ABOVE the HoD. Admin assigns any number
+// of reviewers, from any department; ONE approval finalises, and a REJECT sends
+// the submission back to HOLD.
 //
 // Self-skips when the DB / expected users are unavailable, and creates + deletes
 // its own throwaway submission so it never touches real appraisals.
@@ -54,7 +54,7 @@ afterAll(async () => {
   await prisma.appraisalSubmission.deleteMany({ where: { id: subId } });
 });
 
-describe('final review — dean-assigned 2-reviewer layer', () => {
+describe('final review — dean-assigned reviewer layer', () => {
   it('non-admin cannot assign final reviewers (403)', async () => {
     if (!ready) return;
     const res = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
@@ -62,18 +62,28 @@ describe('final review — dean-assigned 2-reviewer layer', () => {
     expect(res.status).toBe(403);
   });
 
-  it('rejects an assignment that is not exactly two distinct reviewers', async () => {
+  it('accepts any number of reviewers — a single one is allowed', async () => {
     if (!ready) return;
     const one = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
       .set(bearer(adminTok)).send({ reviewerIds: [rev1Id] });
-    expect(one.status).toBe(400);
+    expect(one.status).toBe(201);
+    expect(one.body.reviewers).toHaveLength(1);
 
+    // Duplicates collapse rather than erroring.
     const dup = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
       .set(bearer(adminTok)).send({ reviewerIds: [rev1Id, rev1Id] });
-    expect(dup.status).toBe(400);
+    expect(dup.status).toBe(201);
+    expect(dup.body.reviewers).toHaveLength(1);
   });
 
-  it('admin assigns two reviewers → submission moves to FINAL_REVIEW', async () => {
+  it('rejects an empty reviewer list', async () => {
+    if (!ready) return;
+    const none = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
+      .set(bearer(adminTok)).send({ reviewerIds: [] });
+    expect(none.status).toBe(400);
+  });
+
+  it('admin assigns reviewers → submission moves to FINAL_REVIEW', async () => {
     if (!ready) return;
     const res = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
       .set(bearer(adminTok)).send({ reviewerIds: [rev1Id, rev2Id] });
@@ -91,26 +101,19 @@ describe('final review — dean-assigned 2-reviewer layer', () => {
     expect(res.status).toBe(403);
   });
 
-  it('one approval is not enough — stays in FINAL_REVIEW', async () => {
+  it('a single approval finalises the appraisal → APPROVED, without the second reviewer', async () => {
     if (!ready) return;
     const res = await request(app).post(`/api/appraisals/${subId}/final-review`)
       .set(bearer(rev1Tok)).send({ decision: 'APPROVED' });
-    expect(res.status).toBe(200);
-    expect(res.body.outcome).toBe('PENDING');
-
-    const sub = await prisma.appraisalSubmission.findUnique({ where: { id: subId } });
-    expect(sub!.status).toBe('FINAL_REVIEW');
-  });
-
-  it('both approvals finalise the appraisal → APPROVED', async () => {
-    if (!ready) return;
-    const res = await request(app).post(`/api/appraisals/${subId}/final-review`)
-      .set(bearer(rev2Tok)).send({ decision: 'APPROVED' });
     expect(res.status).toBe(200);
     expect(res.body.outcome).toBe('APPROVED');
 
     const sub = await prisma.appraisalSubmission.findUnique({ where: { id: subId } });
     expect(sub!.status).toBe('APPROVED');
+
+    // The other assigned reviewer never acted and is not required to.
+    const other = await prisma.finalReview.findFirst({ where: { submissionId: subId, reviewerId: rev2Id } });
+    expect(other!.decision).toBe('PENDING');
   });
 
   it('a rejection sends the appraisal back to HOLD with the reason', async () => {
@@ -133,6 +136,33 @@ describe('final review — dean-assigned 2-reviewer layer', () => {
     const sub = await prisma.appraisalSubmission.findUnique({ where: { id: subId } });
     expect(sub!.status).toBe('HOLD');
     expect(sub!.holdReason).toBe('Insufficient evidence');
+  });
+
+  it('a reviewer from another department can review and view the appraisal', async () => {
+    if (!ready || !outsiderTok) return;
+    // FAC11 is a REVIEWER for ECE; the throwaway submission's faculty (FAC21) is
+    // not in their department, so this only works because the dean assigned them.
+    const outsider = await prisma.user.findUnique({ where: { employeeCode: 'FAC11' } });
+    if (!outsider) return;
+
+    await prisma.appraisalSubmission.update({ where: { id: subId }, data: { status: 'APPROVED' } });
+    const assign = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
+      .set(bearer(adminTok)).send({ reviewerIds: [outsider.id] });
+    expect(assign.status).toBe(201);
+
+    // Cross-department read access comes from the assignment alone.
+    const view = await request(app).get(`/api/appraisals/${subId}`).set(bearer(outsiderTok));
+    expect(view.status).toBe(200);
+
+    const res = await request(app).post(`/api/appraisals/${subId}/final-review`)
+      .set(bearer(outsiderTok)).send({ decision: 'APPROVED' });
+    expect(res.status).toBe(200);
+    expect(res.body.outcome).toBe('APPROVED');
+
+    // Restore the two-reviewer assignment for the following test.
+    await prisma.appraisalSubmission.update({ where: { id: subId }, data: { status: 'APPROVED' } });
+    await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
+      .set(bearer(adminTok)).send({ reviewerIds: [rev1Id, rev2Id] });
   });
 
   it('an assigned reviewer sees the submission in their pending queue', async () => {

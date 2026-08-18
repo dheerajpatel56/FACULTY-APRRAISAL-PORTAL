@@ -13,7 +13,7 @@ interface Props {
 
 export default function AssignReviewerModal({ open, submission, onClose, onAssigned }: Props) {
   const [reviewers, setReviewers] = useState<any[]>([]);
-  // Exactly two final reviewers (the layer above the HoD).
+  // Any number of final reviewers (the layer above the HoD), from any department.
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState('');
@@ -36,7 +36,7 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
   }, [open]);
 
   const toggle = (id: string) =>
-    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 2 ? cur : [...cur, id]));
+    setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
   if (!open || !submission) return null;
 
@@ -51,14 +51,14 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
   });
 
   const assign = async () => {
-    if (selected.length !== 2) {
-      toast.error('Select exactly two reviewers');
+    if (selected.length === 0) {
+      toast.error('Select at least one reviewer');
       return;
     }
     setBusy(true);
     try {
       await finalReviewApi.assign(submission.id, selected);
-      toast.success('Final reviewers assigned — both must approve to finalise');
+      toast.success('Final reviewers assigned — one approval finalises');
       onAssigned();
       onClose();
     } catch (e: any) {
@@ -90,8 +90,9 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
           </div>
 
           <p className="text-xs text-ink-muted mb-3">
-            Pick <strong>two</strong> reviewers for the final annual review (above the HoD). Both must approve to
-            finalise; either rejection sends the appraisal back on hold. <span className="text-ink-secondary">{selected.length}/2 selected</span>
+            Pick the reviewers for the final annual review (above the HoD). Reviewers may come from any
+            department, and <strong>one</strong> approval is enough to finalise; a rejection sends the appraisal
+            back on hold. <span className="text-ink-secondary">{selected.length} selected</span>
           </p>
 
           <div className="mb-3">
@@ -122,7 +123,6 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
                     <input
                       type="checkbox"
                       checked={selected.includes(r.id)}
-                      disabled={!selected.includes(r.id) && selected.length >= 2}
                       onChange={() => toggle(r.id)}
                       className="accent-primary-600"
                     />
@@ -144,7 +144,7 @@ export default function AssignReviewerModal({ open, submission, onClose, onAssig
             <button onClick={onClose} className="text-sm text-ink-secondary px-4 py-2 border border-surface-border rounded hover:bg-surface-muted">Cancel</button>
             <button
               onClick={assign}
-              disabled={busy || selected.length !== 2}
+              disabled={busy || selected.length === 0}
               className="text-sm bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700 disabled:opacity-50"
             >
               {busy ? 'Assigning...' : 'Assign Final Reviewers'}

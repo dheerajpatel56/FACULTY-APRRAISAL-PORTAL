@@ -4,23 +4,23 @@ import { RoleType, SubmissionStatus, FinalDecision } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { enqueueEmail } from '../services/emailService';
 
-// The review layer ABOVE the HoD. The admin/dean assigns exactly two final
-// reviewers to an annual appraisal; after the HoD approves, both must APPROVE to
-// finalise, and either REJECT sends it back (HOLD).
+// The review layer ABOVE the HoD. The admin/dean assigns any number of final
+// reviewers to an annual appraisal, drawn from ANY department. After the HoD
+// approves, ONE approval from any assigned reviewer finalises it; a REJECT sends
+// it back (HOLD). A second opinion is allowed but never required.
 
 function isAdmin(req: Request) {
   return req.user!.roles.some((r) => r.role === RoleType.ADMIN);
 }
 
-// POST /admin/appraisals/:id/final-reviewers  { reviewerIds: [id1, id2] }
+// POST /admin/appraisals/:id/final-reviewers  { reviewerIds: [...] }
+// Any number of reviewers (at least one), from any department.
 export async function assignFinalReviewers(req: Request, res: Response) {
-  const { reviewerIds } = z.object({
-    reviewerIds: z.array(z.string().min(1)).length(2),
+  const parsed = z.object({
+    reviewerIds: z.array(z.string().min(1)).min(1),
   }).parse(req.body);
-
-  if (reviewerIds[0] === reviewerIds[1]) {
-    return res.status(400).json({ error: 'Pick two different reviewers' });
-  }
+  // Duplicates in the payload are harmless — collapse them.
+  const reviewerIds = [...new Set(parsed.reviewerIds)];
 
   const sub = await prisma.appraisalSubmission.findUnique({ where: { id: req.params.id } });
   if (!sub) return res.status(404).json({ error: 'Not found' });
@@ -29,7 +29,7 @@ export async function assignFinalReviewers(req: Request, res: Response) {
     return res.status(400).json({ error: 'A faculty cannot be a reviewer of their own appraisal' });
   }
   const users = await prisma.user.findMany({ where: { id: { in: reviewerIds } }, select: { id: true } });
-  if (users.length !== 2) return res.status(400).json({ error: 'One or more reviewers not found' });
+  if (users.length !== reviewerIds.length) return res.status(400).json({ error: 'One or more reviewers not found' });
 
   const rows = await prisma.$transaction(async (tx) => {
     await tx.finalReview.deleteMany({ where: { submissionId: sub.id } });
@@ -50,7 +50,7 @@ export async function assignFinalReviewers(req: Request, res: Response) {
   return res.status(201).json({ message: 'Final reviewers assigned', reviewers: rows });
 }
 
-// GET /appraisals/:id/final-reviews — the two assignments + their decisions.
+// GET /appraisals/:id/final-reviews — the assignments + their decisions.
 export async function getFinalReviews(req: Request, res: Response) {
   const rows = await prisma.finalReview.findMany({
     where: { submissionId: req.params.id },
@@ -115,9 +115,12 @@ export async function submitFinalReview(req: Request, res: Response) {
     data: { decision: decision as FinalDecision, comment: comment ?? null, decidedAt: new Date() },
   });
 
+  // One review is enough: a single approval from any assigned reviewer finalises
+  // the appraisal, and a single rejection sends it back. Reviewers who have not
+  // acted are simply left pending — their opinion is not required.
   const all = await prisma.finalReview.findMany({ where: { submissionId: sub.id } });
   const anyRejected = all.some((r) => r.decision === FinalDecision.REJECTED);
-  const allApproved = all.length > 0 && all.every((r) => r.decision === FinalDecision.APPROVED);
+  const anyApproved = all.some((r) => r.decision === FinalDecision.APPROVED);
 
   let outcome: 'HOLD' | 'APPROVED' | 'PENDING' = 'PENDING';
   if (anyRejected) {
@@ -127,7 +130,7 @@ export async function submitFinalReview(req: Request, res: Response) {
       data: { status: SubmissionStatus.HOLD, holdReason: reason, heldAt: new Date() },
     });
     outcome = 'HOLD';
-  } else if (allApproved) {
+  } else if (anyApproved) {
     await prisma.appraisalSubmission.update({ where: { id: sub.id }, data: { status: SubmissionStatus.APPROVED } });
     outcome = 'APPROVED';
     // Notify the faculty of final approval.

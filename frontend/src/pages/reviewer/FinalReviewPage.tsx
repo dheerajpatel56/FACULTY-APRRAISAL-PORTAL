@@ -7,8 +7,8 @@ import Card from '../../components/Card';
 import { finalReviewApi, type FinalReviewRow } from '../../api/appraisals';
 
 // The dean-assigned final reviewer's queue — the review layer above the HoD.
-// Both assigned reviewers must approve to finalise; either rejection (with a
-// reason) sends the appraisal back on hold.
+// One approval from any assigned reviewer finalises the appraisal; a rejection
+// (with a reason) sends it back on hold.
 export default function FinalReviewPage() {
   const [rows, setRows] = useState<FinalReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +33,9 @@ export default function FinalReviewPage() {
     try {
       const res = await finalReviewApi.decide(submissionId, decision, comment || undefined);
       toast.success(
-        res.outcome === 'APPROVED' ? 'Both approvals in — appraisal finalised'
+        res.outcome === 'APPROVED' ? 'Appraisal finalised'
         : res.outcome === 'HOLD' ? 'Sent back on hold'
-        : 'Recorded — awaiting the other reviewer'
+        : 'Recorded'
       );
       setLoading(true);
       load();
@@ -50,7 +50,7 @@ export default function FinalReviewPage() {
     <div>
       <PageHeader
         title="Final Review"
-        subtitle="Annual appraisals assigned to you for final sign-off. Both reviewers must approve."
+        subtitle="Annual appraisals assigned to you for final sign-off. One approval finalises."
         breadcrumbs={[{ label: 'Final Review' }]}
       />
 
