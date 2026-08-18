@@ -220,11 +220,11 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
       sub.cat2Citations.hIndexGoogle, sub.cat2Citations.hIndexScopus, sub.cat2Citations.hIndexWos,
     ]] : []
   )}
-  ${listTable('Books & Chapters',
-    ['Title', 'Authors', 'Publisher', 'Type'],
+  ${listTable('2.3 Books & Book Chapters (combined, max 10)',
+    ['Title', 'Authors', 'Publisher', 'Kind', 'Type'],
     [
-      ...(sub.cat2Books ?? []).map((b: any) => [b.title, b.authors, b.publisher, b.isEdited ? 'Edited' : 'Published']),
-      ...(sub.cat2BookChapters ?? []).map((b: any) => [b.title, b.authors, b.publisher, b.isEdited ? 'Edited' : 'Published']),
+      ...(sub.cat2Books ?? []).map((b: any) => [b.title, b.authors, b.publisher, 'Book', b.isEdited ? 'Edited' : 'Published']),
+      ...(sub.cat2BookChapters ?? []).map((b: any) => [b.title, b.authors, b.publisher, 'Chapter', b.isEdited ? 'Edited' : 'Published']),
     ]
   )}
   ${listTable('Patents',

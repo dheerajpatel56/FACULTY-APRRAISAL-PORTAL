@@ -770,11 +770,57 @@ export default function AppraisalEditPage() {
               {addRowBtn('Add Conference Book Chapter', () => confBookChapters.append({ title: '', conferenceName: '', authors: '', authorPosition: '1st', indexed: 'NONE', proofFile: '' }))}
             </div>
 
+
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.3 Academic Book Chapters</h2>
+                <h2 className="font-semibold text-ink-primary">2.2 Citations</h2>
+                <ScoreBadge value={live.cat2.citations} max={5} />
+              </div>
+              <p className="text-xs text-ink-muted mb-3">Score from Total Citations: 3–10→2, 11–20→5, 21–40→8, &gt;40→10.</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div><label className={labelCls}>Publications/Books (till date)</label><input type="number" {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>Publications/Books with Citations</label><input type="number" {...register('cat2Citations.pubsWithCitations', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>Total Citations</label><input type="number" {...register('cat2Citations.totalCitations', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (Google Scholar)</label><input type="number" {...register('cat2Citations.hIndexGoogle', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (Scopus)</label><input type="number" {...register('cat2Citations.hIndexScopus', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (WoS)</label><input type="number" {...register('cat2Citations.hIndexWos', { valueAsNumber: true })} className={inputCls} /></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-ink-primary">2.3 Books &amp; Book Chapters</h2>
                 <ScoreBadge value={live.cat2.books} max={10} />
               </div>
+              <p className="text-xs text-ink-muted mb-3">Books and academic book chapters are scored together against a single maximum of 10 marks.</p>
+
+              <h3 className="text-sm font-semibold text-ink-secondary mb-2">Books</h3>
+              {books.fields.map((field, i) => (
+                <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className={labelCls}>Title</label><input {...register(`cat2Books.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Books.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Publisher</label><input {...register(`cat2Books.${i}.publisher`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>ISBN</label><input {...register(`cat2Books.${i}.isbn`)} className={inputCls} /></div>
+                    <div>
+                      <label className={labelCls}>Scope</label>
+                      <select {...register(`cat2Books.${i}.scope`)} className={inputCls}>
+                        <option value="INTERNATIONAL">International</option><option value="NATIONAL">National</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end pb-1">
+                      <label className="flex items-center gap-2 text-sm text-ink-secondary">
+                        <input type="checkbox" {...register(`cat2Books.${i}.isEdited`)} /> Edited
+                      </label>
+                    </div>
+                    {proofField(`cat2Books.${i}.proofFile`, 'Cover / Proof')}
+                  </div>
+                  <button type="button" onClick={() => books.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
+                </div>
+              ))}
+              {addRowBtn('Add Book', () => books.append({ title: '', authors: '', publisher: '', isbn: '', isEdited: false, scope: 'INTERNATIONAL', proofFile: '' }))}
+
+              <h3 className="text-sm font-semibold text-ink-secondary mt-5 mb-2">Academic Book Chapters</h3>
               {bookChapters.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
@@ -806,53 +852,6 @@ export default function AppraisalEditPage() {
                 </div>
               ))}
               {addRowBtn('Add Book Chapter', () => bookChapters.append({ title: '', authors: '', authorPosition: '1st', publisher: '', isbn: '', chapterNo: '', isEdited: false, scope: 'INTERNATIONAL', proofFile: '' }))}
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.2 Citations</h2>
-                <ScoreBadge value={live.cat2.citations} max={5} />
-              </div>
-              <p className="text-xs text-ink-muted mb-3">Score from Total Citations: 3–10→2, 11–20→5, 21–40→8, &gt;40→10.</p>
-              <div className="grid grid-cols-3 gap-3">
-                <div><label className={labelCls}>Publications/Books (till date)</label><input type="number" {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>Publications/Books with Citations</label><input type="number" {...register('cat2Citations.pubsWithCitations', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>Total Citations</label><input type="number" {...register('cat2Citations.totalCitations', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>h-Index (Google Scholar)</label><input type="number" {...register('cat2Citations.hIndexGoogle', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>h-Index (Scopus)</label><input type="number" {...register('cat2Citations.hIndexScopus', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>h-Index (WoS)</label><input type="number" {...register('cat2Citations.hIndexWos', { valueAsNumber: true })} className={inputCls} /></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.3 Books</h2>
-                <ScoreBadge value={live.cat2.books} max={10} />
-              </div>
-              {books.fields.map((field, i) => (
-                <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2Books.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Books.${i}.authors`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Publisher</label><input {...register(`cat2Books.${i}.publisher`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>ISBN</label><input {...register(`cat2Books.${i}.isbn`)} className={inputCls} /></div>
-                    <div>
-                      <label className={labelCls}>Scope</label>
-                      <select {...register(`cat2Books.${i}.scope`)} className={inputCls}>
-                        <option value="INTERNATIONAL">International</option><option value="NATIONAL">National</option>
-                      </select>
-                    </div>
-                    <div className="flex items-end pb-1">
-                      <label className="flex items-center gap-2 text-sm text-ink-secondary">
-                        <input type="checkbox" {...register(`cat2Books.${i}.isEdited`)} /> Edited
-                      </label>
-                    </div>
-                    {proofField(`cat2Books.${i}.proofFile`, 'Cover / Proof')}
-                  </div>
-                  <button type="button" onClick={() => books.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
-                </div>
-              ))}
-              {addRowBtn('Add Book', () => books.append({ title: '', authors: '', publisher: '', isbn: '', isEdited: false, scope: 'INTERNATIONAL', proofFile: '' }))}
             </div>
 
             <div>
@@ -1482,7 +1481,7 @@ export default function AppraisalEditPage() {
                     ['Category 2 — Research', score.cat2, 150, [
                       ['2.1 Publications', score.cat2.publications, 60],
                       ['2.2 Citations', score.cat2.citations, 5],
-                      ['2.3 Books', score.cat2.books, 10],
+                      ['2.3 Books & Book Chapters', score.cat2.books, 10],
                       ['2.4 Patents', score.cat2.patents, 20],
                       ['2.5 Sponsored Projects', score.cat2.sponsoredProjects, 20],
                       ['2.6 Consultancy', score.cat2.consultancy, 10],
