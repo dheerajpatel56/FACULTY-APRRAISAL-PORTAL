@@ -1,3 +1,25 @@
+/**
+ * FPAS scoring engine — THE source of truth for every score in this system.
+ *
+ * Scores are computed server-side only. The official form
+ * ("FACULTY ANNUAL PERFORMANCE SELF APPRAISAL", AY 2025-2026) is the
+ * specification; where this file and the PDF disagree, the PDF wins.
+ *
+ * FOUR FILES MOVE TOGETHER. Changing a rule here without the other three
+ * fails the parity suites on both sides:
+ *
+ *   1. backend/src/services/scoringEngine.ts          <- you are here (authoritative)
+ *   2. frontend/src/utils/scoring.ts                  <- pure port, for live form badges
+ *   3. docs/superpowers/plans/scoring-expected.json   <- hand-verified expected breakdown
+ *   4. docs/superpowers/plans/scoring-fixture.json    <- shared input fixture (only if new fields are needed)
+ *
+ * Asserted by scoringEngine.parity.test.ts (here) and scoring.test.ts
+ * (frontend), which both load the same fixture and expect the same object.
+ *
+ * Never re-implement a formula in a screen or an export. If a view needs to
+ * show the working, export a helper from the port (see courseResultScore)
+ * and call it, so there is only ever one copy of the arithmetic.
+ */
 import {
   AppraisalSubmission,
   Cat1Course,

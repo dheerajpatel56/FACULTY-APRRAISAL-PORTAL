@@ -241,10 +241,7 @@ function scoreCategory1(v: ScoreFormValues) {
   //      C = (pass % / 100) * 10.
   let attendanceFeedback = 0;
   for (const c of arr<Cat1CourseResultInput>(v.cat1CourseResults)) {
-    const A = Math.min(Math.max(n(c?.avgAttendancePct), 0) / 100 * 5, 5);
-    const B = Math.min(Math.max(n(c?.feedbackReceived), 0), 5);
-    const C = Math.min(Math.max(n(c?.passPercentage), 0) / 100 * 10, 10);
-    attendanceFeedback += Math.min(A + B + C, 20);
+    attendanceFeedback += courseResultScore(c).total;
   }
   attendanceFeedback = Math.min(attendanceFeedback, 80);
 
@@ -436,6 +433,19 @@ function scoreCategory5(v: ScoreFormValues) {
 
 // Pure: computes the ScoreBreakdown from in-memory form values. Tolerates
 // undefined/null/partial input — always returns a well-formed breakdown.
+/**
+ * 1.2 per-course A/B/C split, exported so screens that show the working (the
+ * HoD review page) render the SAME numbers the engines score with instead of
+ * re-implementing the formulas. Kept inside this module on purpose — it is
+ * covered by the parity fixture through computeScore.
+ */
+export function courseResultScore(c: Cat1CourseResultInput | null | undefined) {
+  const A = Math.min(Math.max(n(c?.avgAttendancePct), 0) / 100 * 5, 5);
+  const B = Math.min(Math.max(n(c?.feedbackReceived), 0), 5);
+  const C = Math.min(Math.max(n(c?.passPercentage), 0) / 100 * 10, 10);
+  return { A, B, C, total: Math.min(A + B + C, 20) };
+}
+
 export function computeScore(values: ScoreFormValues | null | undefined): ScoreBreakdown {
   const v = values ?? {};
   const cat1 = scoreCategory1(v);
