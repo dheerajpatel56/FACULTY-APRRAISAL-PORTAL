@@ -31,8 +31,9 @@ export interface TrackingRow {
   expYears: number;
   actuals: Actuals;
   eligibility: { requirements: Requirement[]; eligible: boolean; target: any };
-  // Manual tier assignment (admin/dean), null until assigned.
+  // Manual decisions by the admin/dean, null until decided.
   tier: 'T1' | 'T2' | 'T3' | null;
+  eligible: boolean | null;
 }
 
 export type TierKey = 'T1' | 'T2' | 'T3' | 'none';
@@ -58,6 +59,8 @@ export const trackingApi = {
     api.post('/admin/tracking/snapshot', academicYearId ? { academicYearId } : {}).then((r) => r.data),
   setTier: (userId: string, academicYearId: string, tier: 'T1' | 'T2' | 'T3' | null) =>
     api.put('/admin/faculty-tiers', { userId, academicYearId, tier }).then((r) => r.data),
+  setEligible: (userId: string, academicYearId: string, eligible: boolean | null) =>
+    api.put('/admin/faculty-tiers', { userId, academicYearId, eligible }).then((r) => r.data),
   exportExcel: async (academicYearId: string, label: string) => {
     const blob = await api
       .get('/tracking/export', { params: { academicYearId, format: 'excel' }, responseType: 'blob' })

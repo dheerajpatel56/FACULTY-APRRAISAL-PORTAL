@@ -20,9 +20,11 @@ export const TRACKING_INCLUDE = {
 
 export interface TrackingContext {
   cadreTargets: any[];
-  // Manual tier assignments for the AY, keyed by faculty userId. Tiers are set
-  // by the admin/dean by hand (no auto-computation from thresholds).
+  // Manual per-faculty decisions for the AY, keyed by userId. Both the tier and
+  // the eligibility call are made by the admin/dean by hand — nothing here is
+  // auto-computed. Absent from the map = not yet decided.
   manualTiers: Map<string, Tier>;
+  manualEligible: Map<string, boolean>;
   hasTargets: boolean;
 }
 
@@ -33,11 +35,16 @@ export async function loadTrackingContext(academicYearId: string): Promise<Track
   ]);
 
   const manualTiers = new Map<string, Tier>();
-  for (const ft of facultyTiers) if (ft.tier) manualTiers.set(ft.userId, ft.tier);
+  const manualEligible = new Map<string, boolean>();
+  for (const ft of facultyTiers) {
+    if (ft.tier) manualTiers.set(ft.userId, ft.tier);
+    if (ft.eligible != null) manualEligible.set(ft.userId, ft.eligible);
+  }
 
   return {
     cadreTargets,
     manualTiers,
+    manualEligible,
     hasTargets: cadreTargets.length > 0,
   };
 }
@@ -62,9 +69,12 @@ export function computeRow(sub: any, ctx: TrackingContext, yearStart: Date) {
     cadreLabel: cadre ? CADRE_LABEL[cadre] : null,
     expYears: Math.round(expYears * 10) / 10,
     actuals,
+    // Computed actuals-vs-cadre-targets detail. Kept as the reference the dean
+    // reads when deciding, but it no longer decides eligibility itself.
     eligibility,
-    // Manual assignment (admin/dean), null until assigned.
+    // Manual decisions (admin/dean), null until decided.
     tier: ctx.manualTiers.get(u.id) ?? null,
+    eligible: ctx.manualEligible.get(u.id) ?? null,
   };
 }
 
@@ -113,11 +123,11 @@ export function summarize(rows: TrackingRow[]) {
   for (const r of rows) {
     const t: TierKey = (r.tier as TierKey) ?? 'none';
     byTier[t]++;
-    if (r.eligibility.eligible) eligible++;
+    if (r.eligible === true) eligible++;
     const key = r.cadreLabel ?? 'Unassigned';
     byCadre[key] = byCadre[key] ?? { total: 0, eligible: 0, tiers: emptyTiers() };
     byCadre[key].total++;
-    if (r.eligibility.eligible) byCadre[key].eligible++;
+    if (r.eligible === true) byCadre[key].eligible++;
     byCadre[key].tiers[t]++;
   }
 

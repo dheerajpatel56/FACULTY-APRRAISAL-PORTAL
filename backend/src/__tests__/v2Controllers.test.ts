@@ -208,6 +208,43 @@ describe('W3/W5 tracking', () => {
     expect(track3.body.rows.find((r: any) => r.faculty.id === userId).tier).toBeNull();
   });
 
+  it('admin sets eligibility by hand and tracking + aggregates reflect it', async () => {
+    if (!ready) return;
+    const track1 = await request(app).get(`/api/tracking?academicYearId=${openYearId}`).set(bearer(adminTok));
+    const row = track1.body.rows?.[0];
+    if (!row) return;
+    const userId = row.faculty.id;
+
+    const on = await request(app).put('/api/admin/faculty-tiers').set(bearer(adminTok))
+      .send({ userId, academicYearId: openYearId, eligible: true });
+    expect(on.status).toBe(200);
+    expect(on.body.eligible).toBe(true);
+
+    const t2 = await request(app).get(`/api/tracking?academicYearId=${openYearId}`).set(bearer(adminTok));
+    expect(t2.body.rows.find((r: any) => r.faculty.id === userId).eligible).toBe(true);
+    expect(t2.body.aggregates.eligible).toBeGreaterThanOrEqual(1);
+
+    // Toggling off is distinct from never having decided.
+    const off = await request(app).put('/api/admin/faculty-tiers').set(bearer(adminTok))
+      .send({ userId, academicYearId: openYearId, eligible: false });
+    expect(off.status).toBe(200);
+    const t3 = await request(app).get(`/api/tracking?academicYearId=${openYearId}`).set(bearer(adminTok));
+    expect(t3.body.rows.find((r: any) => r.faculty.id === userId).eligible).toBe(false);
+
+    // Clearing restores the undecided state, and leaves the tier untouched.
+    await request(app).put('/api/admin/faculty-tiers').set(bearer(adminTok))
+      .send({ userId, academicYearId: openYearId, eligible: null });
+    const t4 = await request(app).get(`/api/tracking?academicYearId=${openYearId}`).set(bearer(adminTok));
+    expect(t4.body.rows.find((r: any) => r.faculty.id === userId).eligible).toBeNull();
+  });
+
+  it('rejects a faculty-tiers call carrying neither tier nor eligible (400)', async () => {
+    if (!ready) return;
+    const res = await request(app).put('/api/admin/faculty-tiers').set(bearer(adminTok))
+      .send({ userId: 'x', academicYearId: openYearId });
+    expect(res.status).toBe(400);
+  });
+
   it('non-admin cannot set a manual tier (403)', async () => {
     if (!ready || !hodTok) return;
     const res = await request(app).put('/api/admin/faculty-tiers').set(bearer(hodTok))

@@ -18,7 +18,8 @@ function scope(req: Request) {
 }
 
 // GET /tracking?academicYearId=...  (HoD -> own dept, Admin -> all)
-// Per-faculty cadre, actuals vs cadre targets (eligibility), tier + segregation.
+// Per-faculty cadre, actuals vs cadre targets, the dean's manual tier +
+// eligibility calls, and the segregation summary.
 export async function getTracking(req: Request, res: Response) {
   const academicYearId = typeof req.query.academicYearId === 'string' ? req.query.academicYearId : undefined;
   const built = await buildTrackingRows({ ...scope(req), academicYearId });
@@ -35,18 +36,29 @@ export async function getTracking(req: Request, res: Response) {
 const setTierSchema = z.object({
   userId: z.string().min(1),
   academicYearId: z.string().min(1),
-  tier: z.nativeEnum(Tier).nullable(),
+  tier: z.nativeEnum(Tier).nullable().optional(),
+  eligible: z.boolean().nullable().optional(),
+}).refine((v) => v.tier !== undefined || v.eligible !== undefined, {
+  message: 'Provide tier and/or eligible',
 });
 
-// PUT /admin/faculty-tiers  { userId, academicYearId, tier|null } — admin/dean
-// assigns a faculty's tier for the year by hand (no auto-computation).
-// tier=null clears the assignment.
+// PUT /admin/faculty-tiers  { userId, academicYearId, tier?, eligible? }
+// The admin/dean sets a faculty's tier and eligibility for the year by hand —
+// neither is auto-computed. Passing null clears that decision; omitting a field
+// leaves it untouched.
 export async function setFacultyTier(req: Request, res: Response) {
-  const { userId, academicYearId, tier } = setTierSchema.parse(req.body);
+  const { userId, academicYearId, tier, eligible } = setTierSchema.parse(req.body);
   const row = await prisma.facultyTier.upsert({
     where: { userId_academicYearId: { userId, academicYearId } },
-    create: { userId, academicYearId, tier, assignedById: req.user!.id },
-    update: { tier, assignedById: req.user!.id },
+    create: {
+      userId, academicYearId, assignedById: req.user!.id,
+      tier: tier ?? null, eligible: eligible ?? null,
+    },
+    update: {
+      assignedById: req.user!.id,
+      ...(tier !== undefined ? { tier } : {}),
+      ...(eligible !== undefined ? { eligible } : {}),
+    },
   });
   return res.json(row);
 }
@@ -60,7 +72,7 @@ function exportRow(r: TrackingRow) {
     Cadre: r.cadreLabel ?? 'Unassigned',
     'Exp (yr)': r.expYears,
     Tier: r.tier ?? '',
-    Eligible: r.eligibility.requirements.length === 0 ? 'N/A' : r.eligibility.eligible ? 'Yes' : 'No',
+    Eligible: r.eligible == null ? 'Not decided' : r.eligible ? 'Yes' : 'No',
     'Total Score': r.actuals.totalScore,
     'Score Source': r.actuals.totalScoreSource,
     Feedback: r.actuals.feedback,

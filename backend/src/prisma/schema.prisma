@@ -327,15 +327,16 @@ model CadreTierThreshold {
   @@unique([academicYearId, cadre, tier])
 }
 
-// Manual tier assignment. Tiers are no longer auto-computed from thresholds — the
-// admin/dean reviews each faculty's achievements against their cadre targets and
-// assigns T1/T2/T3 by hand, once per academic year. `tier` null = unassigned.
+// Manual per-faculty decisions for a year. Neither tier nor eligibility is
+// auto-computed any more — the admin/dean reviews each faculty's achievements
+// against their cadre targets and sets both by hand. null = not yet decided.
 // Scalar keys (no relations) keep it decoupled; read by trackingService.
 model FacultyTier {
   id             String   @id @default(uuid())
   userId         String
   academicYearId String
   tier           Tier?
+  eligible       Boolean? // dean's manual eligibility call; null = not yet decided
   assignedById   String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

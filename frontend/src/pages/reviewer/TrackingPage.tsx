@@ -18,6 +18,38 @@ function TierBadge({ tier }: { tier: string | null }) {
   return <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${TIER_STYLE[tier]}`}>{tier}</span>;
 }
 
+// Eligibility is the dean's call, not a computed verdict: an on/off switch that
+// can also sit undecided (null) until they make it.
+function EligibleToggle({ value, onChange }: { value: boolean | null; onChange: (v: boolean | null) => void }) {
+  const on = value === true;
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={() => onChange(on ? false : true)}
+        title={value === null ? 'Not decided — click to mark eligible' : on ? 'Eligible — click to mark not eligible' : 'Not eligible — click to mark eligible'}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+          on ? 'bg-emerald-500' : value === false ? 'bg-red-400' : 'bg-surface-border'
+        }`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-1'}`} />
+      </button>
+      {value === null
+        ? <span className="text-[10px] text-ink-muted">not set</span>
+        : <button type="button" onClick={() => onChange(null)} title="Clear the decision" className="text-[10px] text-ink-muted hover:text-ink-secondary">clear</button>}
+    </div>
+  );
+}
+
+function EligibleBadge({ value }: { value: boolean | null }) {
+  if (value === null) return <span className="text-xs text-ink-muted">—</span>;
+  return value
+    ? <CheckCircle2 size={16} className="text-emerald-600" />
+    : <XCircle size={16} className="text-red-500" />;
+}
+
 function RequirementRows({ row }: { row: TrackingRow }) {
   if (!row.eligibility.requirements.length) {
     return <div className="text-xs text-ink-muted px-3 py-2">No cadre target configured for this faculty ({row.cadreLabel ?? 'unknown cadre'}).</div>;
@@ -79,11 +111,7 @@ function TierGroupedList({ rows }: { rows: TrackingRow[] }) {
                   <div className="flex items-center gap-3 text-xs text-ink-secondary">
                     <span>{r.cadreLabel ?? '—'}</span>
                     <span className="text-ink-muted">{r.actuals.totalScore}/550</span>
-                    {r.eligibility.requirements.length > 0 && (
-                      r.eligibility.eligible
-                        ? <CheckCircle2 size={14} className="text-emerald-600" />
-                        : <XCircle size={14} className="text-red-500" />
-                    )}
+                    <EligibleBadge value={r.eligible} />
                   </div>
                 </li>
               ))}
@@ -116,15 +144,25 @@ export default function TrackingPage() {
     }
   };
 
-  // Admin/dean assigns a faculty's tier by hand. Re-fetch so the segregation
-  // matrix + filters stay in sync.
+  // Admin/dean sets a faculty's tier and eligibility by hand. Re-fetch after each
+  // so the segregation matrix + filters stay in sync.
+  const refresh = async () => setData(await trackingApi.get(yearId));
+
   const setTier = async (userId: string, tier: 'T1' | 'T2' | 'T3' | null) => {
     try {
       await trackingApi.setTier(userId, yearId, tier);
-      const fresh = await trackingApi.get(yearId);
-      setData(fresh);
+      await refresh();
     } catch {
       toast.error('Failed to set tier');
+    }
+  };
+
+  const setEligible = async (userId: string, eligible: boolean | null) => {
+    try {
+      await trackingApi.setEligible(userId, yearId, eligible);
+      await refresh();
+    } catch {
+      toast.error('Failed to set eligibility');
     }
   };
 
@@ -168,11 +206,9 @@ export default function TrackingPage() {
   const filtered = (data?.rows ?? []).filter((r) => {
     if (fCadre && (r.cadreLabel ?? 'Unassigned') !== fCadre) return false;
     if (fTier && (r.tier ?? 'none') !== fTier) return false;
-    if (fElig) {
-      const scored = r.eligibility.requirements.length > 0;
-      if (fElig === 'eligible' && !(scored && r.eligibility.eligible)) return false;
-      if (fElig === 'not' && !(scored && !r.eligibility.eligible)) return false;
-    }
+    if (fElig === 'eligible' && r.eligible !== true) return false;
+    if (fElig === 'not' && r.eligible !== false) return false;
+    if (fElig === 'undecided' && r.eligible !== null) return false;
     return true;
   });
 
@@ -180,7 +216,7 @@ export default function TrackingPage() {
     <div>
       <PageHeader
         title="Criteria Tracking"
-        subtitle="Actuals vs cadre targets, eligibility and tier per faculty."
+        subtitle="Each faculty's actuals against their cadre targets. Tier and eligibility are set by the dean."
         breadcrumbs={[{ label: 'Criteria Tracking' }]}
         actions={
           <div className="flex items-center gap-2">
@@ -215,12 +251,12 @@ export default function TrackingPage() {
 
       {data && !data.hasTargets && (
         <div className="mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-          No cadre targets set for this year — eligibility can't be computed. Set them in Admin → Cadre Targets.
+          No cadre targets set for this year — there is nothing to compare actuals against. Set them in Admin → Cadre Targets.
         </div>
       )}
       {data && isAdmin() && data.rows.length > 0 && (
         <div className="mb-3 text-xs text-ink-muted bg-surface-muted/40 border border-surface-border rounded px-3 py-2">
-          Review each faculty's actuals against their cadre targets (expand a row), then set their tier (T1/T2/T3) in the Tier column.
+          Expand a row to compare a faculty's actuals with their cadre targets, then record your decision in the Tier and Eligible columns on the right.
         </div>
       )}
 
@@ -293,6 +329,7 @@ export default function TrackingPage() {
               <option value="">All eligibility</option>
               <option value="eligible">Eligible</option>
               <option value="not">Not eligible</option>
+              <option value="undecided">Not decided</option>
             </select>
             <span className="text-xs text-ink-muted self-center">{filtered.length} of {data.rows.length}</span>
           </div>
@@ -314,8 +351,6 @@ export default function TrackingPage() {
                 <th className={th}>Faculty</th>
                 <th className={th}>Cadre</th>
                 <th className={th}>Exp</th>
-                <th className={th}>Tier</th>
-                <th className={th}>Eligible</th>
                 <th className={th}>Total</th>
                 <th className={th}>Feedback</th>
                 <th className={th}>Indexed</th>
@@ -323,6 +358,8 @@ export default function TrackingPage() {
                 <th className={th}>Pat</th>
                 <th className={th}>Proj</th>
                 <th className={th}>Cons</th>
+                <th className={th}>Tier</th>
+                <th className={th}>Eligible</th>
               </tr>
             </thead>
             <tbody>
@@ -342,6 +379,16 @@ export default function TrackingPage() {
                       </td>
                       <td className="py-2 px-2 text-ink-secondary">{r.cadreLabel ?? '—'}</td>
                       <td className="py-2 px-2 text-ink-secondary">{r.expYears}y</td>
+                      <td className={cell(req('totalScore')?.met ?? true)}>
+                        {r.actuals.totalScore}
+                        <span className="text-ink-subtle text-[10px] ml-0.5">{r.actuals.totalScoreSource === 'SELF' ? '(self)' : ''}</span>
+                      </td>
+                      <td className={cell(req('feedback')?.met ?? true)}>{r.actuals.feedback}</td>
+                      <td className={cell(req('indexed')?.met ?? true)}>{r.actuals.indexedCount}</td>
+                      <td className={cell(req('journal')?.met ?? true)}>{r.actuals.journalCount}</td>
+                      <td className="py-2 px-2 text-ink-secondary">{r.actuals.patentCount}</td>
+                      <td className="py-2 px-2 text-ink-secondary">{r.actuals.projectCount}</td>
+                      <td className="py-2 px-2 text-ink-secondary">{r.actuals.consultancyCount}</td>
                       <td className="py-2 px-2" onClick={(e) => e.stopPropagation()}>
                         {isAdmin() ? (
                           <select
@@ -357,23 +404,11 @@ export default function TrackingPage() {
                           </select>
                         ) : <TierBadge tier={r.tier} />}
                       </td>
-                      <td className="py-2 px-2">
-                        {r.eligibility.requirements.length === 0
-                          ? <span className="text-xs text-ink-muted">—</span>
-                          : r.eligibility.eligible
-                            ? <CheckCircle2 size={16} className="text-emerald-600" />
-                            : <XCircle size={16} className="text-red-500" />}
+                      <td className="py-2 px-2" onClick={(e) => e.stopPropagation()}>
+                        {isAdmin()
+                          ? <EligibleToggle value={r.eligible} onChange={(v) => setEligible(r.faculty.id, v)} />
+                          : <EligibleBadge value={r.eligible} />}
                       </td>
-                      <td className={cell(req('totalScore')?.met ?? true)}>
-                        {r.actuals.totalScore}
-                        <span className="text-ink-subtle text-[10px] ml-0.5">{r.actuals.totalScoreSource === 'SELF' ? '(self)' : ''}</span>
-                      </td>
-                      <td className={cell(req('feedback')?.met ?? true)}>{r.actuals.feedback}</td>
-                      <td className={cell(req('indexed')?.met ?? true)}>{r.actuals.indexedCount}</td>
-                      <td className={cell(req('journal')?.met ?? true)}>{r.actuals.journalCount}</td>
-                      <td className="py-2 px-2 text-ink-secondary">{r.actuals.patentCount}</td>
-                      <td className="py-2 px-2 text-ink-secondary">{r.actuals.projectCount}</td>
-                      <td className="py-2 px-2 text-ink-secondary">{r.actuals.consultancyCount}</td>
                     </tr>
                     {isOpen && (
                       <tr>
