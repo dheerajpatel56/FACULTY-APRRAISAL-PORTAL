@@ -52,6 +52,10 @@ export const finalReviewApi = {
 export const adminApi = {
   unlock: (id: string) =>
     api.post(`/admin/appraisals/${id}/unlock`).then((r) => r.data),
+  // Sends a decided appraisal back to SUBMITTED for the HoD to review again.
+  // Unlike unlock, the faculty is not involved and their form stays locked.
+  reopenReview: (id: string, reason: string) =>
+    api.post(`/admin/appraisals/${id}/reopen-review`, { reason }).then((r) => r.data),
   assignReviewer: (id: string, reviewerId: string) =>
     api.post(`/admin/appraisals/${id}/assign-reviewer`, { reviewerId }).then((r) => r.data),
 };

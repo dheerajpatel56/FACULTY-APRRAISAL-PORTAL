@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { appraisalApi, adminApi } from '../../api/appraisals';
 import { userApi } from '../../api/users';
 import toast from 'react-hot-toast';
-import { FileText, Unlock, Search, UserCheck } from 'lucide-react';
+import { FileText, Unlock, Search, UserCheck, RotateCcw } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
@@ -61,6 +61,26 @@ export default function AdminAppraisalsPage() {
       (a.user?.employeeCode ?? '').toLowerCase().includes(q)
     );
   }, [appraisals, search]);
+
+  const reopenReview = async (id: string) => {
+    const reason = window.prompt(
+      'Reopen this appraisal for the HoD to review again?\n\n' +
+      'The faculty form stays locked and their data is untouched. Any final-review sign-offs are reset.\n\n' +
+      'Reason (recorded in the audit log):'
+    );
+    if (reason === null) return;
+    if (reason.trim().length < 3) {
+      toast.error('A reason is required');
+      return;
+    }
+    try {
+      await adminApi.reopenReview(id, reason.trim());
+      toast.success('Reopened for review');
+      load();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error ?? 'Failed');
+    }
+  };
 
   const unlock = async (id: string) => {
     if (!confirm('Unlock this submission? Faculty will be able to edit again.')) return;
@@ -176,6 +196,15 @@ export default function AdminAppraisalsPage() {
                           title="Assign reviewer"
                         >
                           <UserCheck size={11} /> Assign
+                        </button>
+                      )}
+                      {(a.status === 'APPROVED' || a.status === 'REJECTED' || a.status === 'FINAL_REVIEW') && (
+                        <button
+                          onClick={() => reopenReview(a.id)}
+                          className="flex items-center gap-1 text-xs text-accent-600 border border-accent-500/40 px-2 py-0.5 rounded hover:bg-surface-muted"
+                          title="Send back to the HoD for re-review (faculty form stays locked)"
+                        >
+                          <RotateCcw size={11} /> Reopen
                         </button>
                       )}
                       {(a.status === 'SUBMITTED' || a.status === 'UNDER_REVIEW' || a.status === 'APPROVED' || a.status === 'REJECTED') && (

@@ -7,12 +7,17 @@ import { enqueueEmail } from '../services/emailService';
 import { canViewUserResource } from '../utils/access';
 import { syncProofVerifications } from '../services/proofService';
 
+// Category maxima, mirrored from the scoring engine's category caps.
+export const CATEGORY_MAX = { cat1: 150, cat2: 150, cat3: 100, cat4: 50, cat5: 50 } as const;
+
 const reviewSchema = z.object({
-  cat1Score: z.number().optional(),
-  cat2Score: z.number().optional(),
-  cat3Score: z.number().optional(),
-  cat4Score: z.number().optional(),
-  cat5Score: z.number().optional(),
+  // The reviewer may override any category 1-5 mark. Omitted = accept the
+  // server-computed value for that category.
+  cat1Score: z.number().min(0).max(CATEGORY_MAX.cat1).optional(),
+  cat2Score: z.number().min(0).max(CATEGORY_MAX.cat2).optional(),
+  cat3Score: z.number().min(0).max(CATEGORY_MAX.cat3).optional(),
+  cat4Score: z.number().min(0).max(CATEGORY_MAX.cat4).optional(),
+  cat5Score: z.number().min(0).max(CATEGORY_MAX.cat5).optional(),
   cat6Punctuality: z.number().min(0).max(10).optional(),
   cat6Professionalism: z.number().min(0).max(10).optional(),
   cat6Willingness: z.number().min(0).max(10).optional(),
@@ -107,7 +112,22 @@ export async function submitReview(req: Request, res: Response) {
 
   const cat6Total = (data.cat6Punctuality ?? 0) + (data.cat6Professionalism ?? 0) +
     (data.cat6Willingness ?? 0) + (data.cat6Cordiality ?? 0) + (data.cat6Classroom ?? 0);
-  const totalScore = computedScore.selfTotal;
+
+  // The reviewer's marks for categories 1-5. Each defaults to what the engine
+  // computed from the submitted evidence; the reviewer may mark a category down
+  // (weak or unsupported evidence) or up. The faculty's own self score is not
+  // stored here — it stays recomputable from the submission via computeScore,
+  // so the two assessments are always separable downstream.
+  const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), max);
+  const awarded = {
+    cat1Score: clamp(data.cat1Score ?? computedScore.cat1.total, CATEGORY_MAX.cat1),
+    cat2Score: clamp(data.cat2Score ?? computedScore.cat2.total, CATEGORY_MAX.cat2),
+    cat3Score: clamp(data.cat3Score ?? computedScore.cat3.total, CATEGORY_MAX.cat3),
+    cat4Score: clamp(data.cat4Score ?? computedScore.cat4.total, CATEGORY_MAX.cat4),
+    cat5Score: clamp(data.cat5Score ?? computedScore.cat5.total, CATEGORY_MAX.cat5),
+  };
+  const totalScore = awarded.cat1Score + awarded.cat2Score + awarded.cat3Score +
+    awarded.cat4Score + awarded.cat5Score;
   const grandTotal = totalScore + Math.min(cat6Total, 50);
 
   await prisma.$transaction(async (tx) => {
@@ -118,22 +138,14 @@ export async function submitReview(req: Request, res: Response) {
         reviewerId: req.user!.id,
         reviewerRole,
         ...data,
-        cat1Score: computedScore.cat1.total,
-        cat2Score: computedScore.cat2.total,
-        cat3Score: computedScore.cat3.total,
-        cat4Score: computedScore.cat4.total,
-        cat5Score: computedScore.cat5.total,
+        ...awarded,
         totalScore,
         grandTotal,
         status: data.status as SubmissionStatus,
       },
       update: {
         ...data,
-        cat1Score: computedScore.cat1.total,
-        cat2Score: computedScore.cat2.total,
-        cat3Score: computedScore.cat3.total,
-        cat4Score: computedScore.cat4.total,
-        cat5Score: computedScore.cat5.total,
+        ...awarded,
         totalScore,
         grandTotal,
         status: data.status as SubmissionStatus,
@@ -237,6 +249,66 @@ export async function getReview(req: Request, res: Response) {
   }
 
   return res.json(sub.review);
+}
+
+/**
+ * Admin-only reopen for re-review.
+ *
+ * An approval is final for the reviewer — submitReview refuses a second one
+ * ("Already approved") so marks cannot be quietly rewritten after the fact.
+ * That leaves no way to correct a genuine mistake, so an admin can send the
+ * submission back to SUBMITTED for the HoD to review again.
+ *
+ * Distinct from adminUnlock, which sends it to DRAFT for the FACULTY to edit.
+ * This one never returns the form to the faculty and does not touch their data.
+ * The existing review row is kept so the next reviewer can see the prior marks;
+ * submitReview upserts over it.
+ */
+export async function adminReopenReview(req: Request, res: Response) {
+  const parsed = z.object({ reason: z.string().trim().min(3) }).safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'A reason is required to reopen a decided appraisal' });
+  }
+
+  const sub = await prisma.appraisalSubmission.findUnique({
+    where: { id: req.params.id },
+    include: { user: { select: { departmentId: true } } },
+  });
+  if (!sub) return res.status(404).json({ error: 'Not found' });
+
+  const reopenable: SubmissionStatus[] = [
+    SubmissionStatus.APPROVED,
+    SubmissionStatus.REJECTED,
+    SubmissionStatus.FINAL_REVIEW,
+  ];
+  if (!reopenable.includes(sub.status)) {
+    return res.status(400).json({ error: `Cannot reopen a submission that is ${sub.status}` });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.appraisalSubmission.update({
+      where: { id: sub.id },
+      data: { status: SubmissionStatus.SUBMITTED },
+    });
+
+    // Any final-review sign-offs applied to the old decision no longer hold.
+    await tx.finalReview.updateMany({
+      where: { submissionId: sub.id },
+      data: { decision: 'PENDING', comment: null, decidedAt: null },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'REVIEW_REOPENED',
+        entityType: 'AppraisalSubmission',
+        entityId: sub.id,
+        metadata: { from: sub.status, reason: parsed.data.reason } as any,
+      },
+    });
+  });
+
+  return res.json({ message: 'Reopened for review', status: SubmissionStatus.SUBMITTED });
 }
 
 export async function adminUnlock(req: Request, res: Response) {

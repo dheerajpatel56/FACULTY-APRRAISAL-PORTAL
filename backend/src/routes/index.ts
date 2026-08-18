@@ -144,6 +144,7 @@ router.post('/appraisals/:id/feedback/issue', authenticate, roleGuard([RoleType.
 // Admin force actions
 router.get('/appraisals/:id/pdf', authenticate, appraisal.downloadAppraisalPdf);
 router.post('/admin/appraisals/:id/unlock', authenticate, roleGuard([RoleType.ADMIN]), review.adminUnlock);
+router.post('/admin/appraisals/:id/reopen-review', authenticate, roleGuard([RoleType.ADMIN]), review.adminReopenReview);
 router.post('/admin/appraisals/:id/assign-reviewer', authenticate, roleGuard([RoleType.ADMIN]), review.adminAssignReviewer);
 
 // FPGP v2 — routes retired (module off; controller + data kept, unreachable).
