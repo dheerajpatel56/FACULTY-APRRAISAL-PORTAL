@@ -1,11 +1,11 @@
 import { useEffect, useState, Fragment } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle2, XCircle, ChevronDown, ChevronRight, CalendarClock, Download } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronDown, ChevronRight, CalendarClock, Download, AlertTriangle, X } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../store/authStore';
 import { userApi } from '../../api/users';
-import { trackingApi, type TrackingResponse, type TrackingRow } from '../../api/tracking';
+import { trackingApi, type TrackingResponse, type TrackingRow, type SnapshotResult } from '../../api/tracking';
 
 const TIER_STYLE: Record<string, string> = {
   T1: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -130,13 +130,29 @@ export default function TrackingPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [snapshotting, setSnapshotting] = useState(false);
+  const [snapshotPreview, setSnapshotPreview] = useState<SnapshotResult | null>(null);
   const { isAdmin } = useAuthStore();
 
-  const runSnapshot = async () => {
+  // Two-step. The button only ever asks the server for a dry run; the real
+  // send goes out from the confirm dialog, because it mails every opted-in
+  // faculty at their real address and cannot be recalled.
+  const previewSnapshot = async () => {
     setSnapshotting(true);
     try {
-      const res = await trackingApi.runSnapshot(yearId || undefined);
+      setSnapshotPreview(await trackingApi.runSnapshot(yearId || undefined));
+    } catch (e: any) {
+      toast.error(e.response?.data?.error ?? 'Snapshot preview failed');
+    } finally {
+      setSnapshotting(false);
+    }
+  };
+
+  const confirmSnapshot = async () => {
+    setSnapshotting(true);
+    try {
+      const res = await trackingApi.runSnapshot(yearId || undefined, true);
       toast.success(res.message);
+      setSnapshotPreview(null);
     } catch (e: any) {
       toast.error(e.response?.data?.error ?? 'Snapshot failed');
     } finally {
@@ -230,7 +246,7 @@ export default function TrackingPage() {
             </button>
             {isAdmin() && (
               <button
-                onClick={runSnapshot}
+                onClick={previewSnapshot}
                 disabled={snapshotting || !yearId}
                 className="flex items-center gap-2 border border-surface-border text-ink-secondary px-3 py-2 rounded text-sm font-medium hover:bg-surface-muted disabled:opacity-50"
                 title="Snapshot this quarter's standing and email each faculty their feedback"
@@ -241,6 +257,55 @@ export default function TrackingPage() {
           </div>
         }
       />
+
+      {snapshotPreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSnapshotPreview(null)}>
+          <div className="bg-surface-card rounded-md max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-surface-border bg-primary-700 text-white rounded-t-md">
+              <h2 className="font-bold font-serif flex items-center gap-2">
+                <AlertTriangle size={18} /> Confirm quarterly send
+              </h2>
+              <button onClick={() => setSnapshotPreview(null)} className="text-white/70 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-ink-secondary">
+                This snapshots {snapshotPreview.quarter} standing for <strong>{snapshotPreview.faculty}</strong> faculty and
+                emails their feedback to their real college address. Sent mail cannot be recalled.
+              </p>
+              <div className="rounded border border-surface-border divide-y divide-surface-border text-sm">
+                <div className="flex justify-between px-3 py-2">
+                  <span className="font-medium">Will be emailed</span>
+                  <span className="font-bold text-danger-500">{snapshotPreview.recipients ?? 0}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2 text-ink-secondary">
+                  <span>Skipped — opted out</span><span>{snapshotPreview.optedOut ?? 0}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2 text-ink-secondary">
+                  <span>Skipped — already sent this quarter</span><span>{snapshotPreview.alreadySent ?? 0}</span>
+                </div>
+                <div className="flex justify-between px-3 py-2 text-ink-secondary">
+                  <span>Skipped — no email address</span><span>{snapshotPreview.noEmail ?? 0}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-3 border-t border-surface-border">
+              <button
+                onClick={() => setSnapshotPreview(null)}
+                className="px-3 py-2 rounded text-sm font-medium border border-surface-border text-ink-secondary hover:bg-surface-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSnapshot}
+                disabled={snapshotting || (snapshotPreview.recipients ?? 0) === 0}
+                className="px-3 py-2 rounded text-sm font-medium bg-danger-500 text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {snapshotting ? 'Sending…' : `Send to ${snapshotPreview.recipients ?? 0} faculty`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 max-w-xs">
         <label className="block text-xs font-medium text-ink-secondary mb-1">Academic Year</label>

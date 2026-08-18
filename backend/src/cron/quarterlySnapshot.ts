@@ -95,6 +95,72 @@ export async function runQuarterlySnapshot(academicYearId?: string, at: Date = n
   return { quarter, faculty: total };
 }
 
+export interface SnapshotPreview {
+  quarter: Quarter;
+  faculty: number;
+  recipients: number;
+  optedOut: number;
+  alreadySent: number;
+  noEmail: number;
+}
+
+/**
+ * Dry run for the admin "Run snapshot now" button. Counts who WOULD be emailed
+ * without writing a snapshot or queueing anything. The manual trigger is a mass
+ * send to real faculty addresses, so the caller previews first and only sends
+ * once the admin explicitly confirms.
+ */
+export async function previewQuarterlySnapshot(
+  academicYearId?: string,
+  at: Date = new Date()
+): Promise<SnapshotPreview> {
+  const quarter = currentQuarter(at);
+  const years = academicYearId
+    ? [{ id: academicYearId }]
+    : await prisma.academicYear.findMany({ where: { submissionOpen: true }, select: { id: true } });
+
+  let faculty = 0;
+  let recipients = 0;
+  let optedOut = 0;
+  let alreadySent = 0;
+  let noEmail = 0;
+
+  for (const y of years) {
+    const submissions = await prisma.appraisalSubmission.findMany({
+      where: { academicYearId: y.id },
+      select: { userId: true, submissionNumber: true },
+      orderBy: { submissionNumber: 'desc' },
+    });
+    const latest = latestPerFaculty(submissions);
+    faculty += latest.length;
+    if (!latest.length) continue;
+
+    const userIds = latest.map((s) => s.userId);
+    const [users, sent] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, email: true, emailOptIn: true },
+      }),
+      prisma.emailNotification.findMany({
+        where: { dedupeKey: { in: userIds.map((id) => `quarterly_feedback:${id}:${y.id}:${quarter}`) } },
+        select: { dedupeKey: true },
+      }),
+    ]);
+    const byId = new Map(users.map((u) => [u.id, u]));
+    const sentKeys = new Set(sent.map((r) => r.dedupeKey));
+
+    for (const id of userIds) {
+      const u = byId.get(id);
+      if (!u || !u.email) { noEmail++; continue; }
+      if (!u.emailOptIn) { optedOut++; continue; }
+      if (sentKeys.has(`quarterly_feedback:${id}:${y.id}:${quarter}`)) { alreadySent++; continue; }
+      recipients++;
+    }
+  }
+
+  return { quarter, faculty, recipients, optedOut, alreadySent, noEmail };
+}
+
 function sameLocalDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }

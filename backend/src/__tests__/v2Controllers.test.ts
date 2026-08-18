@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../app';
+import prisma from '../utils/prismaClient';
 
 // V2 workflow (W1–W6) endpoint tests — real Express app + DB.
 // Covers the controllers that were previously only smoke-tested by hand:
@@ -417,5 +418,42 @@ describe('reports/department dept-scope', () => {
     expect(filtered.status).toBe(200);
     // Admin has no own-dept scoping, so a bogus filter is honoured → empty.
     expect(filtered.body.length).toBe(0);
+  });
+});
+
+// ─── Quarterly snapshot send-gate ──────────────────────────────────────────
+// The manual trigger mass-emails every opted-in faculty at their real college
+// address, so it must stay a dry run unless the caller passes `confirm: true`.
+// Only the dry-run path is exercised here on purpose — asserting the confirmed
+// path would queue real mail into the dev database.
+describe('quarterly snapshot send-gate', () => {
+  it('defaults to a dry run and queues nothing', async () => {
+    if (!ready) return;
+    const before = await prisma.emailNotification.count();
+
+    const res = await request(app)
+      .post('/api/admin/tracking/snapshot')
+      .set(bearer(adminTok))
+      .send({ academicYearId: openYearId });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dryRun).toBe(true);
+    expect(typeof res.body.recipients).toBe('number');
+    expect(res.body.message).toMatch(/Dry run/i);
+    expect(await prisma.emailNotification.count()).toBe(before);
+  });
+
+  it('treats a non-true confirm as a dry run', async () => {
+    if (!ready) return;
+    const before = await prisma.emailNotification.count();
+
+    const res = await request(app)
+      .post('/api/admin/tracking/snapshot')
+      .set(bearer(adminTok))
+      .send({ academicYearId: openYearId, confirm: 'yes' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dryRun).toBe(true);
+    expect(await prisma.emailNotification.count()).toBe(before);
   });
 });

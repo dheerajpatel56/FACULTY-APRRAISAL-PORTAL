@@ -52,11 +52,27 @@ export interface TrackingResponse {
   rows: TrackingRow[];
 }
 
+export interface SnapshotResult {
+  dryRun: boolean;
+  message: string;
+  quarter: string;
+  faculty: number;
+  // Dry-run only — the real run reports just the snapshot count.
+  recipients?: number;
+  optedOut?: number;
+  alreadySent?: number;
+  noEmail?: number;
+}
+
 export const trackingApi = {
   get: (academicYearId?: string): Promise<TrackingResponse> =>
     api.get('/tracking', { params: academicYearId ? { academicYearId } : {} }).then((r) => r.data),
-  runSnapshot: (academicYearId?: string): Promise<{ message: string; quarter: string; faculty: number }> =>
-    api.post('/admin/tracking/snapshot', academicYearId ? { academicYearId } : {}).then((r) => r.data),
+  // The real run emails every opted-in faculty. Without `confirm` the server
+  // does a dry run and reports who WOULD be mailed.
+  runSnapshot: (academicYearId?: string, confirm = false): Promise<SnapshotResult> =>
+    api
+      .post('/admin/tracking/snapshot', { ...(academicYearId ? { academicYearId } : {}), ...(confirm ? { confirm: true } : {}) })
+      .then((r) => r.data),
   setTier: (userId: string, academicYearId: string, tier: 'T1' | 'T2' | 'T3' | null) =>
     api.put('/admin/faculty-tiers', { userId, academicYearId, tier }).then((r) => r.data),
   setEligible: (userId: string, academicYearId: string, eligible: boolean | null) =>

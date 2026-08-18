@@ -4,7 +4,7 @@ import { z } from 'zod';
 import * as XLSX from 'xlsx';
 import prisma from '../utils/prismaClient';
 import { buildTrackingRows, summarize, type TrackingRow } from '../services/trackingService';
-import { triggerQuarterlySnapshot } from '../cron/quarterlySnapshot';
+import { triggerQuarterlySnapshot, previewQuarterlySnapshot } from '../cron/quarterlySnapshot';
 
 function scope(req: Request) {
   const user = req.user!;
@@ -104,10 +104,26 @@ export async function exportTracking(req: Request, res: Response) {
   return res.json(rows);
 }
 
-// POST /admin/tracking/snapshot  { academicYearId? } — run the quarterly
-// snapshot + auto-feedback now (admin). Cron runs it at each quarter-end.
+// POST /admin/tracking/snapshot  { academicYearId?, confirm? } — run the
+// quarterly snapshot + auto-feedback now (admin). Cron runs it at each
+// quarter-end.
+//
+// This emails every opted-in faculty at their real address, so it is a DRY RUN
+// unless the caller passes `confirm: true`. The dry run writes nothing and
+// queues nothing — it only reports how many people the real run would mail.
 export async function runSnapshot(req: Request, res: Response) {
   const academicYearId = typeof req.body?.academicYearId === 'string' ? req.body.academicYearId : undefined;
+  const confirmed = req.body?.confirm === true;
+
+  if (!confirmed) {
+    const preview = await previewQuarterlySnapshot(academicYearId);
+    return res.json({
+      dryRun: true,
+      message: `Dry run — ${preview.quarter}: would email ${preview.recipients} of ${preview.faculty} faculty. Confirm to send.`,
+      ...preview,
+    });
+  }
+
   const result = await triggerQuarterlySnapshot(academicYearId);
-  return res.json({ message: `Snapshot ${result.quarter} — ${result.faculty} faculty`, ...result });
+  return res.json({ dryRun: false, message: `Snapshot ${result.quarter} — ${result.faculty} faculty`, ...result });
 }
