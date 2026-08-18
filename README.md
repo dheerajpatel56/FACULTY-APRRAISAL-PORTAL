@@ -50,8 +50,8 @@ cd backend
 npm install
 cp .env.example .env        # then edit values (see Environment Variables)
 npm run prisma:generate     # generate Prisma client
-npx prisma migrate deploy   # apply migrations
-npm run seed                # seed sample accounts (optional)
+npm run prisma:push         # apply the schema (this project uses db push, not migrations)
+npm run seed                # seed sample accounts - FRESH databases only, see Database below
 ```
 
 ### 3. Frontend
@@ -170,12 +170,21 @@ Admin → **Users → Import CSV** accepts `.csv` or `.xlsx`.
 
 ## Database
 
+This project applies schema changes with `prisma db push`, **not** the migration
+workflow. The schema has drifted from the migration history, so `prisma migrate
+dev` and `prisma migrate reset` will offer to reset the database — on a working
+dev box that destroys the bulk-imported faculty accounts and every appraisal in
+it. `npm run prisma:migrate` is deliberately wired to a guard that refuses to run.
+
 ```bash
 cd backend
-npx prisma migrate dev --name <name>   # new migration (dev)
-npx prisma migrate status
-npx prisma migrate reset               # reset (dev only)
+npm run prisma:push       # apply schema.prisma to the database
+npm run prisma:generate   # regenerate the client (stop the dev server first - Windows locks the DLL)
+npm run prisma:studio     # browse the data
 ```
+
+`npm run seed` is for a **fresh, empty** database. It refuses to run over an
+existing dataset that contains imported users; see `backend/src/prisma/seed.ts`.
 
 ## Monitoring
 
