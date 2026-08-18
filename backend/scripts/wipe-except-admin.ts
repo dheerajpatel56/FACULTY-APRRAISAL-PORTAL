@@ -7,12 +7,52 @@
  *         (+ subsections + reviews via cascade), audit logs, email
  *         notifications, password OTPs, and every non-admin user (+ roles).
  *
- * Run:  npx tsx scripts/wipe-except-admin.ts
+ * DESTRUCTIVE. Defaults to a dry run that only reports what it would delete.
+ * The real wipe needs the target database named explicitly, so a command
+ * copy-pasted from notes cannot land on the wrong database:
+ *
+ *   npx tsx scripts/wipe-except-admin.ts                       # dry run
+ *   npx tsx scripts/wipe-except-admin.ts --confirm=<dbname>    # actually wipe
  */
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+// Database name from DATABASE_URL — the caller must repeat it to confirm.
+function targetDbName(): string {
+  const url = process.env.DATABASE_URL ?? '';
+  const name = url.split('/').pop()?.split('?')[0] ?? '';
+  return name;
+}
+
+async function dryRun(adminIds: string[]) {
+  const [appraisals, fpgp, audit, emails, otps, roles, users] = await Promise.all([
+    prisma.appraisalSubmission.count(),
+    prisma.fPGPPlan.count(),
+    prisma.auditLog.count(),
+    prisma.emailNotification.count(),
+    prisma.passwordOtp.count(),
+    prisma.userRole.count({ where: { userId: { notIn: adminIds } } }),
+    prisma.user.count({ where: { id: { notIn: adminIds } } }),
+  ]);
+
+  console.log(`
+DRY RUN — nothing was deleted. Against database "${targetDbName()}" this would delete:
+
+  appraisals:     ${appraisals}
+  fpgp plans:     ${fpgp}
+  audit logs:     ${audit}
+  emails:         ${emails}
+  password OTPs:  ${otps}
+  user roles:     ${roles}
+  users:          ${users}
+
+  Kept: ${adminIds.length} admin user(s), departments, academic years.
+
+To actually run it:  npx tsx scripts/wipe-except-admin.ts --confirm=${targetDbName()}
+`);
+}
 
 async function main() {
   const admins = await prisma.userRole.findMany({
@@ -23,6 +63,18 @@ async function main() {
 
   if (adminIds.length === 0) {
     throw new Error('No ADMIN-role users found — aborting to avoid wiping everything.');
+  }
+
+  const confirmArg = process.argv.find((a) => a.startsWith('--confirm='))?.split('=')[1];
+  const db = targetDbName();
+
+  if (confirmArg !== db) {
+    if (confirmArg) {
+      console.error(`Refusing to wipe: --confirm=${confirmArg} does not match the target database "${db}".`);
+      process.exit(1);
+    }
+    await dryRun(adminIds);
+    return;
   }
 
   console.log(`Preserving ${adminIds.length} admin user(s): ${adminIds.join(', ')}`);

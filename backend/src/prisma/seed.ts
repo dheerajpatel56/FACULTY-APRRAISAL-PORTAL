@@ -10,7 +10,46 @@ async function ensureRole(userId: string, role: RoleType, assignedBy: string, de
   return prisma.userRole.create({ data: { userId, role, departmentId, assignedBy } });
 }
 
+// Employee codes this seed owns. Anything else in the users table came from a
+// real CSV import.
+const SEED_CODES = [
+  'ADMIN001',
+  'HOD001', 'HOD002', 'HOD003',
+  ...[1, 2, 3].flatMap((d) => [1, 2, 3, 4, 5].map((f) => `FAC${d * 10 + f}`)),
+];
+
+/**
+ * Refuse to seed over a database that already holds imported accounts.
+ *
+ * The seed itself only upserts with `update: {}`, so it will not overwrite an
+ * existing user. What it *does* do on a live database is recreate the sample
+ * HOD001-003 accounts and grant them HOD roles over real departments, which
+ * puts fake heads of department alongside the real ones. Pass --force if that
+ * is genuinely what you want.
+ */
+async function assertSafeToSeed(force: boolean) {
+  const imported = await prisma.user.count({ where: { employeeCode: { notIn: SEED_CODES } } });
+  if (imported === 0) return;
+
+  if (force) {
+    console.warn(`[seed] --force: seeding over a database with ${imported} imported user(s).`);
+    return;
+  }
+
+  console.error(`
+BLOCKED: this database already holds ${imported} user(s) that this seed does not own.
+
+  Seeding here would recreate the sample HOD001-003 accounts and assign them
+  HoD roles over the real departments, alongside the real heads of department.
+
+  The seed is meant for a fresh, empty database.
+  If you are certain, re-run with:  npm run seed -- --force
+`);
+  process.exit(1);
+}
+
 async function main() {
+  await assertSafeToSeed(process.argv.includes('--force'));
   console.log('Seeding...');
 
   const [cse, ece, eee] = await Promise.all([
@@ -27,7 +66,10 @@ async function main() {
       endDate: new Date('2026-05-31'),
       submissionOpen: true,
     },
-    update: { submissionOpen: true },
+    // Deliberately empty: re-seeding must never reopen a year that the admin
+    // has closed, and must never add a second open year alongside the current
+    // one (an extra open year silently widens the quarterly mass-email scope).
+    update: {},
   });
 
   // W1 — FAPA AY2025-26 cadre eligibility targets (admin-editable later)
