@@ -31,6 +31,23 @@ automated test, listed so you know it exists.
 
 ---
 
+## 2026-08-28 — Per-file upload limit is configurable
+
+Default stays 5 MB. Set `MAX_UPLOAD_MB` to change it.
+
+- [ ] **Oversized file is refused before uploading.** Pick a file above the
+  limit on any proof field — it should be rejected instantly (no progress bar),
+  naming the file's size, the limit, and the Link alternative.
+- [ ] **A file under the limit still uploads** and the proof is viewable.
+- [ ] **A drive link of any size still works.** Use Link on a proof field and
+  paste a Google Drive URL — no size check applies.
+- [ ] **Changing the limit takes effect.** Restart the backend with
+  `MAX_UPLOAD_MB=1` and confirm a 2 MB file is now refused and the message says
+  1 MB.
+- (auto) 5 tests: limit reported to the client, endpoint requires auth,
+  oversized rejected with the right message, undersized accepted, linked proof
+  unaffected. Env override and the invalid-value fallback verified by hand.
+
 ## 2026-08-28 — Rejected proofs expire and stop blocking the workflow
 
 Built on these assumptions — correct me if any are wrong:
