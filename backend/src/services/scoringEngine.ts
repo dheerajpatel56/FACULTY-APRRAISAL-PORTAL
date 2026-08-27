@@ -360,7 +360,30 @@ function scoreCategory5(s: FullSubmission) {
   return { memberships, awards, differentiators, internships, total };
 }
 
-export function computeScore(submission: FullSubmission): ScoreBreakdown {
+/**
+ * Drop the rows of any voided source before scoring.
+ *
+ * A source is voided when its proof was rejected and the faculty never replaced
+ * it by the deadline — the entries stay on the form as a record of what was
+ * claimed, but they earn nothing. Applied here, at the single entry point, so
+ * every category scorer below stays unaware of proofs. The frontend mirror does
+ * exactly the same thing from the same field, which is what keeps the two in
+ * parity: the decision travels on the submission, not in a verification query.
+ */
+export function applyVoidedSources<T extends Record<string, any>>(submission: T): T {
+  const voided: string[] = (submission as any).voidedSources ?? [];
+  if (!voided.length) return submission;
+
+  const out: Record<string, any> = { ...submission };
+  for (const key of voided) {
+    if (!(key in out)) continue;
+    out[key] = Array.isArray(out[key]) ? [] : null;
+  }
+  return out as T;
+}
+
+export function computeScore(rawSubmission: FullSubmission): ScoreBreakdown {
+  const submission = applyVoidedSources(rawSubmission);
   const cat1 = scoreCategory1(submission);
   const cat2 = scoreCategory2(submission);
   const cat3 = scoreCategory3(submission);

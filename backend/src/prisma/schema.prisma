@@ -404,6 +404,14 @@ model AppraisalSubmission {
   redListed  Boolean   @default(false)
   holdReason String?
   heldAt     DateTime?
+  // Deadline for the faculty to replace a rejected proof. Stamped when the
+  // submission goes on HOLD; once it passes, the daily job voids whatever is
+  // still rejected rather than letting the appraisal stall forever.
+  proofDeadlineAt DateTime?
+  // PROOF_SOURCES keys (e.g. "cat2Journals") whose rows score zero because
+  // their proof was rejected and never corrected. The scoring engine and its
+  // frontend mirror both drop these rows, so the two stay in parity.
+  voidedSources   String[]
 
   user         User         @relation(fields: [userId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])

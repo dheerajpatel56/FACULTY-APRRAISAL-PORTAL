@@ -446,7 +446,24 @@ export function courseResultScore(c: Cat1CourseResultInput | null | undefined) {
   return { A, B, C, total: Math.min(A + B + C, 20) };
 }
 
+// Mirror of the backend's applyVoidedSources. A source whose proof was rejected
+// and never corrected scores nothing; the rows stay on the form. Both engines
+// read the same `voidedSources` field off the submission, which is what keeps
+// them in parity — the frontend has no access to proof-verification data.
+export function applyVoidedSources<T extends Record<string, any>>(values: T): T {
+  const voided: string[] = (values as any)?.voidedSources ?? [];
+  if (!voided.length) return values;
+
+  const out: Record<string, any> = { ...values };
+  for (const key of voided) {
+    if (!(key in out)) continue;
+    out[key] = Array.isArray(out[key]) ? [] : null;
+  }
+  return out as T;
+}
+
 export function computeScore(values: ScoreFormValues | null | undefined): ScoreBreakdown {
+  values = applyVoidedSources((values ?? {}) as any);
   const v = values ?? {};
   const cat1 = scoreCategory1(v);
   const cat2 = scoreCategory2(v);

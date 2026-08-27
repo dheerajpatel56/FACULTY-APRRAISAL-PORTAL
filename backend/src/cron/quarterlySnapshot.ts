@@ -4,6 +4,7 @@ import prisma from '../utils/prismaClient';
 import { enqueueEmail } from '../services/emailService';
 import { TRACKING_INCLUDE, loadTrackingContext, computeRow, latestPerFaculty } from '../services/trackingService';
 import { generateNarrative } from '../services/feedbackNarrative';
+import { voidExpiredProofs } from './proofDeadline';
 
 /**
  * Quarterly criteria-tracking scheduler. On the last day of each fixed calendar
@@ -186,6 +187,8 @@ export function startQuarterlySnapshotCron() {
   // windows take effect without a restart (the checker reads them each run).
   cron.schedule('0 9 * * *', async () => {
     try { await runDueReviewWindows(); } catch (e) { console.error('[cron] Review window error:', e); }
+    // Unblock appraisals stalled on a rejected proof nobody fixed.
+    try { await voidExpiredProofs(); } catch (e) { console.error('[cron] Proof deadline error:', e); }
   });
   console.log('[cron] Review-window checker scheduled (daily 09:00)');
 }

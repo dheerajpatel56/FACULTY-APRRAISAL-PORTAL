@@ -11,7 +11,7 @@ type Source = {
   fields: [string, string][]; // [rowField, humanLabel]
 };
 
-const PROOF_SOURCES: Source[] = [
+export const PROOF_SOURCES: Source[] = [
   { key: 'cat1EContent', section: '1.5 e-Content', title: (r) => r.contentName || r.courseName, fields: [['evidenceFile', 'Evidence']] },
   { key: 'cat1ICT', section: '1.6 ICT Tools', title: (r) => r.platform || r.courseName, fields: [['evidenceFile', 'Evidence']] },
   { key: 'cat2Journals', section: '2.1 Journals', title: (r) => r.title, fields: [['proofFile', 'Proof'], ['indexProofFile', 'Index proof']] },

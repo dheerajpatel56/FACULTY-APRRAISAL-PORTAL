@@ -6,6 +6,17 @@ import { canViewUserResource } from '../utils/access';
 import { syncProofVerifications, enumerateProofs, PROOF_INCLUDE } from '../services/proofService';
 import { enqueueEmail } from '../services/emailService';
 
+// How long a faculty has to replace a rejected proof before the daily job
+// voids the marks for that source and lets the appraisal move on. Calendar
+// days, from the first rejection on the submission.
+export const PROOF_CORRECTION_DAYS = 14;
+
+export function proofDeadlineFrom(heldAt: Date): Date {
+  const d = new Date(heldAt);
+  d.setDate(d.getDate() + PROOF_CORRECTION_DAYS);
+  return d;
+}
+
 // Who may CHANGE a proof's approve/reject status: HoD or incharge (REVIEWER)
 // of the faculty's department only — never the owner, and not a plain admin.
 function canVerifyProof(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
@@ -105,6 +116,9 @@ export async function verifyProof(req: Request, res: Response) {
           redListed: true,
           heldAt: new Date(),
           holdReason: `Rejected proof — ${pv.section}: ${pv.item}${comment ? ` (${comment})` : ''}`,
+          // Clock starts on the first rejection and is not reset by later ones,
+          // so a faculty cannot extend their own window by collecting rejections.
+          proofDeadlineAt: sub.proofDeadlineAt ?? proofDeadlineFrom(new Date()),
         },
       });
     }

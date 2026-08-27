@@ -5,7 +5,7 @@ import prisma from '../utils/prismaClient';
 import { computeScore } from '../services/scoringEngine';
 import { enqueueEmail } from '../services/emailService';
 import { canViewUserResource } from '../utils/access';
-import { syncProofVerifications } from '../services/proofService';
+import { syncProofVerifications, PROOF_SOURCES } from '../services/proofService';
 
 // Category maxima, mirrored from the scoring engine's category caps.
 export const CATEGORY_MAX = { cat1: 150, cat2: 150, cat3: 100, cat4: 50, cat5: 50 } as const;
@@ -84,10 +84,16 @@ export async function submitReview(req: Request, res: Response) {
 
   const data = reviewSchema.parse(req.body);
 
-  // W2 gate — cannot approve until every proof is verified.
+  // W2 gate — cannot approve until every proof is verified. Proofs belonging to
+  // a voided source are exempt: the correction deadline passed, those rows were
+  // already stripped of their marks, and holding the whole appraisal hostage to
+  // evidence that will never arrive is exactly what voiding exists to prevent.
   if (data.status === 'APPROVED') {
     const proofs = await syncProofVerifications(sub.id);
-    const unverified = proofs.filter((p) => p.status !== 'VERIFIED');
+    const voidedSections = new Set(
+      PROOF_SOURCES.filter((src) => sub.voidedSources.includes(src.key)).map((src) => src.section)
+    );
+    const unverified = proofs.filter((p) => p.status !== 'VERIFIED' && !voidedSections.has(p.section));
     if (unverified.length > 0) {
       return res.status(400).json({
         error: `Cannot approve — ${unverified.length} proof(s) not yet verified`,
