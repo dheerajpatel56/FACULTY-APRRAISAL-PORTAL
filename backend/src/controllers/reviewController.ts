@@ -196,11 +196,14 @@ export async function submitReview(req: Request, res: Response) {
           submissionId: sub.id,
           reviewerName: reviewer?.name ?? 'Reviewer',
           reviewedAt: new Date().toLocaleString(),
-          cat1: computedScore.cat1.total.toFixed(1),
-          cat2: computedScore.cat2.total.toFixed(1),
-          cat3: computedScore.cat3.total.toFixed(1),
-          cat4: computedScore.cat4.total.toFixed(1),
-          cat5: computedScore.cat5.total.toFixed(1),
+          // The reviewer's awarded marks, not the self-computed ones — otherwise
+          // the categories in the faculty's email would not add up to the grand
+          // total whenever a category was overridden.
+          cat1: awarded.cat1Score.toFixed(1),
+          cat2: awarded.cat2Score.toFixed(1),
+          cat3: awarded.cat3Score.toFixed(1),
+          cat4: awarded.cat4Score.toFixed(1),
+          cat5: awarded.cat5Score.toFixed(1),
           cat6: cat6Total.toFixed(1),
           grandTotal: grandTotal.toFixed(1),
           teachingComment: data.teachingComment ?? '',
@@ -210,7 +213,12 @@ export async function submitReview(req: Request, res: Response) {
           supplementaryComment: data.supplementaryComment ?? '',
           overallComment: data.overallComment ?? '',
         },
-        dedupeKey: `${data.status === 'APPROVED' ? 'approved' : 'rejected'}:${sub.id}:${Date.now()}`,
+        // Keyed on the decision itself, not the clock. Re-approving a reopened
+        // appraisal with the same outcome will not mail the faculty twice; a
+        // corrected decision has a different grand total and does notify them,
+        // which is the point of reopening. A `Date.now()` key made every send
+        // unique and so disabled deduplication entirely.
+        dedupeKey: `${data.status === 'APPROVED' ? 'approved' : 'rejected'}:${sub.id}:${grandTotal.toFixed(1)}`,
       });
     } catch (e) {
       console.error('[email] enqueue review decision failed:', e);

@@ -134,6 +134,42 @@ describe('review score — reviewer marks for categories 1-5', () => {
     expect((log!.metadata as any).reason).toBe('Cat 1 keyed in wrong');
   });
 
+  it('does not re-email the faculty when a reopened appraisal is approved unchanged', async () => {
+    if (!ready) return;
+    const subId = await makeSubmission(996);
+    const adminTok = await login('ADMIN001', 'admin123');
+    if (!adminTok) return;
+
+    const approve = () => request(app).post(`/api/appraisals/${subId}/review`)
+      .set(bearer(hodTok)).send({ cat1Score: 50, cat6Punctuality: 5, status: 'APPROVED' });
+
+    expect((await approve()).status).toBe(200);
+    const afterFirst = await prisma.emailNotification.count({
+      where: { toUserId: facultyId, template: 'submission_approved' },
+    });
+
+    // Reopen and approve again with the SAME marks — nothing changed for the
+    // faculty, so nothing should land in their inbox a second time.
+    await request(app).post(`/api/admin/appraisals/${subId}/reopen-review`)
+      .set(bearer(adminTok)).send({ reason: 'no-op reopen' });
+    expect((await approve()).status).toBe(200);
+
+    expect(await prisma.emailNotification.count({
+      where: { toUserId: facultyId, template: 'submission_approved' },
+    })).toBe(afterFirst);
+
+    // A corrected decision is a different outcome and does notify them.
+    await request(app).post(`/api/admin/appraisals/${subId}/reopen-review`)
+      .set(bearer(adminTok)).send({ reason: 'correcting the mark' });
+    const corrected = await request(app).post(`/api/appraisals/${subId}/review`)
+      .set(bearer(hodTok)).send({ cat1Score: 140, cat6Punctuality: 5, status: 'APPROVED' });
+    expect(corrected.status).toBe(200);
+
+    expect(await prisma.emailNotification.count({
+      where: { toUserId: facultyId, template: 'submission_approved' },
+    })).toBe(afterFirst + 1);
+  });
+
   it('refuses to reopen a submission that was never decided', async () => {
     if (!ready) return;
     const subId = await makeSubmission(994);
