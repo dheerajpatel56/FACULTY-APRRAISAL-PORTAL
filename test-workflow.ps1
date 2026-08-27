@@ -1,6 +1,14 @@
 $ErrorActionPreference = 'Stop'
 $base = 'http://localhost:5000/api'
 
+# Credentials come from the environment, never from this file - the campus
+# hosting agreement forbids committed passwords.
+#   $env:FACULTY_PW='...'; ./test-workflow.ps1
+if (-not $env:FACULTY_PW) {
+  Write-Error "Missing FACULTY_PW. Set it before running, e.g. `$env:FACULTY_PW='...'"
+  exit 1
+}
+
 function Login($code, $pw) {
   $body = @{ employeeCode = $code; password = $pw } | ConvertTo-Json
   $r = Invoke-RestMethod -Uri "$base/auth/login" -Method Post -Body $body -ContentType 'application/json'
@@ -10,7 +18,7 @@ function Login($code, $pw) {
 function Hdrs($tok) { return @{ Authorization = "Bearer $tok" } }
 
 Write-Host "`n=== Step 1: Faculty login (FAC21) ===" -ForegroundColor Cyan
-$facTok = Login 'FAC21' 'faculty123'
+$facTok = Login 'FAC21' $env:FACULTY_PW
 Write-Host "Token acquired"
 
 Write-Host "`n=== Step 2: Get academic year ===" -ForegroundColor Cyan
@@ -104,7 +112,7 @@ $sresp = Invoke-RestMethod -Uri "$base/appraisals/$subId/submit" -Method Post -H
 Write-Host $sresp.message
 
 Write-Host "`n=== Step 7: Reviewer login (FAC11 - REVIEWER for ECE) ===" -ForegroundColor Cyan
-$revTok = Login 'FAC11' 'faculty123'
+$revTok = Login 'FAC11' $env:FACULTY_PW
 Write-Host "Reviewer token acquired"
 
 Write-Host "`n=== Step 8: List pending reviews ===" -ForegroundColor Cyan

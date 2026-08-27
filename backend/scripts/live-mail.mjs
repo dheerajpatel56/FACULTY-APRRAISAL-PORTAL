@@ -1,4 +1,5 @@
 // Full workflow with a real new user + real SMTP send. No HoD sign (auto-eval).
+import { ADMIN_CODE, HOD_CODE, FACULTY_CODE, adminPw, hodPw, facultyPw, testEmail } from './_creds.mjs';
 const BASE = 'http://localhost:5000/api';
 async function call(method, path, token, body) {
   const res = await fetch(BASE + path, {
@@ -14,8 +15,8 @@ const login = async (c, p) => (await call('POST', '/auth/login', null, { employe
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
-  const admin = await login('ADMIN001', 'admin123');
-  const hod = await login('HOD001', 'hod123');
+  const admin = await login(ADMIN_CODE, adminPw());
+  const hod = await login(HOD_CODE, hodPw());
 
   // CSE dept (so HOD001 can review the appraisal)
   const depts = await call('GET', '/admin/departments', admin);
@@ -28,7 +29,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   try {
     newUser = await call('POST', '/admin/users', admin, {
       employeeCode: CODE, name: 'Mail Test Faculty',
-      email: 'dheerajpatel5517@gmail.com', password: 'test123',
+      email: testEmail(), password: facultyPw(),
       departmentId: cse.id, designation: 'Assistant Professor',
     });
     console.log(`created user ${CODE} → ${newUser.email}`);
@@ -36,7 +37,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     console.log(`create skipped (${e.message.slice(0,60)}…) — reusing existing ${CODE}`);
   }
 
-  const fac = await login(CODE, 'test123');
+  const fac = await login(CODE, facultyPw());
   const year = (await call('GET', '/academic-years', fac)).find((y) => y.submissionOpen);
   console.log(`year: ${year.label}`);
 
@@ -83,7 +84,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (let i = 0; i < 8; i++) {
     await sleep(8000);
     const rows = (await call('GET', '/admin/emails?limit=12', admin)).rows ?? [];
-    const mine = rows.filter((e) => (e.toEmail || e.recipientEmail || '') === 'dheerajpatel5517@gmail.com');
+    const mine = rows.filter((e) => (e.toEmail || e.recipientEmail || '') === testEmail());
     const line = mine.map((e) => `${e.template}=${e.status}`).join('  ');
     console.log(`  +${(i+1)*8}s: ${line || '(none yet)'}`);
     if (mine.length && mine.every((e) => ['SENT','FAILED'].includes(e.status))) break;

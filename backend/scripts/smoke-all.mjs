@@ -1,5 +1,6 @@
 // Broad smoke test — auto-ACCEPT FPGP path + every major action/read endpoint.
 // Run: node scripts/smoke-all.mjs   (backend live on :5000)
+import { ADMIN_CODE, HOD_CODE, FACULTY_CODE, adminPw, hodPw, facultyPw, testEmail } from './_creds.mjs';
 const BASE = 'http://localhost:5000/api';
 let pass = 0, fail = 0;
 const results = [];
@@ -23,14 +24,14 @@ async function check(name, fn) {
 }
 
 (async () => {
-  const admin = await login('ADMIN001', 'admin123');
-  const fac = await login('FAC13', 'faculty123');
-  const hod = await login('HOD001', 'hod123');
+  const admin = await login(ADMIN_CODE, adminPw());
+  const fac = await login(FACULTY_CODE, facultyPw());
+  const hod = await login(HOD_CODE, hodPw());
   const year = (await call('GET', '/academic-years', fac)).find((y) => y.submissionOpen);
 
   // ---- AUTH ----
   await check('login bad creds → 401', async () => {
-    const r = await call('POST', '/auth/login', null, { employeeCode: 'ADMIN001', password: 'x' }, true);
+    const r = await call('POST', '/auth/login', null, { employeeCode: ADMIN_CODE, password: 'deliberately-wrong' }, true);
     if (r.status !== 401) throw new Error(`got ${r.status}`);
   });
   await check('protected route no token → 401', async () => {

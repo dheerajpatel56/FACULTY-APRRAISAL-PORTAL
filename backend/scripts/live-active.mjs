@@ -1,4 +1,5 @@
 // Isolate stage-4 eval logic: faculty-sign only (stay ACTIVE), then evaluate.
+import { ADMIN_CODE, HOD_CODE, FACULTY_CODE, adminPw, hodPw, facultyPw, testEmail } from './_creds.mjs';
 const BASE = 'http://localhost:5000/api';
 async function call(method, path, token, body) {
   const res = await fetch(BASE + path, {
@@ -13,9 +14,9 @@ async function call(method, path, token, body) {
 const login = async (c, p) => (await call('POST', '/auth/login', null, { employeeCode: c, password: p })).accessToken;
 
 (async () => {
-  const fac = await login('FAC14', 'faculty123');
-  const hod = await login('HOD001', 'hod123');
-  const admin = await login('ADMIN001', 'admin123');
+  const fac = await login(FACULTY_CODE, facultyPw());
+  const hod = await login(HOD_CODE, hodPw());
+  const admin = await login(ADMIN_CODE, adminPw());
   const year = (await call('GET', '/academic-years', fac)).find((y) => y.submissionOpen);
 
   const ap = await call('POST', '/appraisals', fac, { academicYearId: year.id });

@@ -1,5 +1,6 @@
 // Live end-to-end workflow driver — exercises all 4 stages via the running API.
 // Run: node scripts/live-workflow.mjs   (backend must be live on :5000)
+import { ADMIN_CODE, HOD_CODE, FACULTY_CODE, adminPw, hodPw, facultyPw, testEmail } from './_creds.mjs';
 const BASE = 'http://localhost:5000/api';
 const log = (...a) => console.log(...a);
 
@@ -25,9 +26,9 @@ async function login(code, pw) {
 
 (async () => {
   // ---- setup: tokens ----
-  const fac = await login('FAC15', 'faculty123');
-  const hod = await login('HOD001', 'hod123');
-  const admin = await login('ADMIN001', 'admin123');
+  const fac = await login(FACULTY_CODE, facultyPw());
+  const hod = await login(HOD_CODE, hodPw());
+  const admin = await login(ADMIN_CODE, adminPw());
   log('✓ logged in: FAC15 (faculty CSE), HOD001 (HoD CSE), ADMIN001');
 
   // pick an open academic year

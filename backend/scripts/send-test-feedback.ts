@@ -6,7 +6,14 @@ import { enqueueEmail, sendEmail } from '../src/services/emailService';
 // SMTP works end-to-end. Temporarily points a faculty's email at the target,
 // enqueues (which snapshots toEmail), reverts the address, then sends.
 
-const TARGET = 'dheerajpatel2275@gmail.com';
+// Mailbox this script routes the test email to. Not committed — this script
+// sends real mail, so the destination is supplied per run:
+//   TEST_EMAIL=you@example.com npx tsx scripts/send-test-feedback.ts
+const TARGET = process.env.TEST_EMAIL;
+if (!TARGET) {
+  console.error('Missing TEST_EMAIL — set it to the mailbox that should receive the test send.');
+  process.exit(1);
+}
 const FAC = '98CSE011';
 
 async function main() {
