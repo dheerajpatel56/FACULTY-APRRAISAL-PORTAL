@@ -47,6 +47,23 @@ export default function FileUpload({ value, onChange, readOnly, accept = DEFAULT
   };
 
   const onPick = async (file: File) => {
+    // Check the size before uploading. The server enforces this too, but there
+    // is no reason to push 40 MB up the wire only to be refused at the far end.
+    // Links are exempt — they never pass through the upload path at all.
+    try {
+      const { maxBytes, maxMb } = await uploadApi.limits();
+      if (file.size > maxBytes) {
+        toast.error(
+          `That file is ${(file.size / 1024 / 1024).toFixed(1)} MB — the limit is ${maxMb} MB. ` +
+          'Upload a smaller file, or use Link to point at it instead.'
+        );
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+    } catch {
+      // Limits unavailable — let the server be the judge rather than blocking.
+    }
+
     setUploading(true);
     setPct(0);
     try {

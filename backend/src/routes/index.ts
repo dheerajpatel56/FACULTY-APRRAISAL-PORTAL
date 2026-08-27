@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { roleGuard } from '../middleware/roleGuard';
 import { authLimiter, otpLimiter } from '../middleware/rateLimit';
-import { proofUpload } from '../middleware/upload';
+import { proofUpload, MAX_UPLOAD_MB, MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_MIME } from '../middleware/upload';
 import { reviewerGuard } from '../middleware/reviewerGuard';
 import { RoleType } from '@prisma/client';
 
@@ -31,7 +31,7 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
   proofUpload.single('file')(req, res, (err: any) => {
     if (err) {
       const msg = err instanceof multer.MulterError
-        ? (err.code === 'LIMIT_FILE_SIZE' ? 'File too large (max 5 MB)' : err.message)
+        ? (err.code === 'LIMIT_FILE_SIZE' ? `File too large (max ${MAX_UPLOAD_MB} MB). Upload a smaller file, or paste a link to it instead.` : err.message)
         : err.message;
       return res.status(400).json({ error: msg });
     }
@@ -40,6 +40,12 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
 }
 
 const router = Router();
+
+// Upload rules, so the client can reject an oversized file before spending the
+// bandwidth and show the real limit instead of a hardcoded guess.
+router.get('/config/uploads', authenticate, (_req, res) =>
+  res.json({ maxMb: MAX_UPLOAD_MB, maxBytes: MAX_UPLOAD_BYTES, allowedMime: ALLOWED_UPLOAD_MIME })
+);
 
 // Auth
 router.post('/auth/login', authLimiter, auth.login);

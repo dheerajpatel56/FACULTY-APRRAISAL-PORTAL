@@ -1,6 +1,25 @@
 import api from './client';
 
+export interface UploadLimits {
+  maxMb: number;
+  maxBytes: number;
+  allowedMime: string[];
+}
+
+// Fetched once per session — the limit is server configuration, not something
+// the client should hardcode and drift from.
+let limitsPromise: Promise<UploadLimits> | null = null;
+
 export const uploadApi = {
+  limits: (): Promise<UploadLimits> => {
+    if (!limitsPromise) {
+      limitsPromise = api.get('/config/uploads')
+        .then((r) => r.data as UploadLimits)
+        .catch((e) => { limitsPromise = null; throw e; });
+    }
+    return limitsPromise;
+  },
+
   uploadProof: (file: File, onProgress?: (pct: number) => void) => {
     const fd = new FormData();
     fd.append('file', file);

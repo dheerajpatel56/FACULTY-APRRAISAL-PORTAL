@@ -28,9 +28,32 @@ const storage = multer.diskStorage({
   },
 });
 
+/**
+ * Per-file upload ceiling, in megabytes. Set MAX_UPLOAD_MB to change it.
+ *
+ * This bounds a single uploaded file. It does not apply to proofs supplied as a
+ * link (Google Drive and the like) — those are stored as a URL and never pass
+ * through multer, so a faculty with an oversized scan can always link it
+ * instead of uploading.
+ */
+function resolveMaxUploadMb(): number {
+  const raw = process.env.MAX_UPLOAD_MB;
+  if (raw === undefined || raw.trim() === '') return 5;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.warn(`[upload] Ignoring invalid MAX_UPLOAD_MB="${raw}" — falling back to 5 MB`);
+    return 5;
+  }
+  return n;
+}
+
+export const MAX_UPLOAD_MB = resolveMaxUploadMb();
+export const MAX_UPLOAD_BYTES = Math.floor(MAX_UPLOAD_MB * 1024 * 1024);
+export const ALLOWED_UPLOAD_MIME = [...ALLOWED_MIME];
+
 export const proofUpload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_MIME.has(file.mimetype)) cb(null, true);
     else cb(new Error('Only PDF, PNG, JPEG, WEBP files allowed'));
