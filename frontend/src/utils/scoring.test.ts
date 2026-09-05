@@ -83,14 +83,16 @@ describe('computeScore — cat2 branch coverage', () => {
     expect(mk(2)).toBe(0);
   });
 
+  // Rows carry a title: an untitled row is treated as an unfilled placeholder
+  // and scores nothing, so the matrix has to be exercised with real entries.
   it('2.3 books/chapters matrix: national editor (isEdited) = 3', () => {
-    expect(computeScore({ cat2Books: [{ scope: 'NATIONAL', isEdited: true }] }).cat2.books).toBe(3);
+    expect(computeScore({ cat2Books: [{ title: 'A Book', scope: 'NATIONAL', isEdited: true }] }).cat2.books).toBe(3);
     // full matrix corners for completeness
-    expect(computeScore({ cat2Books: [{ scope: 'INTERNATIONAL', isEdited: false }] }).cat2.books).toBe(10);
-    expect(computeScore({ cat2Books: [{ scope: 'INTERNATIONAL', isEdited: true }] }).cat2.books).toBe(5);
-    expect(computeScore({ cat2Books: [{ scope: 'NATIONAL', isEdited: false }] }).cat2.books).toBe(5);
+    expect(computeScore({ cat2Books: [{ title: 'A Book', scope: 'INTERNATIONAL', isEdited: false }] }).cat2.books).toBe(10);
+    expect(computeScore({ cat2Books: [{ title: 'A Book', scope: 'INTERNATIONAL', isEdited: true }] }).cat2.books).toBe(5);
+    expect(computeScore({ cat2Books: [{ title: 'A Book', scope: 'NATIONAL', isEdited: false }] }).cat2.books).toBe(5);
     // same matrix applies to book chapters
-    expect(computeScore({ cat2BookChapters: [{ scope: 'NATIONAL', isEdited: true }] }).cat2.books).toBe(3);
+    expect(computeScore({ cat2BookChapters: [{ title: 'A Book', scope: 'NATIONAL', isEdited: true }] }).cat2.books).toBe(3);
   });
 
   it('2.6 consultancy tiers: <1L->2, 1-2L->4, 2-5L->6, 5-10L->8, >10L->10', () => {
@@ -193,10 +195,10 @@ describe('computeScore — robustness (partial/missing form state)', () => {
       cat1Courses: [{ periodPlanned: 0, periodsConducted: 0, novelPedagogyUsed: false }],
     });
     expect(Number.isNaN(result.cat1.lectures)).toBe(false);
-    // 0/0 -> NaN comparisons all resolve false -> base tier 4 (matches backend's own
-    // would-be behavior for the same degenerate input; blank rows are stripped
-    // before save so the backend never actually sees this, but the live
-    // in-memory preview can transiently include an untouched "Add Row").
-    expect(result.cat1.total).toBe(4);
+    // A row with no planned periods scores nothing. It previously landed on the
+    // 4-mark floor (0/0 -> NaN, every band comparison false), which paid marks
+    // for an untouched "Add Row"; worse, a row with periods conducted but none
+    // planned divided by zero to Infinity and collected the full 10.
+    expect(result.cat1.total).toBe(0);
   });
 });

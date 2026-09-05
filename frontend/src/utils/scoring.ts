@@ -60,11 +60,13 @@ export interface Cat2ConfBookChapterInput {
 }
 
 export interface Cat2BookChapterInput {
+  title?: string | null;
   scope?: Scope;
   isEdited?: boolean;
 }
 
 export interface Cat2BookInput {
+  title?: string | null;
   scope?: Scope;
   isEdited?: boolean;
 }
@@ -229,6 +231,9 @@ function scoreCategory1(v: ScoreFormValues) {
   for (const c of arr<Cat1CourseInput>(v.cat1Courses)) {
     const periodPlanned = n(c?.periodPlanned);
     const periodsConducted = n(c?.periodsConducted);
+    // No planned figure, no engagement percentage. `conducted / 0` is Infinity,
+    // which used to clear the 96% band and pay a blank row full marks.
+    if (!(periodPlanned > 0)) continue;
     const pct = (periodsConducted / periodPlanned) * 100;
     const base = pct >= 96 ? 10 : pct >= 90 ? 8 : pct >= 80 ? 6 : 4;
     const novelty = c?.novelPedagogyUsed ? 5 : 0;
@@ -294,8 +299,10 @@ function scoreCategory2(v: ScoreFormValues) {
     return isEdited ? 5 : 10; // INTERNATIONAL (default)
   };
   let books = 0;
-  for (const b of arr<Cat2BookInput>(v.cat2Books)) books += bookRowScore(b?.scope, !!b?.isEdited);
-  for (const bc of arr<Cat2BookChapterInput>(v.cat2BookChapters)) books += bookRowScore(bc?.scope, !!bc?.isEdited);
+  // An untitled row is a placeholder, not a book.
+  const titled = (r: { title?: string | null } | undefined) => !!r?.title && r.title.trim() !== '';
+  for (const b of arr<Cat2BookInput>(v.cat2Books)) if (titled(b)) books += bookRowScore(b?.scope, !!b?.isEdited);
+  for (const bc of arr<Cat2BookChapterInput>(v.cat2BookChapters)) if (titled(bc)) books += bookRowScore(bc?.scope, !!bc?.isEdited);
   books = Math.min(books, 10);
 
   // 2.4 Patents / IPR (max 20) — Granted 10, Published 5; a merely Filed
@@ -319,6 +326,8 @@ function scoreCategory2(v: ScoreFormValues) {
   let consultancy = 0;
   for (const c of arr<Cat2ConsultancyInput>(v.cat2Consultancy)) {
     const a = n(c?.amountLakhs);
+    // The lowest band presumes a real project; a row with no amount is not one.
+    if (!(a > 0)) continue;
     consultancy += a > 10 ? 10 : a >= 5 ? 8 : a >= 2 ? 6 : a >= 1 ? 4 : 2;
   }
   consultancy = Math.min(consultancy, 10);
@@ -378,7 +387,9 @@ function scoreCategory3(v: ScoreFormValues) {
   // 3.5 Training (max 25) — PDF: >5 days -> 10, a minimum of 5 days -> 5.
   let training = 0;
   for (const t of arr<Cat3TrainingInput>(v.cat3Training)) {
-    training += n(t?.durationDays) > 5 ? 10 : 5;
+    // PDF: 10 above 5 days, 5 at a minimum of 5 days, nothing below that.
+    const days = n(t?.durationDays);
+    training += days > 5 ? 10 : days >= 5 ? 5 : 0;
   }
   training = Math.min(training, 25);
 
@@ -411,7 +422,9 @@ function scoreCategory5(v: ScoreFormValues) {
   // 5.2 Awards (max 10) — state = 5, national/international = 10
   let awards = 0;
   for (const a of arr<Cat5AwardInput>(v.cat5Awards)) {
-    awards += a?.level === 'state' ? 5 : 10;
+    // Only the levels the PDF defines; an unset level scores nothing.
+    if (a?.level === 'state') awards += 5;
+    else if (a?.level === 'national' || a?.level === 'international') awards += 10;
   }
   awards = Math.min(awards, 10);
 

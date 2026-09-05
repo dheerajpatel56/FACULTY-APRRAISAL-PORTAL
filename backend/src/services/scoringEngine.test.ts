@@ -153,32 +153,32 @@ describe('Category 2 — Research', () => {
 
   it('books/chapters: scope x role matrix — international author=10/editor=5, national author=5/editor=3', () => {
     expect(computeScore(emptySubmission({
-      cat2Books: [{ scope: 'INTERNATIONAL', isEdited: false }],
+      cat2Books: [{ title: 'A Book', scope: 'INTERNATIONAL', isEdited: false }],
     })).cat2.books).toBe(10);
     expect(computeScore(emptySubmission({
-      cat2Books: [{ scope: 'INTERNATIONAL', isEdited: true }],
+      cat2Books: [{ title: 'A Book', scope: 'INTERNATIONAL', isEdited: true }],
     })).cat2.books).toBe(5);
     expect(computeScore(emptySubmission({
-      cat2Books: [{ scope: 'NATIONAL', isEdited: false }],
+      cat2Books: [{ title: 'A Book', scope: 'NATIONAL', isEdited: false }],
     })).cat2.books).toBe(5);
     expect(computeScore(emptySubmission({
-      cat2Books: [{ scope: 'NATIONAL', isEdited: true }],
+      cat2Books: [{ title: 'A Book', scope: 'NATIONAL', isEdited: true }],
     })).cat2.books).toBe(3);
     // same matrix applies to book chapters
     expect(computeScore(emptySubmission({
-      cat2BookChapters: [{ scope: 'NATIONAL', isEdited: false }],
+      cat2BookChapters: [{ title: 'A Chapter', scope: 'NATIONAL', isEdited: false }],
     })).cat2.books).toBe(5);
   });
 
   it('books capped at 10', () => {
-    const books = Array.from({ length: 3 }, () => ({ scope: 'INTERNATIONAL', isEdited: false })); // 30 → cap 10
+    const books = Array.from({ length: 3 }, () => ({ title: 'A Book', scope: 'INTERNATIONAL', isEdited: false })); // 30 → cap 10
     expect(computeScore(emptySubmission({ cat2Books: books })).cat2.books).toBe(10);
   });
 
   it('books: the 10-point cap POOLS across books + chapters (not per-table)', () => {
     const s = computeScore(emptySubmission({
-      cat2Books: [{ scope: 'INTERNATIONAL', isEdited: false }],        // 10
-      cat2BookChapters: [{ scope: 'INTERNATIONAL', isEdited: false }], // 10
+      cat2Books: [{ title: 'A Book', scope: 'INTERNATIONAL', isEdited: false }],        // 10
+      cat2BookChapters: [{ title: 'A Chapter', scope: 'INTERNATIONAL', isEdited: false }], // 10
     }));
     // 10 + 10 = 20 pooled, capped at 10 (NOT 20, and NOT 10 per table)
     expect(s.cat2.books).toBe(10);
@@ -283,7 +283,7 @@ describe('Category 3 — Faculty Development', () => {
     const s = computeScore(emptySubmission({
       cat3Training: [{ durationDays: 6 }, { durationDays: 5 }, { durationDays: 2 }],
     }));
-    expect(s.cat3.training).toBe(20); // 10 + 5 + 5
+    expect(s.cat3.training).toBe(15); // 10 (>5 days) + 5 (exactly 5) + 0 (2 days is below the PDF minimum)
   });
 });
 
@@ -349,11 +349,13 @@ describe('Category 5 — Supplementary (2)', () => {
     expect(s.cat5.awards).toBe(10);
   });
 
-  it('5.2 awards: unrecognized/empty level falls through to 10 (documents current assumption)', () => {
-    // Only 'state' is special-cased; any other value (including '' or an
-    // unknown label) takes the `!== 'state'` branch and scores 10.
-    expect(computeScore(emptySubmission({ cat5Awards: [{ level: '' }] })).cat5.awards).toBe(10);
-    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'regional' }] })).cat5.awards).toBe(10);
+  it('5.2 awards: unrecognized/empty level scores nothing (PDF defines state / national / international only)', () => {
+    // The PDF defines International/National (10) and State (5). Anything else
+    // scores nothing — an unset level used to collect the maximum.
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: '' }] })).cat5.awards).toBe(0);
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'regional' }] })).cat5.awards).toBe(0);
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'state' }] })).cat5.awards).toBe(5);
+    expect(computeScore(emptySubmission({ cat5Awards: [{ level: 'national' }] })).cat5.awards).toBe(10);
   });
 });
 
@@ -423,7 +425,7 @@ describe('sample appraisal — form alignment', () => {
     // 2.2 — total citations 61 -> 3 (51-100 tier)
     cat2Citations: { totalCitations: 61 },
     // 2.3 — 1 published book chapter, default (international) scope, author -> 10
-    cat2BookChapters: [{ isEdited: false }],
+    cat2BookChapters: [{ title: 'Book chapter', isEdited: false }],
     // 2.4 — 1 published patent -> 5 (published tier, not granted)
     cat2Patents: [{ status: 'PUBLISHED' }],
     // 2.8 -> 5, 2.9 institute + industry linkages (2 + 3 = 5 x 5 = 25) -> capped 10
@@ -455,8 +457,11 @@ describe('sample appraisal — form alignment', () => {
     expect(s.cat1.total).toBe(137);
   });
   it('Category 2 = 93', () => { expect(s.cat2.total).toBe(93); });
-  it('Category 3 = 85', () => { expect(s.cat3.total).toBe(85); });
+  // Was 85 until the 2026-08-28 PDF review: this faculty logged three 1-day
+  // programmes, which collected 5 marks each even though the form grants 5 only
+  // from a minimum of 5 days. Only the 30-day programme scores now.
+  it('Category 3 = 70', () => { expect(s.cat3.total).toBe(70); });
   it('Category 4 = 50', () => { expect(s.cat4.total).toBe(50); });
   it('Category 5 = 40', () => { expect(s.cat5.total).toBe(40); });
-  it('self total = 405', () => { expect(s.selfTotal).toBe(405); });
+  it('self total = 390', () => { expect(s.selfTotal).toBe(390); });
 });

@@ -776,7 +776,7 @@ export default function AppraisalEditPage() {
                 <h2 className="font-semibold text-ink-primary">2.2 Citations</h2>
                 <ScoreBadge value={live.cat2.citations} max={5} />
               </div>
-              <p className="text-xs text-ink-muted mb-3">Score from Total Citations: 3–10→2, 11–20→5, 21–40→8, &gt;40→10.</p>
+              <p className="text-xs text-ink-muted mb-3">Score from Total Citations (Scopus / WoS only): 3–10→1, 11–50→2, 51–100→3, &gt;100→5.</p>
               <div className="grid grid-cols-3 gap-3">
                 <div><label className={labelCls}>Publications/Books (till date)</label><input type="number" {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
                 <div><label className={labelCls}>Publications/Books with Citations</label><input type="number" {...register('cat2Citations.pubsWithCitations', { valueAsNumber: true })} className={inputCls} /></div>

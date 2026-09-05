@@ -131,7 +131,8 @@ type FullSubmission = AppraisalSubmission & {
   cat2IndustryLinkages: Cat2IndustryLinkage[];
   cat3AdvQual: Cat3AdvQual | null;
   cat3Organised: Cat3OrganisedProgram[];
-  // Table retained on the model but intentionally no longer scored (see scoreCategory3). Do not delete.
+  // Scored at 10 each, capped at 20 (see scoreCategory3) — kept by product
+  // decision even though the PDF has no matching subsection. Do not delete.
   cat3ConferencesAttended: Cat3ConferenceAttended[];
   cat3ResourcePerson: Cat3ResourcePerson[];
   cat3Editorial: Cat3Editorial[];
@@ -149,8 +150,13 @@ function scoreCategory1(s: FullSubmission) {
   // 1.1 Lectures (max 40)
   let lectures = 0;
   for (const c of s.cat1Courses) {
+    // Engagement is meaningless without a planned figure to measure against.
+    // Guarding this is not pedantry: `conducted / 0` is Infinity, which cleared
+    // the 96% band and paid a blank-planned row the full 10, while an entirely
+    // empty row divided 0/0 to NaN and fell through to the 4-mark floor.
+    if (!(c.periodPlanned > 0)) continue;
     const pct = (c.periodsConducted / c.periodPlanned) * 100;
-    let base = pct >= 96 ? 10 : pct >= 90 ? 8 : pct >= 80 ? 6 : 4;
+    const base = pct >= 96 ? 10 : pct >= 90 ? 8 : pct >= 80 ? 6 : 4;
     const novelty = c.novelPedagogyUsed ? 5 : 0;
     lectures += base + novelty;
   }
@@ -222,9 +228,12 @@ function scoreCategory2(s: FullSubmission) {
     if (scope === Scope.NATIONAL) return isEdited ? 3 : 5;
     return isEdited ? 5 : 10; // INTERNATIONAL (default)
   };
+  // An untitled row is a placeholder, not a book — without this every empty row
+  // pays out the 5-mark international-author default.
+  const titled = (r: { title?: string | null }) => !!r.title && r.title.trim() !== '';
   let books = 0;
-  for (const b of s.cat2Books) books += bookRowScore(b.scope, b.isEdited);
-  for (const bc of s.cat2BookChapters) books += bookRowScore(bc.scope, bc.isEdited);
+  for (const b of s.cat2Books) if (titled(b)) books += bookRowScore(b.scope, b.isEdited);
+  for (const bc of s.cat2BookChapters) if (titled(bc)) books += bookRowScore(bc.scope, bc.isEdited);
   books = Math.min(books, 10);
 
   // 2.4 Patents / IPR (max 20) — PDF scores Granted 10 and Published 5 only;
@@ -248,6 +257,9 @@ function scoreCategory2(s: FullSubmission) {
   let consultancy = 0;
   for (const c of s.cat2Consultancy) {
     const a = c.amountLakhs;
+    // The PDF's lowest band ("upto 1.0 Lakh - 2") presumes a real project;
+    // a row with no amount entered is not one.
+    if (!(a > 0)) continue;
     consultancy += a > 10 ? 10 : a >= 5 ? 8 : a >= 2 ? 6 : a >= 1 ? 4 : 2;
   }
   consultancy = Math.min(consultancy, 10);
@@ -295,7 +307,8 @@ function scoreCategory3(s: FullSubmission) {
   // 3.2 Organised Programs (max 20)
   const organisedPrograms = Math.min(s.cat3Organised.length * 10, 20);
 
-  // 3.3 Conferences / Seminars / Workshops Attended (max 20, 10 each)
+  // Conferences / Seminars / Workshops Attended (max 20, 10 each) — local
+  // addition, deliberately un-numbered: the PDF has no such subsection.
   const conferencesAttended = Math.min(s.cat3ConferencesAttended.length * 10, 20);
 
   // 3.3 Resource Person (max 20, 10 each)
@@ -307,7 +320,9 @@ function scoreCategory3(s: FullSubmission) {
   // 3.5 Training (max 25) — PDF: >5 days -> 10, a minimum of 5 days -> 5.
   let training = 0;
   for (const t of s.cat3Training) {
-    training += t.durationDays > 5 ? 10 : 5;
+    // PDF: 10 above 5 days, 5 at a minimum of 5 days. Shorter programmes carry
+    // no score - previously anything, including a blank row, collected 5.
+    training += t.durationDays > 5 ? 10 : t.durationDays >= 5 ? 5 : 0;
   }
   training = Math.min(training, 25);
 
@@ -340,7 +355,10 @@ function scoreCategory5(s: FullSubmission) {
   // 5.2 Awards (max 10) — state = 5, national/international = 10
   let awards = 0;
   for (const a of s.cat5Awards) {
-    awards += a.level === 'state' ? 5 : 10;
+    // Score only the levels the PDF defines. The old `else 10` handed the
+    // maximum to anything unrecognised, an unset level included.
+    if (a.level === 'state') awards += 5;
+    else if (a.level === 'national' || a.level === 'international') awards += 10;
   }
   awards = Math.min(awards, 10);
 
