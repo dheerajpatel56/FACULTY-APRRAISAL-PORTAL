@@ -43,9 +43,18 @@ the authority when an example file disagrees.
 - [ ] `admin123` rotated. The seeded `ADMIN001` account ships with a known
       password and is documented in this repo; it is a public credential until
       it is changed.
-- [ ] Hardcoded dev passwords removed from `backend/scripts/*.mjs`
-      (`admin123`, `hod123`, `faculty123`, `test123`). They are seed-only, but
-      the hosting agreement forbids committed passwords outright.
+- [x] Hardcoded dev passwords removed from `backend/scripts/*.mjs` — they now
+      come from `ADMIN_PW` / `HOD_PW` / `FACULTY_PW` / `TEST_EMAIL` with no
+      fallback.
+- [ ] Seed run with `SEED_ADMIN_PW`, `SEED_HOD_PW`, `SEED_FACULTY_PW` set, so
+      the committed defaults (`admin123` / `hod123` / `faculty123`) are never
+      the real passwords. The defaults remain in `seed.ts` on purpose — the test
+      suites log in with them, and randomising would make every DB-backed suite
+      self-skip and report a false green.
+- [ ] `DEFAULT_IMPORT_PASSWORD` set for future bulk imports. The fallback
+      (`Welcome@123`) is the password 73 already-imported accounts still use;
+      changing the default does not rotate them, it only makes new imports
+      inconsistent. Rotate by forcing a reset on those accounts.
 - [ ] Server `.env` file permissions restricted (`chmod 600`).
 - [ ] `FRONTEND_URL` points at the real domain, first in the list.
 - [ ] TLS terminated by the campus proxy; the app itself serves plain HTTP.

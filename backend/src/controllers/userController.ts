@@ -363,7 +363,12 @@ export async function revokeRole(req: Request, res: Response) {
 // Institutional faculty-roster format. Password, department and role are NOT in
 // the sheet: every row is imported as FACULTY into the admin-selected department
 // with a shared default password (users change it on first login).
-const DEFAULT_IMPORT_PASSWORD = 'Welcome@123';
+// Password given to bulk-imported accounts on first login. Overridable, but the
+// historical value is the fallback deliberately: 73 real accounts were imported
+// with it and are still using it, so changing the default would not rotate them
+// — it would only make new imports inconsistent with the ones already out there.
+// Rotate properly (force-reset those accounts) rather than editing this line.
+const DEFAULT_IMPORT_PASSWORD = process.env.DEFAULT_IMPORT_PASSWORD ?? 'Welcome@123';
 
 const TEMPLATE_CSV = `S.NO,EMP ID,Name of the Faculty,Designation,D.O.J,Mobile Number,E - Mail ID
 1,FAC001,John Doe,Assistant Professor,15-08-2020,9876543210,john.doe@vnrvjiet.in

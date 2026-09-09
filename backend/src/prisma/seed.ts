@@ -10,6 +10,18 @@ async function ensureRole(userId: string, role: RoleType, assignedBy: string, de
   return prisma.userRole.create({ data: { userId, role, departmentId, assignedBy } });
 }
 
+// Seed passwords. Overridable so a real install never has to accept the values
+// committed here, which the campus hosting agreement forbids relying on. The
+// historical defaults are kept as the fallback on purpose: the test suites and
+// the dev scripts log in with them, and swapping them for random values would
+// make every DB-backed suite self-skip and report a false green.
+//
+// Set these before seeding anything that is not a throwaway development box:
+//   SEED_ADMIN_PW=... SEED_HOD_PW=... SEED_FACULTY_PW=... npm run seed
+const SEED_ADMIN_PW = process.env.SEED_ADMIN_PW ?? 'admin123';
+const SEED_HOD_PW = process.env.SEED_HOD_PW ?? 'hod123';
+const SEED_FACULTY_PW = process.env.SEED_FACULTY_PW ?? 'faculty123';
+
 // Employee codes this seed owns. Anything else in the users table came from a
 // real CSV import.
 const SEED_CODES = [
@@ -91,7 +103,7 @@ async function main() {
   const hash = (pw: string) => bcrypt.hash(pw, 12);
 
   // Admin
-  const adminHash = await hash('admin123');
+  const adminHash = await hash(SEED_ADMIN_PW);
   const admin = await prisma.user.upsert({
     where: { employeeCode: 'ADMIN001' },
     create: { employeeCode: 'ADMIN001', name: 'System Admin', email: 'admin@college.edu', passwordHash: adminHash },
@@ -100,7 +112,7 @@ async function main() {
   await ensureRole(admin.id, RoleType.ADMIN, admin.id, null);
 
   // HODs
-  const hodHash = await hash('hod123');
+  const hodHash = await hash(SEED_HOD_PW);
   const hods = [
     { code: 'HOD001', name: 'Dr. Rajesh Kumar', email: 'hod.cse@college.edu', dept: cse },
     { code: 'HOD002', name: 'Dr. Sunita Verma', email: 'hod.ece@college.edu', dept: ece },
@@ -118,7 +130,7 @@ async function main() {
   }
 
   // Faculty
-  const facHash = await hash('faculty123');
+  const facHash = await hash(SEED_FACULTY_PW);
   const depts = [cse, ece, eee];
   for (let di = 0; di < depts.length; di++) {
     const d = depts[di];
@@ -150,12 +162,15 @@ async function main() {
   }
 
   console.log('Seed complete!');
-  console.log('Admin: ADMIN001 / admin123');
-  console.log('HoD CSE: HOD001 / hod123');
-  console.log('HoD ECE: HOD002 / hod123');
-  console.log('Faculty CSE: FAC11-FAC15 / faculty123 (FAC11,FAC12 also REVIEWER for ECE)');
-  console.log('Faculty ECE: FAC21-FAC25 / faculty123');
-  console.log('Faculty EEE: FAC31-FAC35 / faculty123');
+  const shown = (v: string, envName: string) => (process.env[envName] ? '(from ' + envName + ')' : v);
+  console.log('Admin: ADMIN001 /', shown(SEED_ADMIN_PW, 'SEED_ADMIN_PW'));
+  console.log('HoD CSE: HOD001 /', shown(SEED_HOD_PW, 'SEED_HOD_PW'));
+  console.log('HoD ECE: HOD002 /', shown(SEED_HOD_PW, 'SEED_HOD_PW'));
+  console.log('Faculty CSE: FAC11-FAC15 /', shown(SEED_FACULTY_PW, 'SEED_FACULTY_PW'));
+  console.log('Faculty ECE: FAC21-FAC25 /', shown(SEED_FACULTY_PW, 'SEED_FACULTY_PW'));
+  console.log('Faculty EEE: FAC31-FAC35 /', shown(SEED_FACULTY_PW, 'SEED_FACULTY_PW'));
+  console.log('');
+  console.log('Set SEED_ADMIN_PW / SEED_HOD_PW / SEED_FACULTY_PW to avoid the committed defaults.');
 }
 
 main()
