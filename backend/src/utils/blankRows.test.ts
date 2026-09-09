@@ -1,7 +1,37 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { ROW_CONTENT_FIELDS, ROW_MODELS, rowHasContent, dropBlankRows } from './blankRows';
 
+// The form strips blank rows client-side too, from its own copy of this table
+// (frontend AppraisalEditPage.tsx). The backend copy is the authority, but a
+// section missing from EITHER side is a hole, so the two must stay identical —
+// cat2ConfBookChapters was in the frontend's table and not in the backend's.
+const FRONTEND_FORM = join(
+  __dirname, '..', '..', '..', 'frontend', 'src', 'pages', 'faculty', 'AppraisalEditPage.tsx',
+);
+
+function frontendRowContentFields(): Record<string, string[]> {
+  const src = readFileSync(FRONTEND_FORM, 'utf8');
+  const block = src.match(/const ROW_CONTENT_FIELDS[^=]*=\s*\{([\s\S]*?)\n\};/);
+  if (!block) throw new Error(`Could not find ROW_CONTENT_FIELDS in ${FRONTEND_FORM}`);
+
+  const table: Record<string, string[]> = {};
+  for (const line of block[1].split('\n')) {
+    const m = line.match(/^\s*(\w+):\s*\[([^\]]*)\],/);
+    if (m) table[m[1]] = [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+  }
+  // A parser that quietly returns nothing would turn this suite green while
+  // asserting nothing — fail loudly instead.
+  if (Object.keys(table).length === 0) throw new Error('Parsed an empty frontend table — the parser has rotted');
+  return table;
+}
+
 describe('blankRows', () => {
+  it("matches the form's copy of the table, section for section", () => {
+    expect(frontendRowContentFields()).toEqual(ROW_CONTENT_FIELDS);
+  });
+
   it('maps every content-field key to a Prisma model', () => {
     expect(Object.keys(ROW_MODELS).sort()).toEqual(Object.keys(ROW_CONTENT_FIELDS).sort());
   });
@@ -20,8 +50,8 @@ describe('blankRows', () => {
     expect(rowHasContent({ title: '7' }, ['title'])).toBe(true);
   });
 
-  it('never treats a dropdown default or number as content', () => {
-    // nature/status are enums; a blank row carries them pre-filled.
+  it('never treats a dropdown default or a number as content', () => {
+    // nature/status are enums; a blank auto-row carries them pre-filled.
     expect(rowHasContent({ title: '', nature: 'Video', hours: 40 }, ['title'])).toBe(false);
   });
 
