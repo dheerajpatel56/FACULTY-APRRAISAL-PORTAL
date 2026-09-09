@@ -138,9 +138,13 @@ async function main() {
       });
       await ensureRole(fac.id, RoleType.FACULTY, admin.id, null);
 
-      // First 2 CSE faculty also REVIEWER for ECE
+      // Reviewers are assigned within their own department only — departments
+      // are isolated. Cross-department review is the dean's, exercised through
+      // the final-review layer, not through a standing role. The first two CSE
+      // faculty used to be seeded as reviewers for ECE, which the API now
+      // rejects outright.
       if (di === 0 && fi <= 2) {
-        await ensureRole(fac.id, RoleType.REVIEWER, admin.id, ece.id);
+        await ensureRole(fac.id, RoleType.REVIEWER, admin.id, d.id);
       }
     }
   }

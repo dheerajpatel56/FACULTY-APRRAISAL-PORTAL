@@ -279,6 +279,21 @@ export async function assignRole(req: Request, res: Response) {
     if (!dept) return res.status(400).json({ error: 'Department not found or inactive' });
   }
 
+  // Departments are isolated: a HoD or reviewer may only hold that role in the
+  // department they belong to. Cross-department authority sits with the dean
+  // (ADMIN) and with dean-level final reviewers, who are assigned per
+  // submission through the final-review layer rather than through a role.
+  if (role === RoleType.HOD || role === RoleType.REVIEWER) {
+    if (!targetUser.departmentId) {
+      return res.status(400).json({ error: `${role} role requires the user to belong to a department` });
+    }
+    if (targetUser.departmentId !== deptId) {
+      return res.status(400).json({
+        error: `Departments are isolated — ${role} can only be assigned in the user's own department`,
+      });
+    }
+  }
+
   // Prisma 6 nullable-composite-unique workaround: findFirst then create/update
   const userRole = await prisma.$transaction(async (tx) => {
     const existing = await tx.userRole.findFirst({

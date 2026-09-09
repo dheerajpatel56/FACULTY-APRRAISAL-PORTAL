@@ -110,8 +110,8 @@ export default function AdminInchargesPage() {
       />
 
       <p className="text-xs text-ink-muted mb-4">
-        An incharge verifies all uploads for their department (the Verifier role). One person can be incharge of more than one
-        department.
+        An incharge verifies all uploads for their department (the Verifier role). Departments are isolated, so an incharge
+        must belong to the department they verify — only the dean and dean-level final reviewers work across departments.
       </p>
 
       {showAssign && (
@@ -120,7 +120,7 @@ export default function AdminInchargesPage() {
           <form onSubmit={assign} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-ink-secondary mb-1">Department</label>
-              <select value={assignDept} onChange={(e) => setAssignDept(e.target.value)} className={inputCls}>
+              <select value={assignDept} onChange={(e) => { setAssignDept(e.target.value); setAssignUser(''); }} className={inputCls}>
                 <option value="">Select department…</option>
                 {depts.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -133,11 +133,15 @@ export default function AdminInchargesPage() {
               <label className="block text-xs font-medium text-ink-secondary mb-1">User</label>
               <select value={assignUser} onChange={(e) => setAssignUser(e.target.value)} className={inputCls}>
                 <option value="">Select user…</option>
-                {allUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.employeeCode})
-                  </option>
-                ))}
+                {allUsers
+                  // Only people who belong to the chosen department — the API
+                  // rejects a cross-department assignment outright.
+                  .filter((u) => assignDept && u.departmentId === assignDept)
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.employeeCode})
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="flex items-end gap-2">
