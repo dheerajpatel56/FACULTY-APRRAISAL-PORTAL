@@ -170,6 +170,38 @@ describe('review score — reviewer marks for categories 1-5', () => {
     })).toBe(afterFirst + 1);
   });
 
+  it('freezes BOTH totals — self and reviewed — as one snapshot', async () => {
+    if (!ready) return;
+    const subId = await makeSubmission(984);
+
+    const before = await request(app).get(`/api/appraisals/${subId}/score`).set(bearer(hodTok));
+    expect(before.status).toBe(200);
+    const selfAtReview = before.body.selfTotal;
+
+    const res = await request(app).post(`/api/appraisals/${subId}/review`)
+      .set(bearer(hodTok)).send({ cat1Score: 25, status: 'APPROVED' });
+    expect(res.status).toBe(200);
+
+    const stored = await prisma.appraisalReview.findFirst({ where: { submissionId: subId } });
+    // Two variables, one decision: what the faculty scored, and what the
+    // reviewer awarded. Both out of 500.
+    expect(stored!.selfTotalScore).toBe(selfAtReview);
+    expect(stored!.totalScore).toBe(25);
+
+    // Change the submission underneath the review. The frozen pair must not move
+    // — that is the whole point of storing the self figure rather than
+    // recomputing it, since recomputation drifts when scoring rules change.
+    await prisma.cat4AdminResp.create({
+      data: { submissionId: subId, responsibility: 'Extra', level: 'Department', workInvolved: 'x', period: '2026' },
+    });
+    const live = await request(app).get(`/api/appraisals/${subId}/score`).set(bearer(hodTok));
+    expect(live.body.selfTotal).toBeGreaterThan(selfAtReview);
+
+    const after = await prisma.appraisalReview.findFirst({ where: { submissionId: subId } });
+    expect(after!.selfTotalScore).toBe(selfAtReview);
+    expect(after!.totalScore).toBe(25);
+  });
+
   it('refuses to reopen a submission that was never decided', async () => {
     if (!ready) return;
     const subId = await makeSubmission(994);

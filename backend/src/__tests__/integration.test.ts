@@ -79,12 +79,14 @@ describe('Full appraisal workflow', () => {
     if (!dbReady) return;
 
     const facTok = await login('FAC21', 'faculty123');
-    const revTok = await login('FAC11', 'faculty123'); // REVIEWER for ECE
+    const revTok = await login('FAC11', 'faculty123'); // reviewer within their own department
     if (!facTok || !revTok) return;
 
     // Pick an open academic year
     const years = await request(app).get('/api/academic-years').set('Authorization', `Bearer ${facTok}`);
-    const year = years.body.find((y: any) => y.label === '2025-26') ?? years.body[0];
+    // Whichever year is actually open — this used to hardcode '2025-26', which
+    // broke the moment that year was closed. A closed year rejects the create.
+    const year = years.body.find((y: any) => y.submissionOpen) ?? years.body[0];
     if (!year) return;
 
     // Clean any prior submission for this fac+year to keep idempotent

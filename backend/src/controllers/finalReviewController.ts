@@ -138,14 +138,16 @@ export async function submitFinalReview(req: Request, res: Response) {
     // Notify the faculty of final approval.
     try {
       const rv = sub.review;
-      // Reload with the category relations so the faculty's own total can be
-      // recomputed — without it the email could only repeat the reviewed figure
-      // back at them, which would hide any change the reviewer made.
-      const full = await prisma.appraisalSubmission.findUnique({
-        where: { id: sub.id },
-        include: FULL_INCLUDE,
-      });
-      const selfTotal = full ? computeScore(full as any).selfTotal : null;
+      // Prefer the self total frozen at review time. Only fall back to
+      // recomputing for rows written before that field existed.
+      let selfTotal: number | null = rv?.selfTotalScore ?? null;
+      if (selfTotal == null) {
+        const full = await prisma.appraisalSubmission.findUnique({
+          where: { id: sub.id },
+          include: FULL_INCLUDE,
+        });
+        selfTotal = full ? computeScore(full as any).selfTotal : null;
+      }
       await enqueueEmail({
         toUserId: sub.userId,
         template: 'submission_approved',

@@ -163,7 +163,12 @@ export default function AppraisalViewPage() {
             <div className="border-t border-surface-border pt-2 flex items-center justify-between font-medium">
               <span className="text-sm text-ink-secondary">Total</span>
               <span className="flex gap-4 text-sm">
-                <span className="w-24 text-right text-ink-secondary">{score.selfTotal.toFixed(1)} / 500</span>
+                {/* The self total frozen at review time — what the reviewer
+                    actually judged. Falls back to the live figure for reviews
+                    written before that was stored. */}
+                <span className="w-24 text-right text-ink-secondary">
+                  {(review.selfTotalScore ?? score.selfTotal).toFixed(1)} / 500
+                </span>
                 <span className="w-24 text-right text-primary-700">{review.totalScore.toFixed(1)} / 500</span>
               </span>
             </div>

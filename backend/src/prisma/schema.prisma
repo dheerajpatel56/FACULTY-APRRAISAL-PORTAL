@@ -921,6 +921,15 @@ model AppraisalReview {
   cat6Cordiality      Float?
   cat6Classroom       Float?
 
+  // The two scores an appraisal carries, frozen together at review time.
+  //   selfTotalScore - what the faculty's own submission scored, out of 500
+  //   totalScore     - what the reviewer awarded for categories 1-5, out of 500
+  //   grandTotal     - totalScore + Category 6, out of 550 (HoD/dean only)
+  // Storing the self figure matters: it is otherwise recomputed on every read,
+  // so a later change to the scoring rules would silently move it while the
+  // reviewed figure stayed frozen, and the pair would stop agreeing with the
+  // decision that was actually signed off.
+  selfTotalScore Float?
   totalScore Float?
   grandTotal Float?
 

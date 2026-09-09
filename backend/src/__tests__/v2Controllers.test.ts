@@ -429,7 +429,10 @@ describe('reports/department dept-scope', () => {
 describe('quarterly snapshot send-gate', () => {
   it('defaults to a dry run and queues nothing', async () => {
     if (!ready) return;
-    const before = await prisma.emailNotification.count();
+    // Scope the count to the template this endpoint would send. Counting every
+    // notification made the test flaky: other suites run in parallel and queue
+    // their own mail between the two reads.
+    const before = await prisma.emailNotification.count({ where: { template: 'quarterly_feedback' } });
 
     const res = await request(app)
       .post('/api/admin/tracking/snapshot')
@@ -440,12 +443,15 @@ describe('quarterly snapshot send-gate', () => {
     expect(res.body.dryRun).toBe(true);
     expect(typeof res.body.recipients).toBe('number');
     expect(res.body.message).toMatch(/Dry run/i);
-    expect(await prisma.emailNotification.count()).toBe(before);
+    expect(await prisma.emailNotification.count({ where: { template: 'quarterly_feedback' } })).toBe(before);
   });
 
   it('treats a non-true confirm as a dry run', async () => {
     if (!ready) return;
-    const before = await prisma.emailNotification.count();
+    // Scope the count to the template this endpoint would send. Counting every
+    // notification made the test flaky: other suites run in parallel and queue
+    // their own mail between the two reads.
+    const before = await prisma.emailNotification.count({ where: { template: 'quarterly_feedback' } });
 
     const res = await request(app)
       .post('/api/admin/tracking/snapshot')
@@ -454,6 +460,6 @@ describe('quarterly snapshot send-gate', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.dryRun).toBe(true);
-    expect(await prisma.emailNotification.count()).toBe(before);
+    expect(await prisma.emailNotification.count({ where: { template: 'quarterly_feedback' } })).toBe(before);
   });
 });

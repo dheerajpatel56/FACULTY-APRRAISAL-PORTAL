@@ -135,6 +135,10 @@ export async function submitReview(req: Request, res: Response) {
   const totalScore = awarded.cat1Score + awarded.cat2Score + awarded.cat3Score +
     awarded.cat4Score + awarded.cat5Score;
   const grandTotal = totalScore + Math.min(cat6Total, 50);
+  // Freeze the faculty's own total alongside the reviewed one. Both belong to
+  // the same signed decision, so both are stored; leaving the self figure to be
+  // recomputed on read means a later scoring change moves one and not the other.
+  const selfTotalScore = computedScore.selfTotal;
 
   await prisma.$transaction(async (tx) => {
     await tx.appraisalReview.upsert({
@@ -145,6 +149,7 @@ export async function submitReview(req: Request, res: Response) {
         reviewerRole,
         ...data,
         ...awarded,
+        selfTotalScore,
         totalScore,
         grandTotal,
         status: data.status as SubmissionStatus,
@@ -152,6 +157,7 @@ export async function submitReview(req: Request, res: Response) {
       update: {
         ...data,
         ...awarded,
+        selfTotalScore,
         totalScore,
         grandTotal,
         status: data.status as SubmissionStatus,
@@ -213,7 +219,7 @@ export async function submitReview(req: Request, res: Response) {
           // Faculty see both totals out of 500 — what they claimed and what the
           // reviewer awarded. Category 6 and the /550 grand total are the
           // reviewer's own assessment and are deliberately not sent.
-          selfTotal: computedScore.selfTotal.toFixed(1),
+          selfTotal: selfTotalScore.toFixed(1),
           reviewedTotal: totalScore.toFixed(1),
           teachingComment: data.teachingComment ?? '',
           researchComment: data.researchComment ?? '',
