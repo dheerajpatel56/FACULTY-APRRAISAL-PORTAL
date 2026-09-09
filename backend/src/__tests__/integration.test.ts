@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import app from '../app';
 import prisma from '../utils/prismaClient';
@@ -8,6 +8,14 @@ import prisma from '../utils/prismaClient';
 // (so CI without a database still passes `npm test`).
 
 let dbReady = false;
+
+// The workflow test files a real appraisal, so it uses a throwaway faculty of
+// its own. It used to borrow the seed account FAC21 and delete every submission
+// that account held for the year — harmless while it pointed at an unused year,
+// but it would destroy a live faculty's current appraisal the moment it pointed
+// at the open one.
+const TEST_FACULTY = { code: 'ITEST_FAC', password: 'faculty123' };
+let testFacultyId = '';
 
 async function login(employeeCode: string, password: string): Promise<string | null> {
   const res = await request(app).post('/api/auth/login').send({ employeeCode, password });
@@ -19,10 +27,42 @@ beforeAll(async () => {
     const tok = await login('ADMIN001', 'admin123');
     dbReady = !!tok;
     if (!dbReady) console.warn('[integration] seed users missing — skipping. Run `npm run seed`.');
+
+    if (dbReady) {
+      const bcrypt = (await import('bcryptjs')).default;
+      const cse = await prisma.department.findFirst({ where: { isActive: true } });
+      const existing = await prisma.user.findUnique({ where: { employeeCode: TEST_FACULTY.code } });
+      const user = existing ?? await prisma.user.create({
+        data: {
+          employeeCode: TEST_FACULTY.code,
+          name: 'Integration Test Faculty',
+          email: 'integration.test@example.invalid',
+          passwordHash: await bcrypt.hash(TEST_FACULTY.password, 12),
+          departmentId: cse?.id ?? null,
+          designation: 'Assistant Professor',
+        },
+      });
+      testFacultyId = user.id;
+      const hasRole = await prisma.userRole.findFirst({ where: { userId: user.id, role: 'FACULTY' } });
+      if (!hasRole) {
+        await prisma.userRole.create({ data: { userId: user.id, role: 'FACULTY', assignedBy: user.id } });
+      }
+    }
   } catch (e) {
     console.warn('[integration] DB unreachable — skipping integration suite.');
     dbReady = false;
   }
+});
+
+afterAll(async () => {
+  if (!testFacultyId) return;
+  await prisma.appraisalReview.deleteMany({ where: { submission: { userId: testFacultyId } } });
+  await prisma.appraisalSubmission.deleteMany({ where: { userId: testFacultyId } });
+  await prisma.emailNotification.deleteMany({ where: { toUserId: testFacultyId } });
+  await prisma.userRole.deleteMany({ where: { userId: testFacultyId } });
+  // AuditLog.userId is RESTRICT, so these have to go before the user does.
+  await prisma.auditLog.deleteMany({ where: { userId: testFacultyId } });
+  await prisma.user.deleteMany({ where: { id: testFacultyId } });
 });
 
 describe('Auth', () => {
@@ -59,7 +99,7 @@ describe('Authorization guards', () => {
 
   it('faculty hitting admin route → 403', async () => {
     if (!dbReady) return;
-    const facTok = await login('FAC21', 'faculty123');
+    const facTok = await login(TEST_FACULTY.code, TEST_FACULTY.password);
     if (!facTok) return;
     const res = await request(app).get('/api/admin/users').set('Authorization', `Bearer ${facTok}`);
     expect(res.status).toBe(403);
@@ -78,7 +118,7 @@ describe('Full appraisal workflow', () => {
   it('create → fill → submit → review → approve → visibility rules', async () => {
     if (!dbReady) return;
 
-    const facTok = await login('FAC21', 'faculty123');
+    const facTok = await login(TEST_FACULTY.code, TEST_FACULTY.password);
     const revTok = await login('FAC11', 'faculty123'); // reviewer within their own department
     if (!facTok || !revTok) return;
 
@@ -89,11 +129,8 @@ describe('Full appraisal workflow', () => {
     const year = years.body.find((y: any) => y.submissionOpen) ?? years.body[0];
     if (!year) return;
 
-    // Clean any prior submission for this fac+year to keep idempotent
-    const fac = await prisma.user.findUnique({ where: { employeeCode: 'FAC21' } });
-    if (fac) {
-      await prisma.appraisalSubmission.deleteMany({ where: { userId: fac.id, academicYearId: year.id } });
-    }
+    // Safe: this account exists only for this suite and is deleted afterwards.
+    await prisma.appraisalSubmission.deleteMany({ where: { userId: testFacultyId, academicYearId: year.id } });
 
     // Create
     const created = await request(app)
@@ -118,7 +155,7 @@ describe('Full appraisal workflow', () => {
       .send({
         categories: {
           cat2Journals: [{
-            title: 'Test Paper', journalName: 'IEEE', authors: 'FAC21', authorPosition: 'First',
+            title: 'Test Paper', journalName: 'IEEE', authors: 'Integration Test Faculty', authorPosition: 'First',
             indexed: 'WOS', impactFactor: 3, volume: '1', issueNo: '1', pageNos: '1-10',
             dateOfPub: '2025-06-01', quartile: 'Q1', doi: '', issn: '',
           }],
@@ -144,7 +181,7 @@ describe('Full appraisal workflow', () => {
           cat6Punctuality: 9, cat6Professionalism: 9, cat6Willingness: 8, cat6Cordiality: 10, cat6Classroom: 9,
           overallComment: 'Approved', status: 'APPROVED',
         });
-      expect([200, 403]).toContain(review.status); // 403 if FAC11 not reviewer for FAC21's dept
+      expect([200, 403]).toContain(review.status); // 403 if the reviewer is not scoped to this faculty's department
 
       if (review.status === 200) {
         // Faculty visibility — scores must NOT leak
