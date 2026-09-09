@@ -58,16 +58,29 @@ function layout(title: string, body: string): string {
 
 function scoreTable(p: any): string {
   if (!p.cat1 && !p.cat2 && !p.cat3 && !p.cat4 && !p.cat5) return '';
+
+  // Faculty-facing, so this table is capped at 500 and never mentions
+  // Category 6. Core values are the reviewer's assessment of the faculty, not
+  // something they report or are shown — only the HoD, dean and admin see that
+  // half of the review, and the /550 grand total exists only for them.
+  const reviewed = p.reviewedTotal != null;
+  const header = reviewed ? 'Reviewed Score' : 'Score';
+
+  const totals = reviewed
+    ? `
+    <tr><td>Self-assessed total</td><td align="right">${p.selfTotal ?? '-'} / 500</td></tr>
+    <tr style="background:#1e3a5f;color:#fff;font-weight:bold"><td>Reviewed total</td><td align="right">${p.reviewedTotal} / 500</td></tr>`
+    : `
+    <tr style="background:#1e3a5f;color:#fff;font-weight:bold"><td>Self Total</td><td align="right">${p.selfTotal ?? '-'} / 500</td></tr>`;
+
   return `
   <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
-    <tr style="background:#f1f5f9"><th align="left" style="padding:8px">Category</th><th align="right" style="padding:8px">Score</th></tr>
+    <tr style="background:#f1f5f9"><th align="left" style="padding:8px">Category</th><th align="right" style="padding:8px">${header}</th></tr>
     <tr><td>Cat 1 — Teaching</td><td align="right">${p.cat1 ?? '-'} / 150</td></tr>
     <tr><td>Cat 2 — Research</td><td align="right">${p.cat2 ?? '-'} / 150</td></tr>
     <tr><td>Cat 3 — Development</td><td align="right">${p.cat3 ?? '-'} / 100</td></tr>
     <tr><td>Cat 4 — Governance</td><td align="right">${p.cat4 ?? '-'} / 50</td></tr>
-    <tr><td>Cat 5 — Supplementary</td><td align="right">${p.cat5 ?? '-'} / 50</td></tr>
-    ${p.cat6 != null ? `<tr><td>Cat 6 — Core Values</td><td align="right">${p.cat6} / 50</td></tr>` : ''}
-    <tr style="background:#1e3a5f;color:#fff;font-weight:bold"><td>${p.grandTotal != null ? 'Grand Total' : 'Self Total'}</td><td align="right">${p.grandTotal ?? p.selfTotal ?? '-'} / ${p.grandTotal != null ? '550' : '500'}</td></tr>
+    <tr><td>Cat 5 — Supplementary</td><td align="right">${p.cat5 ?? '-'} / 50</td></tr>${totals}
   </table>`;
 }
 

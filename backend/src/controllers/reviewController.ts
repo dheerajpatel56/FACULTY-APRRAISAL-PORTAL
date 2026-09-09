@@ -32,7 +32,7 @@ const reviewSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
 });
 
-const FULL_INCLUDE = {
+export const FULL_INCLUDE = {
   cat1Courses: true, cat1CourseResults: true, cat1Projects: true, cat1EContent: true, cat1ICT: true,
   cat2Journals: true, cat2Conferences: true, cat2ConfBookChapters: true, cat2BookChapters: true, cat2Books: true,
   cat2Citations: true, cat2Patents: true, cat2Projects: true, cat2Consultancy: true,
@@ -210,8 +210,11 @@ export async function submitReview(req: Request, res: Response) {
           cat3: awarded.cat3Score.toFixed(1),
           cat4: awarded.cat4Score.toFixed(1),
           cat5: awarded.cat5Score.toFixed(1),
-          cat6: cat6Total.toFixed(1),
-          grandTotal: grandTotal.toFixed(1),
+          // Faculty see both totals out of 500 — what they claimed and what the
+          // reviewer awarded. Category 6 and the /550 grand total are the
+          // reviewer's own assessment and are deliberately not sent.
+          selfTotal: computedScore.selfTotal.toFixed(1),
+          reviewedTotal: totalScore.toFixed(1),
           teachingComment: data.teachingComment ?? '',
           researchComment: data.researchComment ?? '',
           developmentComment: data.developmentComment ?? '',
@@ -247,18 +250,25 @@ export async function getReview(req: Request, res: Response) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const isFaculty = !req.user!.roles.some((r) =>
+  const isStaff = req.user!.roles.some((r) =>
     ([RoleType.ADMIN, RoleType.HOD, RoleType.REVIEWER] as RoleType[]).includes(r.role)
   );
+  // Restrict on ownership, not just on role. A HoD or reviewer files their own
+  // appraisal, and a role-only check handed them their OWN core-values marks
+  // and grand total. Nobody sees the reviewer's assessment of themselves.
+  const isOwner = sub.userId === req.user!.id;
 
-  if (isFaculty) {
+  if (isOwner || !isStaff) {
     if (!sub.review) return res.json(null);
     if (!([SubmissionStatus.APPROVED, SubmissionStatus.REJECTED] as SubmissionStatus[]).includes(sub.status)) {
       return res.json({ status: sub.review.status, comments: null });
     }
-    const { cat1Score, cat2Score, cat3Score, cat4Score, cat5Score,
-      cat6Punctuality, cat6Professionalism, cat6Willingness, cat6Cordiality, cat6Classroom,
-      totalScore, grandTotal, ...safeReview } = sub.review;
+    // Faculty see the reviewer's marks for categories 1-5 and the resulting
+    // total out of 500 — that is their score, and they are entitled to it.
+    // Category 6 (core values) and the /550 grand total are withheld: those are
+    // the reviewer's assessment of them, for the HoD and dean only.
+    const { cat6Punctuality, cat6Professionalism, cat6Willingness, cat6Cordiality,
+      cat6Classroom, grandTotal, ...safeReview } = sub.review;
     return res.json(safeReview);
   }
 

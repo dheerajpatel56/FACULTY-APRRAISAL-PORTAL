@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { RoleType, SubmissionStatus, FinalDecision } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { enqueueEmail } from '../services/emailService';
+import { computeScore } from '../services/scoringEngine';
+import { FULL_INCLUDE } from './reviewController';
 
 // The review layer ABOVE the HoD. The admin/dean assigns any number of final
 // reviewers to an annual appraisal, drawn from ANY department. After the HoD
@@ -136,6 +138,14 @@ export async function submitFinalReview(req: Request, res: Response) {
     // Notify the faculty of final approval.
     try {
       const rv = sub.review;
+      // Reload with the category relations so the faculty's own total can be
+      // recomputed — without it the email could only repeat the reviewed figure
+      // back at them, which would hide any change the reviewer made.
+      const full = await prisma.appraisalSubmission.findUnique({
+        where: { id: sub.id },
+        include: FULL_INCLUDE,
+      });
+      const selfTotal = full ? computeScore(full as any).selfTotal : null;
       await enqueueEmail({
         toUserId: sub.userId,
         template: 'submission_approved',
@@ -144,8 +154,9 @@ export async function submitFinalReview(req: Request, res: Response) {
           reviewerName: 'Final Review Panel', reviewedAt: new Date().toLocaleString(),
           cat1: (rv?.cat1Score ?? 0).toFixed(1), cat2: (rv?.cat2Score ?? 0).toFixed(1), cat3: (rv?.cat3Score ?? 0).toFixed(1),
           cat4: (rv?.cat4Score ?? 0).toFixed(1), cat5: (rv?.cat5Score ?? 0).toFixed(1),
-          cat6: (((rv?.cat6Punctuality ?? 0) + (rv?.cat6Professionalism ?? 0) + (rv?.cat6Willingness ?? 0) + (rv?.cat6Cordiality ?? 0) + (rv?.cat6Classroom ?? 0))).toFixed(1),
-          grandTotal: (rv?.grandTotal ?? 0).toFixed(1),
+          // Out of 500 only — Cat 6 and the grand total are not the faculty's to see.
+          selfTotal: selfTotal != null ? selfTotal.toFixed(1) : undefined,
+          reviewedTotal: (rv?.totalScore ?? 0).toFixed(1),
           teachingComment: '', researchComment: '', developmentComment: '', governanceComment: '', supplementaryComment: '',
           overallComment: rv?.overallComment ?? '',
         },

@@ -148,9 +148,14 @@ describe('Full appraisal workflow', () => {
         // Faculty visibility — scores must NOT leak
         const facReview = await request(app).get(`/api/appraisals/${subId}/review`).set('Authorization', `Bearer ${facTok}`);
         expect(facReview.status).toBe(200);
-        expect(facReview.body.cat1Score).toBeUndefined();
-        expect(facReview.body.totalScore).toBeUndefined();
+        // The faculty's own score out of 500 is theirs to see, including the
+        // reviewer's per-category marks. What stays hidden is Category 6 and
+        // the /550 grand total — the reviewer's assessment of them.
+        expect(facReview.body.cat1Score).toBeTypeOf('number');
+        expect(facReview.body.totalScore).toBeTypeOf('number');
         expect(facReview.body.grandTotal).toBeUndefined();
+        expect(facReview.body.cat6Punctuality).toBeUndefined();
+        expect(facReview.body.cat6Classroom).toBeUndefined();
         expect(facReview.body.overallComment).toBe('Approved');
 
         // Reviewer sees full scores

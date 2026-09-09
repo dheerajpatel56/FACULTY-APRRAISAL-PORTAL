@@ -120,6 +120,60 @@ export default function AppraisalViewPage() {
         </Card>
       )}
 
+      {/* Reviewed score — categories 1-5 only. Category 6 and the /550 grand
+          total are the reviewer's assessment and are not returned to faculty. */}
+      {review && review.totalScore != null && score && (
+        <Card className="mb-4">
+          <h2 className="text-sm font-semibold text-ink-primary mb-3">Reviewed Score</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-ink-muted">
+              <span>Category</span>
+              <span className="flex gap-4">
+                <span className="w-24 text-right">Self</span>
+                <span className="w-24 text-right">Reviewed</span>
+              </span>
+            </div>
+            {[
+              { label: 'Cat 1 — Teaching', self: score.cat1.total, rev: review.cat1Score, max: 150 },
+              { label: 'Cat 2 — Research', self: score.cat2.total, rev: review.cat2Score, max: 150 },
+              { label: 'Cat 3 — Development', self: score.cat3.total, rev: review.cat3Score, max: 100 },
+              { label: 'Cat 4 — Governance', self: score.cat4.total, rev: review.cat4Score, max: 50 },
+              { label: 'Cat 5 — Supplementary', self: score.cat5.total, rev: review.cat5Score, max: 50 },
+            ].map(({ label, self, rev, max }) => {
+              const changed = rev != null && Math.abs(rev - self) > 0.001;
+              return (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-xs text-ink-secondary">
+                    {label}
+                    {changed && (
+                      <span className="ml-1 text-[10px] text-accent-600">
+                        ({rev > self ? '+' : ''}{(rev - self).toFixed(1)})
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex gap-4 text-xs">
+                    <span className="w-24 text-right text-ink-secondary">{self.toFixed(1)} / {max}</span>
+                    <span className={`w-24 text-right font-medium ${changed ? 'text-accent-600' : 'text-ink-primary'}`}>
+                      {(rev ?? self).toFixed(1)} / {max}
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+            <div className="border-t border-surface-border pt-2 flex items-center justify-between font-medium">
+              <span className="text-sm text-ink-secondary">Total</span>
+              <span className="flex gap-4 text-sm">
+                <span className="w-24 text-right text-ink-secondary">{score.selfTotal.toFixed(1)} / 500</span>
+                <span className="w-24 text-right text-primary-700">{review.totalScore.toFixed(1)} / 500</span>
+              </span>
+            </div>
+          </div>
+          <p className="text-[10px] text-ink-muted mt-3">
+            Your reviewed score, as awarded by the reviewer against the evidence submitted.
+          </p>
+        </Card>
+      )}
+
       {/* Reviewer Comments */}
       {review && (review.overallComment || review.teachingComment) && (
         <Card className="mb-4">

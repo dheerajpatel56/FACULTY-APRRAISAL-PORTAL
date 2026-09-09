@@ -80,9 +80,14 @@ describe('renderTemplate', () => {
     expect(html).toContain('123456');
   });
 
-  it('approved template shows grand total', () => {
+  it('approved template shows the totals out of 500 and withholds Cat 6 / the grand total', () => {
     const html = renderTemplate('submission_approved', samplePayload);
-    expect(html).toContain('385');
+    // Faculty own their score out of 500; core values and the /550 grand total
+    // are the reviewer's assessment, for the HoD and dean only.
+    expect(html).not.toContain('385');
+    expect(html).not.toContain('550');
+    expect(html).not.toMatch(/Cat\s*6/i);
+    expect(html).not.toMatch(/Grand Total/i);
   });
 
   it('reviewer digest renders item rows', () => {
