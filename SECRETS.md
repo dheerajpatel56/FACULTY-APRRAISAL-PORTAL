@@ -28,6 +28,7 @@ the authority when an example file disagrees.
 |---|---|---|---|
 | `FRONTEND_URL` | CORS, email links | `https://<the real domain>` | Comma-separated allowlist. The **first** origin is used as the base for links in emails, so put the real public URL first. |
 | `EMAIL_DISABLED` | `emailService` | `false` in production | See the warning below before ever setting this to `false` outside production. |
+| `QUARTERLY_AUTOSEND` | `cron/quarterlySnapshot` | `true` (default) | Set `false` to stop the daily job mailing all faculty when a review window ends, without deleting the windows. |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | `emailService` | e.g. `smtp.gmail.com` / `465` / `true` | |
 | `SMTP_FROM` | `emailService` | `VNRVJIET Faculty Portal <addr>` | Contains `<` and `>` — quote it in `.env`, or `sh` parsing breaks. |
 | `JWT_EXPIRES_IN` / `REFRESH_TOKEN_EXPIRES_IN` | `authController` | e.g. `15m` / `7d` | |
@@ -62,9 +63,10 @@ the authority when an example file disagrees.
 ## ⚠️ Mail
 
 `EMAIL_DISABLED=false` makes the application send real mail to real addresses.
-Two paths send in bulk: the admin "Run quarterly snapshot" button (now a dry run
+Two paths send in bulk: the admin "Run quarterly snapshot" button (a dry run
 until explicitly confirmed) and the daily 09:00 review-window cron, which fires
-on a window's end date **with nobody clicking anything**. Point a staging
+on a window's end date **with nobody clicking anything** — set
+`QUARTERLY_AUTOSEND=false` to stop that one. Point a staging
 deployment at a catch-all mailbox, or leave `EMAIL_DISABLED=true` there.
 
 ## If a secret leaks

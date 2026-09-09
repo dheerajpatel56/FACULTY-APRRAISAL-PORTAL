@@ -169,11 +169,25 @@ function sameLocalDay(a: Date, b: Date): boolean {
 // W8 — fire the quarterly automation for any enabled review window whose end
 // date is `at`'s day and that hasn't already run today. Called by the daily cron.
 export async function runDueReviewWindows(at: Date = new Date()) {
+  // Kill switch. This job mails every opted-in faculty the moment a window's end
+  // date arrives, with nobody present to confirm it — unlike the admin button,
+  // which is a dry run until confirmed. Default is unchanged (it runs), but an
+  // operator can stop it without deleting the windows they have configured.
+  if ((process.env.QUARTERLY_AUTOSEND ?? 'true').toLowerCase() === 'false') {
+    console.log('[cron] Review windows skipped — QUARTERLY_AUTOSEND=false');
+    return { windows: 0, faculty: 0, skipped: true as const };
+  }
+
   const windows = await prisma.reviewWindow.findMany({ where: { enabled: true } });
   const due = windows.filter(
     (w) => sameLocalDay(new Date(w.endDate), at) && (!w.lastRunAt || !sameLocalDay(new Date(w.lastRunAt), at))
   );
   let faculty = 0;
+  if (due.length) {
+    // Say what is about to go out before it goes out, so the log shows the
+    // blast radius even when nobody was watching.
+    console.warn(`[cron] ${due.length} review window(s) due — about to snapshot and email faculty for each`);
+  }
   for (const w of due) {
     faculty += await snapshotYear(w.academicYearId, w.quarter);
     await prisma.reviewWindow.update({ where: { id: w.id }, data: { lastRunAt: at } });
