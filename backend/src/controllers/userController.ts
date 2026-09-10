@@ -158,8 +158,14 @@ export async function changePasswordWithOtp(req: Request, res: Response) {
 export async function listUsers(req: Request, res: Response) {
   const { dept, role, search, limit, offset } = req.query;
 
+  // Deactivated users are hidden from every picker and list. An admin can ask
+  // for them, so a soft-deleted account stays findable and can be reactivated —
+  // otherwise deactivating would be as final as the hard delete it replaced.
+  const isAdmin = req.user?.roles.some((r) => r.role === RoleType.ADMIN) ?? false;
+  const includeInactive = isAdmin && req.query.includeInactive === 'true';
+
   const where: any = {
-    isActive: true,
+    ...(includeInactive ? {} : { isActive: true }),
     ...(dept ? { departmentId: dept as string } : {}),
     ...(search ? { OR: [{ name: { contains: search as string, mode: 'insensitive' } }, { employeeCode: { contains: search as string, mode: 'insensitive' } }] } : {}),
     ...(role ? { userRoles: { some: { role: role as RoleType, isActive: true } } } : {}),
@@ -229,32 +235,83 @@ export async function updateUser(req: Request, res: Response) {
   return res.json(safeUser);
 }
 
-export async function deleteUser(req: Request, res: Response) {
+/**
+ * Deactivate a user. This is a SOFT delete and there is no hard one.
+ *
+ * The previous version removed the user row and, with it, every appraisal they
+ * had filed, every review they had given on other people's work, and their
+ * audit trail — irreversibly, from a button in the admin list that also had a
+ * "delete selected" bulk form. An appraisal is a record of the institution's
+ * assessment of someone; staff leave and their history has to survive them.
+ *
+ * Deactivating blocks sign-in (authController already refuses an inactive user)
+ * and stands their roles down, so a departed HoD keeps no authority. Nothing is
+ * erased, and `reactivateUser` puts them back.
+ */
+export async function deactivateUser(req: Request, res: Response) {
   const { id } = req.params;
 
-  await prisma.$transaction(async (tx) => {
-    // Reviews this user gave on OTHER users' work (not covered by cascades).
-    await tx.appraisalReview.deleteMany({ where: { reviewerId: id } });
-    await tx.fPGPReview.deleteMany({ where: { reviewerId: id } });
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, employeeCode: true, isActive: true },
+  });
+  if (!user) return res.status(404).json({ error: 'Not found' });
 
-    // Detach this user as HoD signer on other users' FPGP plans.
-    await tx.fPGPPlan.updateMany({
-      where: { hodSignedBy: id },
-      data: { hodSignedBy: null },
+  // An admin who deactivates themselves cannot sign back in to undo it.
+  if (id === req.user!.id) {
+    return res.status(400).json({ error: 'You cannot deactivate your own account' });
+  }
+  if (!user.isActive) {
+    return res.json({ message: 'User is already deactivated', user });
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    // Stand down every role so no authority outlives the account.
+    const roles = await tx.userRole.updateMany({
+      where: { userId: id, isActive: true },
+      data: { isActive: false },
     });
-
-    // This user's own data — cascades remove Cat*/subsections/reviews.
-    await tx.appraisalSubmission.deleteMany({ where: { userId: id } });
-    await tx.fPGPPlan.deleteMany({ where: { userId: id } });
-    await tx.auditLog.deleteMany({ where: { userId: id } });
-    await tx.emailNotification.deleteMany({ where: { toUserId: id } });
-    await tx.passwordOtp.delete({ where: { userId: id } }).catch(() => {});
-    await tx.userRole.deleteMany({ where: { userId: id } });
-
-    await tx.user.delete({ where: { id } });
+    const u = await tx.user.update({ where: { id }, data: { isActive: false } });
+    await tx.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'USER_DEACTIVATED',
+        entityType: 'User',
+        entityId: id,
+        metadata: { employeeCode: user.employeeCode, name: user.name, rolesStoodDown: roles.count },
+      },
+    });
+    return u;
   });
 
-  return res.json({ message: 'User deleted' });
+  const { passwordHash, ...safeUser } = updated;
+  return res.json({ message: 'User deactivated', user: safeUser });
+}
+
+/** Undo a deactivation. Roles stay stood down and are re-assigned deliberately. */
+export async function reactivateUser(req: Request, res: Response) {
+  const { id } = req.params;
+
+  const user = await prisma.user.findUnique({ where: { id }, select: { id: true, employeeCode: true, name: true, isActive: true } });
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  if (user.isActive) return res.json({ message: 'User is already active', user });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.user.update({ where: { id }, data: { isActive: true } });
+    await tx.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'USER_REACTIVATED',
+        entityType: 'User',
+        entityId: id,
+        metadata: { employeeCode: user.employeeCode, name: user.name },
+      },
+    });
+    return u;
+  });
+
+  const { passwordHash, ...safeUser } = updated;
+  return res.json({ message: 'User reactivated', user: safeUser });
 }
 
 export async function assignRole(req: Request, res: Response) {

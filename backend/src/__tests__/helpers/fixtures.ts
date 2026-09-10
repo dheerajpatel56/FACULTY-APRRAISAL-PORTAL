@@ -150,6 +150,9 @@ export async function createFixture(tag: string): Promise<Fixture> {
         await prisma.appraisalReview.deleteMany({ where: { reviewerId: u.id } });
         await prisma.appraisalSubmission.deleteMany({ where: { userId: u.id } });
         await prisma.auditLog.deleteMany({ where: { userId: u.id } }); // RESTRICT
+        // Rows another actor wrote ABOUT this user (entityId is a plain string,
+        // so nothing else removes them).
+        await prisma.auditLog.deleteMany({ where: { entityType: 'User', entityId: u.id } });
         await prisma.emailNotification.deleteMany({ where: { toUserId: u.id } });
         await prisma.passwordOtp.deleteMany({ where: { userId: u.id } });
         await prisma.userRole.deleteMany({ where: { userId: u.id } });

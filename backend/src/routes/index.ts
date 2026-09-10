@@ -64,7 +64,10 @@ router.post('/users/me/change-password', authenticate, user.changePasswordWithOt
 router.get('/admin/users', authenticate, roleGuard([RoleType.ADMIN]), user.listUsers);
 router.post('/admin/users', authenticate, roleGuard([RoleType.ADMIN]), user.createUser);
 router.put('/admin/users/:id', authenticate, roleGuard([RoleType.ADMIN]), user.updateUser);
-router.delete('/admin/users/:id', authenticate, roleGuard([RoleType.ADMIN]), user.deleteUser);
+// Soft delete: deactivates the account and stands down its roles. Nothing is
+// erased — appraisals, the reviews this user gave, and the audit trail survive.
+router.delete('/admin/users/:id', authenticate, roleGuard([RoleType.ADMIN]), user.deactivateUser);
+router.post('/admin/users/:id/reactivate', authenticate, roleGuard([RoleType.ADMIN]), user.reactivateUser);
 router.post('/admin/users/:id/roles', authenticate, roleGuard([RoleType.ADMIN]), user.assignRole);
 router.delete('/admin/users/:id/roles/:roleId', authenticate, roleGuard([RoleType.ADMIN]), user.revokeRole);
 router.get('/admin/users/bulk-import/template', authenticate, roleGuard([RoleType.ADMIN]), user.bulkImportTemplate);

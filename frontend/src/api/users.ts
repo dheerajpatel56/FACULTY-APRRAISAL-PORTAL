@@ -11,7 +11,11 @@ export const userApi = {
     api.get('/admin/users', { params }).then((r) => r.data),
   createUser: (data: any) => api.post('/admin/users', data).then((r) => r.data),
   updateUser: (id: string, data: any) => api.put(`/admin/users/${id}`, data).then((r) => r.data),
-  deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then((r) => r.data),
+  // Soft delete — deactivates the account and stands down its roles. Appraisals,
+  // the reviews this user gave, and the audit trail are all kept.
+  deactivateUser: (id: string) => api.delete(`/admin/users/${id}`).then((r) => r.data),
+  reactivateUser: (id: string) =>
+    api.post(`/admin/users/${id}/reactivate`).then((r) => r.data),
   assignRole: (id: string, role: string, departmentId?: string) =>
     api.post(`/admin/users/${id}/roles`, { role, departmentId }).then((r) => r.data),
   revokeRole: (userId: string, roleId: string) =>

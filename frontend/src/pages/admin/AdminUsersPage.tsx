@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userApi } from '../../api/users';
 import toast from 'react-hot-toast';
-import { Plus, Search, Upload, Shield, Trash2 } from 'lucide-react';
+import { Plus, Search, Upload, Shield, UserMinus, RotateCcw } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import CsvImportModal from '../../components/CsvImportModal';
@@ -27,11 +27,15 @@ export default function AdminUsersPage() {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ employeeCode: '', name: '', email: '', password: '', designation: '', departmentId: '' });
+  // Deactivated accounts are hidden by default, as they are everywhere else;
+  // an admin turns them on to find and restore one.
+  const [showInactive, setShowInactive] = useState(false);
 
   const load = () => {
     setLoading(true);
     const params: any = { limit: PAGE_SIZE, offset };
     if (search) params.search = search;
+    if (showInactive) params.includeInactive = 'true';
     userApi.listUsers(params)
       .then((r: any) => {
         if (Array.isArray(r)) { setUsers(r); setTotal(r.length); }
@@ -41,12 +45,12 @@ export default function AdminUsersPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [search, offset]);
+  useEffect(() => { load(); }, [search, offset, showInactive]);
 
-  useEffect(() => { setOffset(0); }, [search]);
+  useEffect(() => { setOffset(0); }, [search, showInactive]);
 
   // Selection is page-scoped — clear it when the visible set changes.
-  useEffect(() => { setSelected(new Set()); }, [search, offset]);
+  useEffect(() => { setSelected(new Set()); }, [search, offset, showInactive]);
 
   const toggleRow = (id: string) =>
     setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -56,18 +60,21 @@ export default function AdminUsersPage() {
   const toggleAll = () =>
     setSelected(allSelected ? new Set() : new Set(users.map((u) => u.id)));
 
-  const bulkDelete = async () => {
-    const ids = [...selected];
+  const bulkDeactivate = async () => {
+    const ids = [...selected].filter((id) => users.find((u) => u.id === id)?.isActive !== false);
     if (ids.length === 0) return;
-    if (!confirm(`Permanently delete ${ids.length} selected user(s) and all their data? This cannot be undone.`)) return;
+    if (!confirm(
+      `Deactivate ${ids.length} selected user(s)? They will not be able to sign in and their roles ` +
+      `are stood down. Their appraisals and history are kept, and this can be undone.`,
+    )) return;
     let ok = 0;
     const fails: string[] = [];
     for (const id of ids) {
-      try { await userApi.deleteUser(id); ok++; }
+      try { await userApi.deactivateUser(id); ok++; }
       catch { fails.push(users.find((u) => u.id === id)?.employeeCode ?? id); }
     }
-    if (ok) toast.success(`Deleted ${ok} user(s)`);
-    if (fails.length) toast.error(`Failed to delete: ${fails.join(', ')}`);
+    if (ok) toast.success(`Deactivated ${ok} user(s)`);
+    if (fails.length) toast.error(`Failed to deactivate: ${fails.join(', ')}`);
     setSelected(new Set());
     load();
   };
@@ -102,11 +109,28 @@ export default function AdminUsersPage() {
     }
   };
 
-  const deleteUser = async (id: string) => {
-    if (!confirm('Permanently delete this user and all their data? This cannot be undone.')) return;
-    await userApi.deleteUser(id);
-    toast.success('User deleted');
-    load();
+  const deactivateUser = async (id: string) => {
+    if (!confirm(
+      'Deactivate this user? They will not be able to sign in and their roles are stood down. ' +
+      'Their appraisals and history are kept, and this can be undone.',
+    )) return;
+    try {
+      await userApi.deactivateUser(id);
+      toast.success('User deactivated');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed');
+    }
+  };
+
+  const reactivateUser = async (id: string) => {
+    try {
+      await userApi.reactivateUser(id);
+      toast.success('User reactivated — assign their roles again if needed');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed');
+    }
   };
 
   const inputCls = "w-full border border-surface-border rounded px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-primary-500";
@@ -146,14 +170,25 @@ export default function AdminUsersPage() {
         }, 100); }}
       />
 
-      <div className="relative mb-4">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name or code..."
-          className="w-full pl-9 border border-surface-border rounded px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-primary-500"
-        />
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name or code..."
+            className="w-full pl-9 border border-surface-border rounded px-3 py-2 text-sm bg-surface-base focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-ink-secondary whitespace-nowrap cursor-pointer">
+          <input
+            type="checkbox"
+            className="cursor-pointer accent-accent-500"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          Show deactivated
+        </label>
       </div>
 
       {showCreate && (
@@ -207,8 +242,8 @@ export default function AdminUsersPage() {
           <span className="text-primary-700 font-medium">{selected.size} selected</span>
           <div className="flex items-center gap-3">
             <button onClick={() => setSelected(new Set())} className="text-xs text-ink-secondary hover:underline">Clear</button>
-            <button onClick={bulkDelete} className="flex items-center gap-1.5 bg-danger-500 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-red-700">
-              <Trash2 size={13} /> Delete selected
+            <button onClick={bulkDeactivate} className="flex items-center gap-1.5 bg-danger-500 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-red-700">
+              <UserMinus size={13} /> Deactivate selected
             </button>
           </div>
         </div>
@@ -249,7 +284,14 @@ export default function AdminUsersPage() {
                   />
                 </td>
                 <td className="px-4 py-2.5 font-mono text-xs">{u.employeeCode}</td>
-                <td className="px-4 py-2.5 font-medium text-ink-primary">{u.name}</td>
+                <td className="px-4 py-2.5 font-medium text-ink-primary">
+                  {u.name}
+                  {u.isActive === false && (
+                    <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
+                      Deactivated
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2.5 text-ink-muted">{u.email}</td>
                 <td className="px-4 py-2.5 text-ink-muted">
                   {u.department?.code ?? u.userRoles?.find((r: any) => r.department?.code)?.department?.code ?? '—'}
@@ -270,7 +312,13 @@ export default function AdminUsersPage() {
                     >
                       <Shield size={11} /> Roles
                     </button>
-                    <button onClick={() => deleteUser(u.id)} className="text-xs text-danger-500 hover:text-red-700">Delete</button>
+                    {u.isActive === false ? (
+                      <button onClick={() => reactivateUser(u.id)} className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700">
+                        <RotateCcw size={12} /> Reactivate
+                      </button>
+                    ) : (
+                      <button onClick={() => deactivateUser(u.id)} className="text-xs text-danger-500 hover:text-red-700">Deactivate</button>
+                    )}
                   </div>
                 </td>
               </tr>
