@@ -104,6 +104,44 @@ function categoryRemarksBlock(cats: any): string {
   </table>`;
 }
 
+// Quarterly target status (see targetStatus.ts): required vs current per
+// target, then what is achieved and what is left. No cadre / tier / eligibility.
+function targetStatusBlock(t: any, year: string): string {
+  const rows = Array.isArray(t?.rows) ? t.rows : [];
+  const heading = `<div style="margin-top:16px"><strong>Your targets for ${year}</strong></div>`;
+  if (!rows.length) {
+    return `${heading}<p style="color:#64748b;font-size:13px;margin:6px 0 12px">Your targets for this year have not been set yet.</p>`;
+  }
+  const body = rows.map((r: any) => `<tr style="border-top:1px solid #e2e8f0">
+      <td style="padding:8px">${r.label}</td>
+      <td style="padding:8px" align="right">${r.required}</td>
+      <td style="padding:8px" align="right">${r.current}</td>
+      <td style="padding:8px;white-space:nowrap;color:${r.achieved ? '#065f46' : '#991b1b'}">${r.status}</td>
+    </tr>`).join('');
+  return `${heading}
+  <table cellpadding="0" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:8px 0;font-size:13px">
+    <tr style="background:#f1f5f9"><th align="left" style="padding:8px">Target</th><th align="right" style="padding:8px">Required</th><th align="right" style="padding:8px">Current</th><th align="left" style="padding:8px">Status</th></tr>
+    ${body}
+  </table>
+  <div style="margin:8px 0 12px;font-size:13px;line-height:1.6;background:#f8fafc;border-left:3px solid #1e3a5f;padding:8px 12px">
+    <strong>Summary</strong><br />
+    <span style="color:#065f46">${t.achievedText}</span><br />
+    <span style="color:#991b1b">${t.leftText}</span>
+  </div>`;
+}
+
+// Rows queued before target status existed carry the old narrative. Render its
+// strengths / areas to improve; Growth focus is no longer shown.
+function legacyNarrative(p: any): string {
+  if (!p.strengths && !p.improvements) {
+    return '<p style="color:#64748b;font-size:13px">Keep up your work this quarter — detailed guidance will follow at the annual review.</p>';
+  }
+  return `<div style="margin:12px 0;font-size:13px;line-height:1.5">
+    ${p.strengths ? `<p style="margin:0 0 6px"><strong style="color:#065f46">Strengths</strong><br />${String(p.strengths).replace(/\n/g, '<br />')}</p>` : ''}
+    ${p.improvements ? `<p style="margin:8px 0 6px"><strong style="color:#991b1b">Areas to improve</strong><br />${String(p.improvements).replace(/\n/g, '<br />')}</p>` : ''}
+  </div>`;
+}
+
 function commentsBlock(p: any): string {
   const items: Array<[string, string]> = [
     ['Teaching', p.teachingComment],
@@ -251,12 +289,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
     <p>Dear <strong>${p.name}</strong>,</p>
     <p>Here is a short summary of your progress this quarter, with a few pointers for the months ahead.</p>
     ${categoryRemarksBlock(p.categories)}
-    ${p.strengths || p.improvements || p.growthTargets ? `
-      <div style="margin:12px 0;font-size:13px;line-height:1.5">
-        ${p.strengths ? `<p style="margin:0 0 6px"><strong style="color:#065f46">Strengths</strong><br />${String(p.strengths).replace(/\n/g, '<br />')}</p>` : ''}
-        ${p.improvements ? `<p style="margin:8px 0 6px"><strong style="color:#991b1b">Areas to improve</strong><br />${String(p.improvements).replace(/\n/g, '<br />')}</p>` : ''}
-        ${p.growthTargets ? `<p style="margin:8px 0 6px"><strong style="color:#1e40af">Growth focus</strong><br />${String(p.growthTargets).replace(/\n/g, '<br />')}</p>` : ''}
-      </div>` : '<p style="color:#64748b;font-size:13px">Keep up your work this quarter — detailed guidance will follow at the annual review.</p>'}
+    ${p.targets ? targetStatusBlock(p.targets, p.year) : legacyNarrative(p)}
     <p style="color:#64748b;font-size:13px">This is a provisional quarterly update to help you plan ahead.</p>
     <p style="margin-top:24px;color:#94a3b8;font-size:11px">Sent per your email preferences. <a href="${FRONTEND_URL}/profile" style="color:#94a3b8">Manage preferences</a>.</p>
   `),

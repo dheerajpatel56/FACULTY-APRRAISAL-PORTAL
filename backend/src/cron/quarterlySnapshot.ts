@@ -3,9 +3,9 @@ import { Quarter } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { enqueueEmail } from '../services/emailService';
 import { TRACKING_INCLUDE, loadTrackingContext, computeRow, latestPerFaculty, type TrackingRow } from '../services/trackingService';
-import { generateNarrative } from '../services/feedbackNarrative';
 import { computeScore } from '../services/scoringEngine';
 import { categoryRemarks } from '../services/categoryRemarks';
+import { targetStatus } from '../services/targetStatus';
 import { voidExpiredProofs } from './proofDeadline';
 
 /**
@@ -31,11 +31,7 @@ export function currentQuarter(date: Date = new Date()): Quarter {
  * loaded with TRACKING_INCLUDE (it carries every category table).
  */
 export function buildQuarterlyPayload(sub: any, row: TrackingRow, yearLabel: string, quarter: Quarter) {
-  const narrative = generateNarrative({
-    cadreLabel: row.cadreLabel,
-    eligible: row.eligibility.eligible,
-    requirements: row.eligibility.requirements,
-  });
+  const score = computeScore(sub);
   return {
     name: row.faculty.name,
     year: yearLabel,
@@ -44,9 +40,11 @@ export function buildQuarterlyPayload(sub: any, row: TrackingRow, yearLabel: str
     tier: row.tier ?? '—',
     eligible: row.eligibility.eligible,
     requirements: row.eligibility.requirements.map((r) => ({ label: r.label, target: r.target, actual: r.actual, met: r.met })),
-    ...narrative,
     // Cat 1-5 self-assessed score vs half of each category's maximum.
-    categories: categoryRemarks(computeScore(sub)),
+    categories: categoryRemarks(score),
+    // Each target: required, current, what is left, plus a summary. Measured
+    // against the faculty's own /500 total, never the reviewer's /550.
+    targets: targetStatus(row.eligibility.requirements, score.selfTotal),
   };
 }
 
@@ -80,7 +78,7 @@ async function snapshotYear(academicYearId: string, quarter: Quarter): Promise<n
     count++;
 
     // Auto-feedback email (provisional quarterly standing) — sent directly to
-    // the faculty, no HoD step. Includes the auto-generated narrative.
+    // the faculty, no HoD step. Category remarks + target status.
     try {
       await enqueueEmail({
         toUserId: row.faculty.id,
