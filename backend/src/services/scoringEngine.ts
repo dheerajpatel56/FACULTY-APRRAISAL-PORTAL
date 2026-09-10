@@ -305,6 +305,25 @@ export function citationScore(totalCitations?: number | null): number {
   return tc > 100 ? 5 : tc >= 51 ? 3 : tc >= 11 ? 2 : tc >= 3 ? 1 : 0;
 }
 
+/**
+ * 2.3 per-row working, exported for the views that show it; mirrored in the
+ * frontend port. PDF: international publisher author 10 / editor 5, national
+ * author 5 / editor 3. An untitled row is a placeholder, not a book. Owner
+ * decision 2026-09-11: a row with no publisher level chosen scores 0 — it
+ * used to default to International, which paid 10 to a national book whose
+ * owner forgot to change it.
+ */
+export function bookRowScore(r: { title?: string | null; scope?: string | null; isEdited?: boolean | string | null }) {
+  if (!String(r.title ?? '').trim()) return { score: 0, reason: 'Enter the title to score this entry' };
+  const scope = r.scope;
+  if (scope !== Scope.INTERNATIONAL && scope !== Scope.NATIONAL) {
+    return { score: 0, reason: 'Pick National or International to score this entry' };
+  }
+  const edited = r.isEdited === true || r.isEdited === 'true';
+  const score = scope === Scope.INTERNATIONAL ? (edited ? 5 : 10) : (edited ? 3 : 5);
+  return { score, reason: `${scope === Scope.INTERNATIONAL ? 'International' : 'National'} publisher, ${edited ? 'editor' : 'author'}` };
+}
+
 function scoreCategory2(s: FullSubmission) {
   // 2.1 Publications — A journals + B conference proceedings + C conference
   // book chapters share one cap of 60. Per-row rules in publicationRowScore.
@@ -317,18 +336,10 @@ function scoreCategory2(s: FullSubmission) {
   // 2.2 Citations (max 5) — bands in citationScore.
   const citations = citationScore(s.cat2Citations?.totalCitations);
 
-  // 2.3 Books & Chapters (max 10) — scope x role matrix.
-  // INTERNATIONAL: author 10, editor 5. NATIONAL: author 5, editor 3.
-  const bookRowScore = (scope: Scope, isEdited: boolean): number => {
-    if (scope === Scope.NATIONAL) return isEdited ? 3 : 5;
-    return isEdited ? 5 : 10; // INTERNATIONAL (default)
-  };
-  // An untitled row is a placeholder, not a book — without this every empty row
-  // pays out the 5-mark international-author default.
-  const titled = (r: { title?: string | null }) => !!r.title && r.title.trim() !== '';
+  // 2.3 Books & Chapters (max 10) — per-row rules in bookRowScore.
   let books = 0;
-  for (const b of s.cat2Books) if (titled(b)) books += bookRowScore(b.scope, b.isEdited);
-  for (const bc of s.cat2BookChapters) if (titled(bc)) books += bookRowScore(bc.scope, bc.isEdited);
+  for (const b of s.cat2Books) books += bookRowScore(b).score;
+  for (const bc of s.cat2BookChapters) books += bookRowScore(bc).score;
   books = Math.min(books, 10);
 
   // 2.4 Patents / IPR (max 20) — PDF scores Granted 10 and Published 5 only;

@@ -252,6 +252,21 @@ export function countAuthors(list?: string | null): number {
   return String(list ?? '').split(/[,;&]|\band\b/i).map((s) => s.trim()).filter(Boolean).length;
 }
 
+/**
+ * 2.3 per-row working. Mirror of the backend's bookRowScore: international
+ * publisher author 10 / editor 5, national author 5 / editor 3; an untitled
+ * row, or one with no publisher level chosen, scores 0 (owner decision
+ * 2026-09-11 — it used to default to International).
+ */
+export function bookRowScore(r: { title?: string | null; scope?: string | null; isEdited?: boolean | string | null } | null | undefined) {
+  if (!String(r?.title ?? '').trim()) return { score: 0, reason: 'Enter the title to score this entry' };
+  const scope = r?.scope;
+  if (scope !== 'INTERNATIONAL' && scope !== 'NATIONAL') return { score: 0, reason: 'Pick National or International to score this entry' };
+  const edited = r?.isEdited === true || r?.isEdited === 'true';
+  const score = scope === 'INTERNATIONAL' ? (edited ? 5 : 10) : (edited ? 3 : 5);
+  return { score, reason: `${scope === 'INTERNATIONAL' ? 'International' : 'National'} publisher, ${edited ? 'editor' : 'author'}` };
+}
+
 /** 2.2 score from Scopus / WoS citations. Mirror of the backend's citationScore. */
 export function citationScore(totalCitations?: number | null): number {
   const tc = Number(totalCitations);
@@ -304,16 +319,10 @@ function scoreCategory2(v: ScoreFormValues) {
   // 2.2 Citations (max 5) — bands in citationScore.
   const citations = citationScore(v.cat2Citations?.totalCitations);
 
-  // 2.3 Books & Chapters (max 10) — scope x role matrix.
-  const bookRowScore = (scope: Scope | undefined, isEdited: boolean): number => {
-    if (scope === 'NATIONAL') return isEdited ? 3 : 5;
-    return isEdited ? 5 : 10; // INTERNATIONAL (default)
-  };
+  // 2.3 Books & Chapters (max 10) — per-row rules in bookRowScore.
   let books = 0;
-  // An untitled row is a placeholder, not a book.
-  const titled = (r: { title?: string | null } | undefined) => !!r?.title && r.title.trim() !== '';
-  for (const b of arr<Cat2BookInput>(v.cat2Books)) if (titled(b)) books += bookRowScore(b?.scope, !!b?.isEdited);
-  for (const bc of arr<Cat2BookChapterInput>(v.cat2BookChapters)) if (titled(bc)) books += bookRowScore(bc?.scope, !!bc?.isEdited);
+  for (const b of arr<Cat2BookInput>(v.cat2Books)) books += bookRowScore(b as any).score;
+  for (const bc of arr<Cat2BookChapterInput>(v.cat2BookChapters)) books += bookRowScore(bc as any).score;
   books = Math.min(books, 10);
 
   // 2.4 Patents / IPR (max 20) — Granted 10, Published 5; a merely Filed

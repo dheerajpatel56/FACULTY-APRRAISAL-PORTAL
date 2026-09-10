@@ -69,6 +69,9 @@ export function cleanRow(row: any) {
       out[k] = v === '' || v == null ? null : new Date(v);
     } else if (typeof v === 'string' && v === '' && (k.endsWith('Id') || NULLABLE_FILE_KEYS.has(k))) {
       out[k] = null;
+    } else if (k === 'scope' && v === '') {
+      // 2.3: "no publisher level chosen" is null — '' is not a Scope value.
+      out[k] = null;
     } else {
       out[k] = v;
     }

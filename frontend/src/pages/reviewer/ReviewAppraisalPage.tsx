@@ -10,7 +10,7 @@ import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
 import {
   courseResultScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors, citationScore,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore,
 } from '../../utils/scoring';
 import { citationWarnings } from '../../utils/citations';
 
@@ -309,6 +309,30 @@ export default function ReviewAppraisalPage() {
                 </>
               );
             })()}
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">
+              2.3 Books &amp; Academic Book Chapters ({(submission.cat2Books?.length ?? 0) + (submission.cat2BookChapters?.length ?? 0)})
+            </h2>
+            {([
+              ['Books', submission.cat2Books, false],
+              ['Book chapters', submission.cat2BookChapters, true],
+            ] as const).map(([heading, rows, isChapter]) => (rows?.length ? (
+              <div key={heading} className="mb-2">
+                <div className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide mb-0.5">{heading}</div>
+                {rows.map((b: any) => {
+                  // Same helper the scoring engines use — never re-derive 2.3 here.
+                  const r = bookRowScore(b);
+                  const bits = [b.publisher, b.isbn ? `ISBN ${b.isbn}` : '', isChapter && b.chapterNo ? `ch. ${b.chapterNo}` : ''].filter(Boolean).join(' · ');
+                  return (
+                    <div key={b.id} className="text-xs text-ink-secondary mb-1">
+                      "{b.title}"{bits ? ` — ${bits}` : ''} — <span className={r.score ? '' : 'text-amber-700'}>{r.reason}</span> → {r.score}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null))}
           </Card>
 
           <ProofVerificationPanel submissionId={id!} />

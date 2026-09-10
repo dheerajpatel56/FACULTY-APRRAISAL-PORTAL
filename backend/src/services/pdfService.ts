@@ -2,7 +2,7 @@ import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
 import {
   lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors, citationScore,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore,
 } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
@@ -287,13 +287,25 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
       sub.cat2Citations.hIndexScopus, sub.cat2Citations.hIndexWos, citationScore(sub.cat2Citations.totalCitations),
     ]] : []
   )}
-  ${listTable('2.3 Books & Book Chapters (combined, max 10)',
-    ['Title', 'Authors', 'Publisher', 'Kind', 'Type'],
-    [
-      ...(sub.cat2Books ?? []).map((b: any) => [b.title, b.authors, b.publisher, 'Book', b.isEdited ? 'Edited' : 'Published']),
-      ...(sub.cat2BookChapters ?? []).map((b: any) => [b.title, b.authors, b.publisher, 'Chapter', b.isEdited ? 'Edited' : 'Published']),
-    ]
-  )}
+  ${(() => {
+    // 2.3 — the PDF's columns. Same helper the engine scores with — never
+    // re-derive 2.3 here.
+    const row = (b: any, kind: 'Book' | 'Chapter') => {
+      const r = bookRowScore(b);
+      const level = b.scope === 'INTERNATIONAL' ? 'International' : b.scope === 'NATIONAL' ? 'National' : 'Not chosen';
+      return [
+        b.title, kind, level, b.authors, b.publisher || '—', kind === 'Chapter' ? (b.chapterNo || '—') : '—',
+        b.isbn || '—', b.isEdited ? 'Edited' : 'Published', r.score, proofCell(b.proofFile),
+      ];
+    };
+    return listTable('2.3 Books and Academic Book Chapters Published / Edited',
+      ['Title of Book / Chapter / Article', 'Book / Chapter', 'National / International', 'Authors', 'Publisher Details',
+        'Chapter Details', 'ISBN No.', 'Published / Edited', 'Score', 'Proof'],
+      [
+        ...(sub.cat2Books ?? []).map((b: any) => row(b, 'Book')),
+        ...(sub.cat2BookChapters ?? []).map((b: any) => row(b, 'Chapter')),
+      ]);
+  })()}
   ${listTable('Patents',
     ['Title', 'Status', 'Application No', 'Date', 'Proof'],
     (sub.cat2Patents ?? []).map((p: any) => [p.title, p.status, p.appNumber, fmtDate(p.dateOfPub), proofCell(p.proofFile)])

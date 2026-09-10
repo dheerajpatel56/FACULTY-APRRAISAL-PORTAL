@@ -425,8 +425,9 @@ describe('sample appraisal — form alignment', () => {
     ],
     // 2.2 — total citations 61 -> 3 (51-100 tier)
     cat2Citations: { totalCitations: 61 },
-    // 2.3 — 1 published book chapter, default (international) scope, author -> 10
-    cat2BookChapters: [{ title: 'Book chapter', isEdited: false }],
+    // 2.3 — 1 published book chapter, international publisher, author -> 10.
+    // Scope is explicit: since 2026-09-11 a row with no scope scores 0.
+    cat2BookChapters: [{ title: 'Book chapter', scope: 'INTERNATIONAL', isEdited: false }],
     // 2.4 — 1 published patent -> 5 (published tier, not granted)
     cat2Patents: [{ status: 'PUBLISHED' }],
     // 2.8 -> 5, 2.9 institute + industry linkages (2 + 3 = 5 x 5 = 25) -> capped 10

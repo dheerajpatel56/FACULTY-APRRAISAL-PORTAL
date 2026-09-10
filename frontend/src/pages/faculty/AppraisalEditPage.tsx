@@ -10,7 +10,8 @@ import { toDateInputs } from '../../utils/dateInputs';
 import { useAuthStore } from '../../store/authStore';
 import {
   computeScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, type PublicationKind, type ScoreBreakdown,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore,
+  type PublicationKind, type ScoreBreakdown,
 } from '../../utils/scoring';
 import { citationWarnings } from '../../utils/citations';
 
@@ -386,6 +387,36 @@ export default function AppraisalEditPage() {
     return (
       <div className={`mt-2 text-xs ${score ? 'text-ink-muted' : 'text-amber-700'}`}>
         {n ? `${n} author${n === 1 ? '' : 's'} · ` : ''}{reason} → <span className="font-medium">{score}</span>
+      </div>
+    );
+  };
+
+  // 2.3 controls. No publisher level is null ('' is not a Scope), and an
+  // unchosen row scores 0 — it used to default to International.
+  const scopeSelect = (name: string) => (
+    <select {...register(name as any, { setValueAs: (v) => (v === '' || v == null ? null : v) })} className={inputCls}>
+      <option value="">Select…</option>
+      <option value="INTERNATIONAL">International</option>
+      <option value="NATIONAL">National</option>
+    </select>
+  );
+  const editedSelect = (name: string, editorLabel: string) => (
+    <select {...register(name as any, { setValueAs: (v) => v === true || v === 'true' })} className={inputCls}>
+      <option value="false">Published (Author)</option>
+      <option value="true">{editorLabel}</option>
+    </select>
+  );
+  const normTitle = (t: unknown) => String(t ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+  // Per-row 2.3 working, from the same helper the engines score with. A chapter
+  // also entered under 2.1-C would count twice, so it is flagged.
+  const bookLine = (row: any, isChapter: boolean) => {
+    const r = bookRowScore(row);
+    const title = normTitle(row?.title);
+    const dup = isChapter && !!title && ((watchedValues as any)?.cat2ConfBookChapters ?? []).some((c: any) => normTitle(c?.title) === title);
+    return (
+      <div className={`mt-2 text-xs ${r.score ? 'text-ink-muted' : 'text-amber-700'}`}>
+        {r.reason} → <span className="font-medium">{r.score}</span>
+        {dup && <span className="block text-amber-700 mt-0.5">⚠ Also entered under 2.1-C (book chapters from conferences) — a chapter should count in one place only.</span>}
       </div>
     );
   };
@@ -857,67 +888,51 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.3 Books &amp; Book Chapters</h2>
+                <h2 className="font-semibold text-ink-primary">2.3 Books and Academic Book Chapters Published / Edited</h2>
                 <ScoreBadge value={live.cat2.books} max={10} />
               </div>
-              <p className="text-xs text-ink-muted mb-3">Books and academic book chapters are scored together against a single maximum of 10 marks.</p>
+              <p className="text-xs text-ink-muted mb-3">International publisher: author 10, editor 5. National publisher: author 5, editor 3. Books and chapters share one maximum of 10. Choose National or International for every entry — a row without it scores 0.</p>
 
               <h3 className="text-sm font-semibold text-ink-secondary mb-2">Books</h3>
               {books.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2Books.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Books.${i}.authors`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Publisher</label><input {...register(`cat2Books.${i}.publisher`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>ISBN</label><input {...register(`cat2Books.${i}.isbn`)} className={inputCls} /></div>
-                    <div>
-                      <label className={labelCls}>Scope</label>
-                      <select {...register(`cat2Books.${i}.scope`)} className={inputCls}>
-                        <option value="INTERNATIONAL">International</option><option value="NATIONAL">National</option>
-                      </select>
-                    </div>
-                    <div className="flex items-end pb-1">
-                      <label className="flex items-center gap-2 text-sm text-ink-secondary">
-                        <input type="checkbox" {...register(`cat2Books.${i}.isEdited`)} /> Edited
-                      </label>
-                    </div>
+                    <div><label className={labelCls}>Title of the Book</label><input {...register(`cat2Books.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as appeared on the book)</label><input {...register(`cat2Books.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Publisher Details</label><input {...register(`cat2Books.${i}.publisher`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>ISBN No.</label><input {...register(`cat2Books.${i}.isbn`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>National / International</label>{scopeSelect(`cat2Books.${i}.scope`)}</div>
+                    <div><label className={labelCls}>Published / Edited</label>{editedSelect(`cat2Books.${i}.isEdited`, 'Edited (Editor)')}</div>
                     {proofField(`cat2Books.${i}.proofFile`, 'Cover / Proof')}
                   </div>
+                  {bookLine((watchedValues as any)?.cat2Books?.[i], false)}
                   <button type="button" onClick={() => books.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Book', () => books.append({ title: '', authors: '', publisher: '', isbn: '', isEdited: false, scope: 'INTERNATIONAL', proofFile: '' }))}
+              {addRowBtn('Add Book', () => books.append({ title: '', authors: '', publisher: '', isbn: '', isEdited: false, scope: null, proofFile: '' }))}
 
               <h3 className="text-sm font-semibold text-ink-secondary mt-5 mb-2">Academic Book Chapters</h3>
               {bookChapters.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2BookChapters.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2BookChapters.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Title of the Chapter / Article</label><input {...register(`cat2BookChapters.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Authors (as appeared on the chapter)</label><input {...register(`cat2BookChapters.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
                       {selectOther(`cat2BookChapters.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
-                    <div><label className={labelCls}>Publisher</label><input {...register(`cat2BookChapters.${i}.publisher`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>ISBN</label><input {...register(`cat2BookChapters.${i}.isbn`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Chapter No</label><input {...register(`cat2BookChapters.${i}.chapterNo`)} className={inputCls} /></div>
-                    <div>
-                      <label className={labelCls}>Scope</label>
-                      <select {...register(`cat2BookChapters.${i}.scope`)} className={inputCls}>
-                        <option value="INTERNATIONAL">International</option><option value="NATIONAL">National</option>
-                      </select>
-                    </div>
-                    <div className="flex items-end pb-1">
-                      <label className="flex items-center gap-2 text-sm text-ink-secondary">
-                        <input type="checkbox" {...register(`cat2BookChapters.${i}.isEdited`)} /> Edited Book
-                      </label>
-                    </div>
+                    <div><label className={labelCls}>Publisher Details</label><input {...register(`cat2BookChapters.${i}.publisher`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>ISBN No.</label><input {...register(`cat2BookChapters.${i}.isbn`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Details of Chapter Contributed (chapter no. etc.)</label><input {...register(`cat2BookChapters.${i}.chapterNo`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>National / International</label>{scopeSelect(`cat2BookChapters.${i}.scope`)}</div>
+                    <div><label className={labelCls}>Published / Edited</label>{editedSelect(`cat2BookChapters.${i}.isEdited`, 'Edited (Editor of the book)')}</div>
                     {proofField(`cat2BookChapters.${i}.proofFile`, 'Cover / Proof')}
                   </div>
+                  {bookLine((watchedValues as any)?.cat2BookChapters?.[i], true)}
                   <button type="button" onClick={() => bookChapters.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Book Chapter', () => bookChapters.append({ title: '', authors: '', authorPosition: '1st', publisher: '', isbn: '', chapterNo: '', isEdited: false, scope: 'INTERNATIONAL', proofFile: '' }))}
+              {addRowBtn('Add Book Chapter', () => bookChapters.append({ title: '', authors: '', authorPosition: '1st', publisher: '', isbn: '', chapterNo: '', isEdited: false, scope: null, proofFile: '' }))}
             </div>
 
             <div>

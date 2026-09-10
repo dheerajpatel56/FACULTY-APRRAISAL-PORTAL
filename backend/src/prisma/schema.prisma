@@ -600,7 +600,9 @@ model Cat2BookChapter {
   isbn           String?
   chapterNo      String?
   isEdited       Boolean @default(false)
-  scope          Scope   @default(INTERNATIONAL)
+  // National / International publisher. Null until the faculty chooses — an
+  // unchosen row scores 0 (it defaulted to International = 10 until 2026-09-11).
+  scope          Scope?
   proofFile      String? // cover/coverage proof
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
@@ -638,7 +640,8 @@ model Cat2Book {
   publisher    String?
   isbn         String?
   isEdited     Boolean @default(false)
-  scope        Scope   @default(INTERNATIONAL)
+  // National / International publisher. Null until chosen — scores 0 (see Cat2BookChapter).
+  scope        Scope?
   proofFile    String? // cover/coverage proof
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
