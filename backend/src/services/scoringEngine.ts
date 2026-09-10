@@ -146,20 +146,41 @@ type FullSubmission = AppraisalSubmission & {
   cat5Internships: Cat5Internship[];
 };
 
+/**
+ * 1.1 per-course working, exported so views that show it (the PDF export) use
+ * the numbers the engine scores with. Mirrored by lectureRowScore in the
+ * frontend port.
+ *
+ * PDF: 96-100% engagement 10, 90-95% 8, 80-89% 6, below 80% 4; +5 for a novel
+ * pedagogical method. Owner decisions (2026-09-11):
+ *  - The engagement % is rounded to a whole number before banding, because the
+ *    PDF's bands are whole numbers (95.5% -> 96 -> 10).
+ *  - No periods planned, or none conducted, means no engagement to score: the
+ *    whole row is 0, novelty included. Guarding "planned" is not pedantry —
+ *    `conducted / 0` is Infinity, which once cleared the 96% band — and a
+ *    blank "conducted" used to collect the 4-mark floor.
+ *  - A named method counts as novel pedagogy used, even if the box is unticked.
+ */
+export function lectureRowScore(c: {
+  periodPlanned?: number | null;
+  periodsConducted?: number | null;
+  novelPedagogyUsed?: boolean | null;
+  novelPedagogyMethod?: string | null;
+}) {
+  const planned = Number(c.periodPlanned);
+  const conducted = Number(c.periodsConducted);
+  if (!(planned > 0) || !(conducted > 0)) return { pct: null as number | null, engagement: 0, novelty: 0, total: 0 };
+  const pct = Math.round((conducted / planned) * 100);
+  const engagement = pct >= 96 ? 10 : pct >= 90 ? 8 : pct >= 80 ? 6 : 4;
+  const used = !!c.novelPedagogyUsed || !!(c.novelPedagogyMethod ?? '').trim();
+  const novelty = used ? 5 : 0;
+  return { pct, engagement, novelty, total: engagement + novelty };
+}
+
 function scoreCategory1(s: FullSubmission) {
-  // 1.1 Lectures (max 40)
+  // 1.1 Lectures (max 40) — per-course rules in lectureRowScore.
   let lectures = 0;
-  for (const c of s.cat1Courses) {
-    // Engagement is meaningless without a planned figure to measure against.
-    // Guarding this is not pedantry: `conducted / 0` is Infinity, which cleared
-    // the 96% band and paid a blank-planned row the full 10, while an entirely
-    // empty row divided 0/0 to NaN and fell through to the 4-mark floor.
-    if (!(c.periodPlanned > 0)) continue;
-    const pct = (c.periodsConducted / c.periodPlanned) * 100;
-    const base = pct >= 96 ? 10 : pct >= 90 ? 8 : pct >= 80 ? 6 : 4;
-    const novelty = c.novelPedagogyUsed ? 5 : 0;
-    lectures += base + novelty;
-  }
+  for (const c of s.cat1Courses) lectures += lectureRowScore(c).total;
   lectures = Math.min(lectures, 40);
 
   // 1.2 Attendance / Feedback / Results (per course max 20, section max 80).

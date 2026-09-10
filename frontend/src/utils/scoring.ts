@@ -32,6 +32,7 @@ export interface Cat1CourseInput {
   periodPlanned?: number;
   periodsConducted?: number;
   novelPedagogyUsed?: boolean;
+  novelPedagogyMethod?: string | null;
 }
 
 export interface Cat1CourseResultInput {
@@ -226,19 +227,9 @@ const isIndexed = (i: PublicationIndex | undefined) =>
   !!i && (QUALITY_JOURNAL.includes(i) || OTHER_INDEXED.includes(i));
 
 function scoreCategory1(v: ScoreFormValues) {
-  // 1.1 Lectures (max 40)
+  // 1.1 Lectures (max 40) — per-course rules in lectureRowScore.
   let lectures = 0;
-  for (const c of arr<Cat1CourseInput>(v.cat1Courses)) {
-    const periodPlanned = n(c?.periodPlanned);
-    const periodsConducted = n(c?.periodsConducted);
-    // No planned figure, no engagement percentage. `conducted / 0` is Infinity,
-    // which used to clear the 96% band and pay a blank row full marks.
-    if (!(periodPlanned > 0)) continue;
-    const pct = (periodsConducted / periodPlanned) * 100;
-    const base = pct >= 96 ? 10 : pct >= 90 ? 8 : pct >= 80 ? 6 : 4;
-    const novelty = c?.novelPedagogyUsed ? 5 : 0;
-    lectures += base + novelty;
-  }
+  for (const c of arr<Cat1CourseInput>(v.cat1Courses)) lectures += lectureRowScore(c).total;
   lectures = Math.min(lectures, 40);
 
   // 1.2 Attendance / Feedback / Results (per course max 20, section max 80).
@@ -452,6 +443,23 @@ function scoreCategory5(v: ScoreFormValues) {
  * re-implementing the formulas. Kept inside this module on purpose — it is
  * covered by the parity fixture through computeScore.
  */
+/**
+ * 1.1 per-course working (engagement %, engagement score, novelty, row total).
+ * Mirror of the backend's lectureRowScore — same rules, see the comment there:
+ * % rounded to a whole number before banding; no periods planned or conducted
+ * scores 0 for the whole row; a named method counts as novel pedagogy used.
+ */
+export function lectureRowScore(c: Cat1CourseInput | null | undefined) {
+  const planned = n(c?.periodPlanned);
+  const conducted = n(c?.periodsConducted);
+  if (!(planned > 0) || !(conducted > 0)) return { pct: null as number | null, engagement: 0, novelty: 0, total: 0 };
+  const pct = Math.round((conducted / planned) * 100);
+  const engagement = pct >= 96 ? 10 : pct >= 90 ? 8 : pct >= 80 ? 6 : 4;
+  const used = !!c?.novelPedagogyUsed || !!(c?.novelPedagogyMethod ?? '').trim();
+  const novelty = used ? 5 : 0;
+  return { pct, engagement, novelty, total: engagement + novelty };
+}
+
 export function courseResultScore(c: Cat1CourseResultInput | null | undefined) {
   const A = Math.min(Math.max(n(c?.avgAttendancePct), 0) / 100 * 5, 5);
   const B = Math.min(Math.max(n(c?.feedbackReceived), 0), 5);

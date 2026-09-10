@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import SelectWithOther from '../../components/SelectWithOther';
 import { useAuthStore } from '../../store/authStore';
-import { computeScore, type ScoreBreakdown } from '../../utils/scoring';
+import { computeScore, lectureRowScore, type ScoreBreakdown } from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
@@ -330,14 +330,17 @@ export default function AppraisalEditPage() {
   );
 
   // Dropdown whose "Other" opens a text box, bound to a form field path.
-  const selectOther = (name: string, options: readonly string[], placeholder?: string, otherPlaceholder?: string) => (
+  const selectOther = (
+    name: string, options: readonly string[], placeholder?: string, otherPlaceholder?: string,
+    onPicked?: (value: string) => void,
+  ) => (
     <Controller
       control={control}
       name={name as any}
       render={({ field }) => (
         <SelectWithOther
           value={field.value}
-          onChange={field.onChange}
+          onChange={(v) => { field.onChange(v); onPicked?.(v); }}
           options={options}
           placeholder={placeholder}
           otherPlaceholder={otherPlaceholder}
@@ -444,6 +447,7 @@ export default function AppraisalEditPage() {
                 <h2 className="font-semibold text-ink-primary">1.1 Courses Taught — Lectures</h2>
                 <ScoreBadge value={live.cat1.lectures} max={40} />
               </div>
+              <p className="text-xs text-ink-muted mb-3">Per course: engagement (periods conducted ÷ planned) 96–100% → 10, 90–95% → 8, 80–89% → 6, below 80% → 4, plus 5 if a novel pedagogical method was used for at least 25% of the periods. Section max 40.</p>
               <p className="text-xs text-ink-muted mb-3">Lecture delivery score from periods conducted vs planned (+ novel pedagogy).</p>
               {courses.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
@@ -473,15 +477,34 @@ export default function AppraisalEditPage() {
                     </div>
                     <div>
                       <label className={labelCls}>Novel Pedagogy Method</label>
-                      {selectOther(`cat1Courses.${i}.novelPedagogyMethod`, NOVEL_PEDAGOGY_OPTIONS, 'Select...', 'Specify method')}
+                      {/* Picking a method means it was used — tick the box with it. */}
+                      {selectOther(`cat1Courses.${i}.novelPedagogyMethod`, NOVEL_PEDAGOGY_OPTIONS, 'Select...', 'Specify method',
+                        (v) => { if (v) setValue(`cat1Courses.${i}.novelPedagogyUsed`, true, { shouldDirty: true }); })}
                     </div>
                     <div className="flex items-end pb-1">
                       <label className="flex items-center gap-2 text-sm text-ink-secondary">
-                        <input type="checkbox" {...register(`cat1Courses.${i}.novelPedagogyUsed`)} />
+                        {/* Unticking clears the method, or the method alone would still earn the 5. */}
+                        <input type="checkbox" {...register(`cat1Courses.${i}.novelPedagogyUsed`, {
+                          onChange: (e) => { if (!e.target.checked) setValue(`cat1Courses.${i}.novelPedagogyMethod`, '', { shouldDirty: true }); },
+                        })} />
                         Novel Pedagogy Used
                       </label>
                     </div>
                   </div>
+                  {(() => {
+                    // Same helper the engines score with — the working, per course.
+                    const row = (watchedValues as any)?.cat1Courses?.[i] ?? {};
+                    const r = lectureRowScore(row);
+                    const needsMethod = !!row.novelPedagogyUsed && !String(row.novelPedagogyMethod ?? '').trim();
+                    return (
+                      <div className="mt-2 text-xs text-ink-muted">
+                        {r.pct == null ? 'Enter periods planned and conducted to score this course.' : `Engagement ${r.pct}% → ${r.engagement}`}
+                        {r.novelty ? ' · Novel pedagogy +5' : ''}
+                        {' · '}<span className="font-medium text-ink-secondary">Course total {r.total}/15</span>
+                        {needsMethod && <span className="block text-amber-700 mt-1">Pick the novel pedagogy method you used.</span>}
+                      </div>
+                    );
+                  })()}
                   <button type="button" onClick={() => courses.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}

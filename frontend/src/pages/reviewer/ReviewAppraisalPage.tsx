@@ -8,7 +8,7 @@ import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
-import { courseResultScore } from '../../utils/scoring';
+import { courseResultScore, lectureRowScore } from '../../utils/scoring';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -177,11 +177,18 @@ export default function ReviewAppraisalPage() {
 
           <Card>
             <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">1.1 Courses — Lectures ({submission.cat1Courses?.length ?? 0})</h2>
-            {submission.cat1Courses?.map((c: any) => (
-              <div key={c.id} className="text-xs text-ink-secondary mb-1">
-                {c.courseName} ({c.level}) — Periods: {c.periodsConducted}/{c.periodPlanned}{c.novelPedagogyUsed ? ' | Novel pedagogy' : ''}
-              </div>
-            ))}
+            {submission.cat1Courses?.map((c: any) => {
+              // Same helper the scoring engines use — never re-derive 1.1 here.
+              const r = lectureRowScore(c);
+              return (
+                <div key={c.id} className="text-xs text-ink-secondary mb-1">
+                  {c.courseName} ({c.level}, {c.yearSem}) — Periods: {c.periodsConducted}/{c.periodPlanned}
+                  {r.pct != null ? ` = ${r.pct}% → ${r.engagement}` : ' → 0'}
+                  {r.novelty ? ` | Novel pedagogy${c.novelPedagogyMethod ? ` (${c.novelPedagogyMethod})` : ''} +5` : ''}
+                  {` | Total: ${r.total}/15`}
+                </div>
+              );
+            })}
           </Card>
 
           <Card>

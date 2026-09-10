@@ -1,11 +1,11 @@
 {
   "cat1": {
-    "lectures": 23,
+    "lectures": 25,
     "attendanceFeedback": 16.75,
     "projects": 9,
     "eContent": 4,
     "ict": 2,
-    "total": 54.75
+    "total": 56.75
   },
   "cat2": {
     "publications": 35,
@@ -42,5 +42,5 @@
     "internships": 5,
     "total": 50
   },
-  "selfTotal": 342.75
+  "selfTotal": 344.75
 }

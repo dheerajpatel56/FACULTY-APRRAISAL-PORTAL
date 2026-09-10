@@ -174,7 +174,7 @@ describe('computeScore — robustness (partial/missing form state)', () => {
       cat5Awards: [{ level: 'state' }],
     };
     const result = computeScore(partial);
-    expect(result.cat1.lectures).toBe(13); // base 8 (95.8% >=90) + 5 novelty
+    expect(result.cat1.lectures).toBe(15); // base 10 (95.8% rounds to 96) + 5 novelty
     expect(result.cat2.publications).toBe(15);
     expect(result.cat3.advQual).toBe(0);
     expect(result.cat5.awards).toBe(5);

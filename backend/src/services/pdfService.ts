@@ -1,5 +1,6 @@
 import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
+import { lectureRowScore } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -198,8 +199,17 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
 
   <h2>Cat 1 — Teaching &amp; Learning</h2>
   ${listTable('1.1 Courses Handled',
-    ['Course', 'Level', 'Year/Sem', 'Periods Planned', 'Conducted', 'Novel Pedagogy Method'],
-    (sub.cat1Courses ?? []).map((c: any) => [c.courseName, c.level, c.yearSem, c.periodPlanned, c.periodsConducted, c.novelPedagogyUsed ? (c.novelPedagogyMethod || 'Yes') : 'No'])
+    ['Course', 'Level', 'Year/Sem', 'Novel Pedagogy Method', 'Novelty Score', 'Periods Planned', 'Conducted', 'Engagement %', 'Engagement Score', 'Total'],
+    (sub.cat1Courses ?? []).map((c: any) => {
+      // Same helper the engine scores with — never re-derive 1.1 here.
+      const r = lectureRowScore(c);
+      return [
+        c.courseName, c.level, c.yearSem,
+        r.novelty ? (c.novelPedagogyMethod || 'Yes') : '—', r.novelty,
+        c.periodPlanned, c.periodsConducted,
+        r.pct == null ? '—' : `${r.pct}%`, r.engagement, r.total,
+      ];
+    })
   )}
   ${listTable('1.2 Courses Taught — Attendance, Feedback, Results',
     ['Course', 'Class Size', 'Avg. Attendance %', 'Feedback', 'Pass %'],
