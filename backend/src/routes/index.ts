@@ -146,6 +146,8 @@ router.delete('/admin/review-windows/:id', authenticate, roleGuard([RoleType.ADM
 router.get('/appraisals/:id/feedback', authenticate, feedback.getFeedback);
 router.put('/appraisals/:id/feedback', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), feedback.saveFeedback);
 router.post('/appraisals/:id/feedback/issue', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), feedback.issueFeedback);
+// Visibility is decided in the controller (owner vs HoD/admin), as for GET feedback.
+router.get('/appraisals/:id/feedback/pdf', authenticate, feedback.downloadFeedbackPdf);
 
 // Admin force actions
 router.get('/appraisals/:id/pdf', authenticate, appraisal.downloadAppraisalPdf);

@@ -41,4 +41,8 @@ export const feedbackApi = {
     api.put(`/appraisals/${submissionId}/feedback`, body).then((r) => r.data),
   issue: (submissionId: string, body: FeedbackInput): Promise<FeedbackData> =>
     api.post(`/appraisals/${submissionId}/feedback/issue`, body).then((r) => r.data),
+  // Server decides what goes in it: the owner's copy carries the narrative
+  // only, a HoD's also carries the cadre/eligibility standing.
+  downloadPdf: (submissionId: string) =>
+    api.get(`/appraisals/${submissionId}/feedback/pdf`, { responseType: 'blob' }).then((r) => r.data),
 };

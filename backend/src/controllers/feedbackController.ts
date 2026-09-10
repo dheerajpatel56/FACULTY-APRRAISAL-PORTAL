@@ -159,3 +159,59 @@ export async function issueFeedback(req: Request, res: Response) {
 
   return res.json(feedback);
 }
+
+// Whether this viewer's copy of the feedback carries the cadre / eligibility
+// standing. Only an author does: the owner gets the narrative alone, and that
+// holds when the owner happens to be a HoD or an incharge filing their own
+// appraisal — the rule is ownership, not role.
+export function snapshotForViewer(v: { isOwner: boolean; editable: boolean }): boolean {
+  if (v.isOwner) return false;
+  return v.editable;
+}
+
+// GET /appraisals/:id/feedback/pdf
+// Same visibility split as getFeedback: the owner gets the narrative only, and
+// only once it is ISSUED; a HoD/admin also gets the cadre + eligibility
+// standing. The check is on ownership, not role — a HoD or incharge downloading
+// their OWN feedback is the owner and sees the faculty view of it.
+export async function downloadFeedbackPdf(req: Request, res: Response) {
+  const sub = await prisma.appraisalSubmission.findUnique({
+    where: { id: req.params.id },
+    include: {
+      user: { select: { id: true, name: true, employeeCode: true, designation: true, departmentId: true, department: true } },
+      academicYear: { select: { label: true } },
+    },
+  });
+  if (!sub) return res.status(404).json({ error: 'Not found' });
+  if (!canViewUserResource(req.user!, sub.userId, sub.user.departmentId)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const isOwner = req.user!.id === sub.userId;
+  const editable = canAuthor(req.user!, sub.userId, sub.user.departmentId);
+
+  const feedback = await prisma.feedback.findUnique({
+    where: { submissionId: sub.id },
+    include: { issuedBy: { select: { name: true } } },
+  });
+  if (!feedback) return res.status(404).json({ error: 'No feedback for this appraisal' });
+  if (isOwner && feedback.status !== 'ISSUED') {
+    return res.status(403).json({ error: 'Feedback has not been issued yet' });
+  }
+
+  const snapshot = snapshotForViewer({ isOwner, editable })
+    ? ((feedback.snapshot as any) ?? (await buildSnapshot(sub.id)))
+    : null;
+
+  const { renderFeedbackHtml, renderHtmlToPdf } = await import('../services/pdfService');
+  const html = renderFeedbackHtml(feedback, snapshot, {
+    user: sub.user,
+    yearLabel: sub.academicYear?.label ?? '—',
+  });
+  const pdf = await renderHtmlToPdf(html);
+
+  const code = sub.user.employeeCode ?? sub.userId;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename=feedback-${code}-${sub.academicYear?.label ?? ''}.pdf`);
+  return res.send(pdf);
+}

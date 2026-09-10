@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MessageSquare, Save, Send, CheckCircle2, XCircle } from 'lucide-react';
+import { MessageSquare, Save, Send, CheckCircle2, XCircle, Download } from 'lucide-react';
 import Card from './Card';
 import { feedbackApi, type FeedbackResponse, type FeedbackSnapshot } from '../api/feedback';
 
@@ -71,6 +71,22 @@ export default function FeedbackSection({ submissionId }: { submissionId: string
   const { feedback, autoSnapshot, editable } = data;
   const snapshot = feedback?.snapshot ?? autoSnapshot ?? null;
 
+  // The PDF's contents are decided server-side from who is asking, so this is
+  // the same call for a HoD and for the faculty.
+  const downloadPdf = async () => {
+    try {
+      const blob = await feedbackApi.downloadPdf(submissionId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `feedback-${submissionId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('PDF download failed');
+    }
+  };
+
   const save = async (issue: boolean) => {
     if (issue && !confirm('Issue this feedback to the faculty? They will be notified and can view it.')) return;
     setBusy(true);
@@ -105,9 +121,20 @@ export default function FeedbackSection({ submissionId }: { submissionId: string
           <MessageSquare size={15} className="text-primary-600" /> {editable ? 'Feedback' : 'Your Feedback'}
         </h2>
         {feedback && (
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${feedback.status === 'ISSUED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-            {feedback.status}{feedback.status === 'ISSUED' && feedback.issuedBy ? ` · ${feedback.issuedBy.name}` : ''}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${feedback.status === 'ISSUED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+              {feedback.status}{feedback.status === 'ISSUED' && feedback.issuedBy ? ` · ${feedback.issuedBy.name}` : ''}
+            </span>
+            {(editable || feedback.status === 'ISSUED') && (
+              <button
+                onClick={downloadPdf}
+                className="inline-flex items-center gap-1 text-xs border border-surface-border px-2 py-1 rounded hover:bg-surface-muted"
+                title="Download this feedback as a PDF"
+              >
+                <Download size={13} /> PDF
+              </button>
+            )}
+          </div>
         )}
       </div>
 
