@@ -1,65 +1,58 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import { RoleType } from '@prisma/client';
 import app from '../app';
 import prisma from '../utils/prismaClient';
 import { voidExpiredProofs } from '../cron/proofDeadline';
+import { createFixture, type Fixture, type FixtureUser } from './helpers/fixtures';
 
 // A rejected proof that is never replaced would otherwise stall the appraisal
 // forever, because the HoD cannot approve while any proof is unverified. Once
 // the correction deadline passes the source is voided — its rows score nothing
 // — and the review proceeds on the reduced marks. The faculty stays red-listed.
 //
-// Self-skips without a database, and cleans up its own throwaway submission.
+// Self-skips without a database. Owns its department, its faculty and its HoD,
+// so an aborted run cannot leave a submission on a shared seed account.
 
 const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
-async function login(code: string, pw: string): Promise<string> {
-  const res = await request(app).post('/api/auth/login').send({ employeeCode: code, password: pw });
-  return res.status === 200 ? res.body.accessToken : '';
-}
 
 let ready = false;
+let fixture: Fixture | null = null;
 let hodTok = '';
+let faculty: FixtureUser;
 let subId = '';
-let facultyId = '';
 
 beforeAll(async () => {
   try {
-    hodTok = await login('00CSE003', 'Welcome@123');
-    if (!hodTok) return;
-    const [year, faculty] = await Promise.all([
-      prisma.academicYear.findFirst({ where: { submissionOpen: true } }),
-      prisma.user.findUnique({ where: { employeeCode: 'FAC11' } }),
-    ]);
-    if (!year || !faculty) return;
-    facultyId = faculty.id;
+    fixture = await createFixture('PDL');
+    faculty = await fixture.addUser({ name: 'FAC' });
+    const hod = await fixture.addUser({ name: 'HOD', role: RoleType.HOD, designation: 'Professor' });
+    hodTok = hod.token;
+    if (!hodTok || !faculty.token) return;
 
     // A journal with a proof URL, plus a conference that keeps its marks.
-    const sub = await prisma.appraisalSubmission.create({
-      data: {
-        userId: faculty.id, academicYearId: year.id, submissionNumber: 989, status: 'SUBMITTED',
-        cat2Journals: { create: [{
-          title: 'Deadline Paper', journalName: 'IEEE', authors: 'FAC11', authorPosition: 'First',
-          indexed: 'WOS', impactFactor: 2, volume: '1', issueNo: '1', pageNos: '1-9',
-          dateOfPub: new Date('2026-01-01'), quartile: 'Q1', proofFile: 'https://example.com/bad-proof.pdf',
-        }] },
-      },
+    subId = await fixture.createSubmission(faculty, {
+      status: 'SUBMITTED',
+      cat2Journals: { create: [{
+        title: 'Deadline Paper', journalName: 'IEEE', authors: faculty.employeeCode, authorPosition: 'First',
+        indexed: 'WOS', impactFactor: 2, volume: '1', issueNo: '1', pageNos: '1-9',
+        dateOfPub: new Date('2026-01-01'), quartile: 'Q1', proofFile: 'https://example.com/bad-proof.pdf',
+      }] },
     });
-    subId = sub.id;
     ready = true;
   } catch { ready = false; }
 });
 
 afterAll(async () => {
-  if (subId) {
-    await prisma.auditLog.deleteMany({ where: { entityId: subId } });
-    await prisma.proofVerification.deleteMany({ where: { submissionId: subId } });
-    await prisma.appraisalReview.deleteMany({ where: { submissionId: subId } });
-    await prisma.appraisalSubmission.deleteMany({ where: { id: subId } });
-  }
-  if (facultyId) await prisma.emailNotification.deleteMany({ where: { toUserId: facultyId } });
+  await fixture?.destroy();
 });
 
 describe('proof correction deadline', () => {
+  it('has a working fixture (guards against a vacuous pass)', () => {
+    expect(ready).toBe(true);
+    expect(subId).not.toBe('');
+  });
+
   it('voids the source, unblocks approval, and keeps the faculty red-listed', async () => {
     if (!ready) return;
 

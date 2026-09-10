@@ -3,33 +3,41 @@ import request from 'supertest';
 import app from '../app';
 import prisma from '../utils/prismaClient';
 import { MAX_UPLOAD_MB, MAX_UPLOAD_BYTES } from '../middleware/upload';
+import { createFixture, type Fixture, type FixtureUser } from './helpers/fixtures';
 
 // Per-file upload ceiling. The limit is configuration (MAX_UPLOAD_MB), the
 // server is the enforcement point, and proofs supplied as a LINK are exempt —
 // they never pass through multer, so an oversized scan can always be linked.
+//
+// Owns its faculty, so the throwaway submission is never written to a seed
+// account that an aborted run would leave it on.
 
 const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
-async function login(code: string, pw: string): Promise<string> {
-  const res = await request(app).post('/api/auth/login').send({ employeeCode: code, password: pw });
-  return res.status === 200 ? res.body.accessToken : '';
-}
 
 let ready = false;
+let fixture: Fixture | null = null;
+let faculty: FixtureUser;
 let facTok = '';
-let subId = '';
 
 beforeAll(async () => {
   try {
-    facTok = await login('FAC21', 'faculty123');
+    fixture = await createFixture('UPL');
+    faculty = await fixture.addUser({ name: 'FAC' });
+    facTok = faculty.token;
     ready = !!facTok;
   } catch { ready = false; }
 });
 
 afterAll(async () => {
-  if (subId) await prisma.appraisalSubmission.deleteMany({ where: { id: subId } });
+  await fixture?.destroy();
 });
 
 describe('per-file upload limit', () => {
+  it('has a working fixture (guards against a vacuous pass)', () => {
+    expect(ready).toBe(true);
+    expect(faculty?.id).toBeTruthy();
+  });
+
   it('reports the configured limit to the client', async () => {
     if (!ready) return;
     const res = await request(app).get('/api/config/uploads').set(bearer(facTok));
@@ -74,24 +82,17 @@ describe('per-file upload limit', () => {
 
   it('does not apply the limit to a proof stored as a link', async () => {
     if (!ready) return;
-    const year = await prisma.academicYear.findFirst({ where: { submissionOpen: true } });
-    const fac = await prisma.user.findUnique({ where: { employeeCode: 'FAC21' } });
-    if (!year || !fac) return;
-
     // A link is just a URL on the row — no upload path, no size check.
-    const sub = await prisma.appraisalSubmission.create({
-      data: {
-        userId: fac.id, academicYearId: year.id, submissionNumber: 988, status: 'DRAFT',
-        cat2Books: { create: [{
-          title: 'Linked proof', authors: 'FAC21', publisher: 'P', isbn: '1',
-          isEdited: false, scope: 'INTERNATIONAL',
-          proofFile: 'https://drive.google.com/file/d/enormous-500mb-scan/view',
-        }] },
-      },
-      include: { cat2Books: true },
+    const subId = await fixture!.createSubmission(faculty, {
+      status: 'DRAFT',
+      cat2Books: { create: [{
+        title: 'Linked proof', authors: faculty.employeeCode, publisher: 'P', isbn: '1',
+        isEdited: false, scope: 'INTERNATIONAL',
+        proofFile: 'https://drive.google.com/file/d/enormous-500mb-scan/view',
+      }] },
     });
-    subId = sub.id;
 
-    expect(sub.cat2Books[0].proofFile).toMatch(/^https:\/\/drive\.google\.com/);
+    const books = await prisma.cat2Book.findMany({ where: { submissionId: subId } });
+    expect(books[0].proofFile).toMatch(/^https:\/\/drive\.google\.com/);
   });
 });

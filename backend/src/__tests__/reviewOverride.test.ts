@@ -1,70 +1,63 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import { RoleType } from '@prisma/client';
 import app from '../app';
 import prisma from '../utils/prismaClient';
+import { createFixture, type Fixture, type FixtureUser } from './helpers/fixtures';
 
 // The reviewer's categories 1-5 marks are their own. Each defaults to the
 // server-computed value, but the reviewer may override any of them, and the
 // stored review total must follow the marks they awarded — not the self score.
 // Both assessments go to HR, so they have to stay separable.
 //
-// Self-skips when the DB / expected users are unavailable, and creates +
-// deletes its own throwaway submission so it never touches real appraisals.
+// Self-skips when the database is unavailable. Owns its department, faculty and
+// HoD, so an aborted run cannot leave submissions on a shared seed account.
 
 const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
+
+// The admin is a real seed account, used read-only for admin-side actions —
+// nothing in this suite writes to it.
 async function login(employeeCode: string, password: string): Promise<string> {
   const res = await request(app).post('/api/auth/login').send({ employeeCode, password });
   return res.status === 200 ? res.body.accessToken : '';
 }
 
 let ready = false;
+let fixture: Fixture | null = null;
 let hodTok = '';
-let facultyId = '';
-let yearId = '';
-const subIds: string[] = [];
+let faculty: FixtureUser;
 
 // A submission can only be approved once ("Already approved"), so each test
 // that reviews gets its own throwaway.
-async function makeSubmission(n: number): Promise<string> {
-  const sub = await prisma.appraisalSubmission.create({
-    data: { userId: facultyId, academicYearId: yearId, submissionNumber: n, status: 'SUBMITTED' },
-  });
-  subIds.push(sub.id);
-  return sub.id;
+async function makeSubmission(): Promise<string> {
+  return fixture!.createSubmission(faculty, { status: 'SUBMITTED' });
 }
 
 beforeAll(async () => {
   try {
-    hodTok = await login('00CSE003', 'Welcome@123');
-    if (!hodTok) return;
-
-    const [year, faculty] = await Promise.all([
-      prisma.academicYear.findFirst({ where: { submissionOpen: true } }),
-      prisma.user.findUnique({ where: { employeeCode: 'FAC11' } }), // CSE, same dept as the HoD
-    ]);
-    if (!year || !faculty) return;
-    facultyId = faculty.id;
-    yearId = year.id;
-    ready = true;
+    fixture = await createFixture('ROV');
+    faculty = await fixture.addUser({ name: 'FAC' });
+    const hod = await fixture.addUser({ name: 'HOD', role: RoleType.HOD, designation: 'Professor' });
+    hodTok = hod.token;
+    ready = Boolean(hodTok && faculty.token);
   } catch {
     ready = false;
   }
 });
 
 afterAll(async () => {
-  if (subIds.length) {
-    await prisma.auditLog.deleteMany({ where: { entityId: { in: subIds } } });
-    await prisma.appraisalReview.deleteMany({ where: { submissionId: { in: subIds } } });
-    await prisma.appraisalSubmission.deleteMany({ where: { id: { in: subIds } } });
-  }
-  // Drop anything this test queued so it can never be delivered.
-  if (facultyId) await prisma.emailNotification.deleteMany({ where: { toUserId: facultyId } });
+  await fixture?.destroy();
 });
 
 describe('review score — reviewer marks for categories 1-5', () => {
+  it('has a working fixture (guards against a vacuous pass)', () => {
+    expect(ready).toBe(true);
+    expect(faculty?.id).toBeTruthy();
+  });
+
   it('stores the overridden marks and totals them, not the self score', async () => {
     if (!ready) return;
-    const subId = await makeSubmission(990);
+    const subId = await makeSubmission();
 
     const res = await request(app)
       .post(`/api/appraisals/${subId}/review`)
@@ -89,7 +82,7 @@ describe('review score — reviewer marks for categories 1-5', () => {
 
   it('admin can reopen an approved appraisal so the marks can be corrected', async () => {
     if (!ready) return;
-    const subId = await makeSubmission(993);
+    const subId = await makeSubmission();
     const adminTok = await login('ADMIN001', 'admin123');
     if (!adminTok) return;
 
@@ -136,7 +129,7 @@ describe('review score — reviewer marks for categories 1-5', () => {
 
   it('does not re-email the faculty when a reopened appraisal is approved unchanged', async () => {
     if (!ready) return;
-    const subId = await makeSubmission(996);
+    const subId = await makeSubmission();
     const adminTok = await login('ADMIN001', 'admin123');
     if (!adminTok) return;
 
@@ -145,7 +138,7 @@ describe('review score — reviewer marks for categories 1-5', () => {
 
     expect((await approve()).status).toBe(200);
     const afterFirst = await prisma.emailNotification.count({
-      where: { toUserId: facultyId, template: 'submission_approved' },
+      where: { toUserId: faculty.id, template: 'submission_approved' },
     });
 
     // Reopen and approve again with the SAME marks — nothing changed for the
@@ -155,7 +148,7 @@ describe('review score — reviewer marks for categories 1-5', () => {
     expect((await approve()).status).toBe(200);
 
     expect(await prisma.emailNotification.count({
-      where: { toUserId: facultyId, template: 'submission_approved' },
+      where: { toUserId: faculty.id, template: 'submission_approved' },
     })).toBe(afterFirst);
 
     // A corrected decision is a different outcome and does notify them.
@@ -166,13 +159,13 @@ describe('review score — reviewer marks for categories 1-5', () => {
     expect(corrected.status).toBe(200);
 
     expect(await prisma.emailNotification.count({
-      where: { toUserId: facultyId, template: 'submission_approved' },
+      where: { toUserId: faculty.id, template: 'submission_approved' },
     })).toBe(afterFirst + 1);
   });
 
   it('freezes BOTH totals — self and reviewed — as one snapshot', async () => {
     if (!ready) return;
-    const subId = await makeSubmission(984);
+    const subId = await makeSubmission();
 
     const before = await request(app).get(`/api/appraisals/${subId}/score`).set(bearer(hodTok));
     expect(before.status).toBe(200);
@@ -204,7 +197,7 @@ describe('review score — reviewer marks for categories 1-5', () => {
 
   it('refuses to reopen a submission that was never decided', async () => {
     if (!ready) return;
-    const subId = await makeSubmission(994);
+    const subId = await makeSubmission();
     const adminTok = await login('ADMIN001', 'admin123');
     if (!adminTok) return;
 
@@ -215,7 +208,7 @@ describe('review score — reviewer marks for categories 1-5', () => {
 
   it('rejects a mark above the category maximum', async () => {
     if (!ready) return;
-    const subId = await makeSubmission(991);
+    const subId = await makeSubmission();
 
     const res = await request(app)
       .post(`/api/appraisals/${subId}/review`)
@@ -226,7 +219,7 @@ describe('review score — reviewer marks for categories 1-5', () => {
 
   it('falls back to the computed value for any category left out', async () => {
     if (!ready) return;
-    const subId = await makeSubmission(992);
+    const subId = await makeSubmission();
 
     const score = await request(app).get(`/api/appraisals/${subId}/score`).set(bearer(hodTok));
     expect(score.status).toBe(200);

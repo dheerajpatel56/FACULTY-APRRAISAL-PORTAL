@@ -1,14 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
+import { RoleType } from '@prisma/client';
 import app from '../app';
 import prisma from '../utils/prismaClient';
+import { createFixture, type Fixture, type FixtureUser } from './helpers/fixtures';
 
 // The dean-assigned final-review layer ABOVE the HoD. Admin assigns any number
 // of reviewers, from any department; ONE approval finalises, and a REJECT sends
 // the submission back to HOLD.
 //
-// Self-skips when the DB / expected users are unavailable, and creates + deletes
-// its own throwaway submission so it never touches real appraisals.
+// Self-skips when the database is unavailable. Owns its departments, its faculty
+// and its reviewers, so an aborted run cannot leave a submission on a shared
+// seed account — FAC21 lost a real draft that way once.
 
 const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
 async function login(employeeCode: string, password: string): Promise<string> {
@@ -17,31 +20,32 @@ async function login(employeeCode: string, password: string): Promise<string> {
 }
 
 let ready = false;
+let fixture: Fixture | null = null;
 let adminTok = '', rev1Tok = '', rev2Tok = '', outsiderTok = '';
-let rev1Id = '', rev2Id = '', subId = '';
+let rev1Id = '', rev2Id = '', outsiderId = '', subId = '';
 
 beforeAll(async () => {
   try {
-    adminTok = await login('ADMIN001', 'admin123');
-    rev1Tok = await login('DEMOINC1', 'Demo@1234');
-    rev2Tok = await login('DEMOHOD1', 'Demo@1234');
-    outsiderTok = await login('FAC11', 'faculty123');
-    if (!adminTok || !rev1Tok || !rev2Tok) return;
+    // The admin is a real seed account, used read-only to drive admin actions.
+    adminTok = await login('ADMIN001', process.env.SEED_ADMIN_PW ?? 'admin123');
+    if (!adminTok) return;
 
-    const [year, faculty, r1, r2] = await Promise.all([
-      prisma.academicYear.findFirst({ where: { submissionOpen: true } }),
-      prisma.user.findUnique({ where: { employeeCode: 'FAC21' } }),
-      prisma.user.findUnique({ where: { employeeCode: 'DEMOINC1' } }),
-      prisma.user.findUnique({ where: { employeeCode: 'DEMOHOD1' } }),
-    ]);
-    if (!year || !faculty || !r1 || !r2) return;
-    rev1Id = r1.id; rev2Id = r2.id;
+    fixture = await createFixture('FRV');
+    const faculty = await fixture.addUser({ name: 'FAC' });
+    const rev1 = await fixture.addUser({ name: 'RV1', role: RoleType.REVIEWER });
+    const rev2 = await fixture.addUser({ name: 'RV2', role: RoleType.HOD, designation: 'Professor' });
+
+    // A reviewer belonging to a DIFFERENT department: cross-department access
+    // must come from the dean's assignment alone, never from a standing role.
+    const otherDeptId = await fixture.addDepartment('FRX');
+    const outsider = await fixture.addUser({ name: 'OUT', role: RoleType.REVIEWER, deptId: otherDeptId });
+
+    rev1Id = rev1.id; rev2Id = rev2.id; outsiderId = outsider.id;
+    rev1Tok = rev1.token; rev2Tok = rev2.token; outsiderTok = outsider.token;
+    if (!rev1Tok || !rev2Tok || !outsiderTok) return;
 
     // Throwaway submission already HoD-approved, ready for the final layer.
-    const sub = await prisma.appraisalSubmission.create({
-      data: { userId: faculty.id, academicYearId: year.id, submissionNumber: 998, status: 'APPROVED' },
-    });
-    subId = sub.id;
+    subId = await fixture.createSubmission(faculty, { status: 'APPROVED' });
     ready = true;
   } catch {
     ready = false;
@@ -49,12 +53,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (!subId) return;
-  await prisma.finalReview.deleteMany({ where: { submissionId: subId } });
-  await prisma.appraisalSubmission.deleteMany({ where: { id: subId } });
+  await fixture?.destroy();
 });
 
 describe('final review — dean-assigned reviewer layer', () => {
+  it('has a working fixture (guards against a vacuous pass)', () => {
+    expect(ready).toBe(true);
+    expect(subId).not.toBe('');
+    expect(outsiderId).not.toBe('');
+  });
+
   it('non-admin cannot assign final reviewers (403)', async () => {
     if (!ready) return;
     const res = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
@@ -139,15 +147,12 @@ describe('final review — dean-assigned reviewer layer', () => {
   });
 
   it('a reviewer from another department can review and view the appraisal', async () => {
-    if (!ready || !outsiderTok) return;
-    // FAC11 is a REVIEWER for ECE; the throwaway submission's faculty (FAC21) is
-    // not in their department, so this only works because the dean assigned them.
-    const outsider = await prisma.user.findUnique({ where: { employeeCode: 'FAC11' } });
-    if (!outsider) return;
-
+    if (!ready) return;
+    // This reviewer belongs to another department, so the submission's faculty
+    // is not theirs to see — it only works because the dean assigned them.
     await prisma.appraisalSubmission.update({ where: { id: subId }, data: { status: 'APPROVED' } });
     const assign = await request(app).post(`/api/admin/appraisals/${subId}/final-reviewers`)
-      .set(bearer(adminTok)).send({ reviewerIds: [outsider.id] });
+      .set(bearer(adminTok)).send({ reviewerIds: [outsiderId] });
     expect(assign.status).toBe(201);
 
     // Cross-department read access comes from the assignment alone.
