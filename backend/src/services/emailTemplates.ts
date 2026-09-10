@@ -84,6 +84,26 @@ function scoreTable(p: any): string {
   </table>`;
 }
 
+// Quarterly per-category remarks (see categoryRemarks.ts). Categories 1-5 only.
+function categoryRemarksBlock(cats: any): string {
+  if (!Array.isArray(cats) || !cats.length) return '';
+  const rows = cats.map((c: any, i: number) => {
+    const colour = c.good ? '#065f46' : '#991b1b';
+    return `<tr style="border-top:1px solid #e2e8f0">
+      <td style="padding:8px;vertical-align:top;white-space:nowrap">Cat ${i + 1} — ${c.label}</td>
+      <td style="padding:8px;vertical-align:top;white-space:nowrap" align="right">${c.score} / ${c.max}</td>
+      <td style="padding:8px;vertical-align:top;color:${colour}">${c.remark}</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div style="margin-top:16px"><strong>Category-wise progress</strong>
+    <span style="color:#64748b;font-size:12px">— your self-assessed score so far; half of each category's maximum is a good score</span></div>
+  <table cellpadding="0" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:8px 0 12px;font-size:13px">
+    <tr style="background:#f1f5f9"><th align="left" style="padding:8px">Category</th><th align="right" style="padding:8px">Score</th><th align="left" style="padding:8px">Remark</th></tr>
+    ${rows}
+  </table>`;
+}
+
 function commentsBlock(p: any): string {
   const items: Array<[string, string]> = [
     ['Teaching', p.teachingComment],
@@ -230,6 +250,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
     <h2 style="margin:0 0 8px;color:#1e3a5f">${p.quarter} Progress — ${p.year}</h2>
     <p>Dear <strong>${p.name}</strong>,</p>
     <p>Here is a short summary of your progress this quarter, with a few pointers for the months ahead.</p>
+    ${categoryRemarksBlock(p.categories)}
     ${p.strengths || p.improvements || p.growthTargets ? `
       <div style="margin:12px 0;font-size:13px;line-height:1.5">
         ${p.strengths ? `<p style="margin:0 0 6px"><strong style="color:#065f46">Strengths</strong><br />${String(p.strengths).replace(/\n/g, '<br />')}</p>` : ''}

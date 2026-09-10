@@ -2,8 +2,10 @@ import cron from 'node-cron';
 import { Quarter } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { enqueueEmail } from '../services/emailService';
-import { TRACKING_INCLUDE, loadTrackingContext, computeRow, latestPerFaculty } from '../services/trackingService';
+import { TRACKING_INCLUDE, loadTrackingContext, computeRow, latestPerFaculty, type TrackingRow } from '../services/trackingService';
 import { generateNarrative } from '../services/feedbackNarrative';
+import { computeScore } from '../services/scoringEngine';
+import { categoryRemarks } from '../services/categoryRemarks';
 import { voidExpiredProofs } from './proofDeadline';
 
 /**
@@ -21,6 +23,31 @@ export function currentQuarter(date: Date = new Date()): Quarter {
   if (m >= 9 && m <= 11) return Quarter.Q2; // Oct-Dec
   if (m >= 0 && m <= 2) return Quarter.Q3; // Jan-Mar
   return Quarter.Q4; // Apr-Jun
+}
+
+/**
+ * The quarterly_feedback email payload for one faculty. Exported so a
+ * single-faculty test send renders exactly what the job sends. `sub` must be
+ * loaded with TRACKING_INCLUDE (it carries every category table).
+ */
+export function buildQuarterlyPayload(sub: any, row: TrackingRow, yearLabel: string, quarter: Quarter) {
+  const narrative = generateNarrative({
+    cadreLabel: row.cadreLabel,
+    eligible: row.eligibility.eligible,
+    requirements: row.eligibility.requirements,
+  });
+  return {
+    name: row.faculty.name,
+    year: yearLabel,
+    quarter,
+    cadre: row.cadreLabel ?? 'Unknown',
+    tier: row.tier ?? '—',
+    eligible: row.eligibility.eligible,
+    requirements: row.eligibility.requirements.map((r) => ({ label: r.label, target: r.target, actual: r.actual, met: r.met })),
+    ...narrative,
+    // Cat 1-5 self-assessed score vs half of each category's maximum.
+    categories: categoryRemarks(computeScore(sub)),
+  };
 }
 
 async function snapshotYear(academicYearId: string, quarter: Quarter): Promise<number> {
@@ -55,24 +82,10 @@ async function snapshotYear(academicYearId: string, quarter: Quarter): Promise<n
     // Auto-feedback email (provisional quarterly standing) — sent directly to
     // the faculty, no HoD step. Includes the auto-generated narrative.
     try {
-      const narrative = generateNarrative({
-        cadreLabel: row.cadreLabel,
-        eligible: row.eligibility.eligible,
-        requirements: row.eligibility.requirements,
-      });
       await enqueueEmail({
         toUserId: row.faculty.id,
         template: 'quarterly_feedback',
-        payload: {
-          name: row.faculty.name,
-          year: year.label,
-          quarter,
-          cadre: row.cadreLabel ?? 'Unknown',
-          tier: row.tier ?? '—',
-          eligible: row.eligibility.eligible,
-          requirements: row.eligibility.requirements.map((r) => ({ label: r.label, target: r.target, actual: r.actual, met: r.met })),
-          ...narrative,
-        },
+        payload: buildQuarterlyPayload(sub, row, year.label, quarter),
         dedupeKey: `quarterly_feedback:${row.faculty.id}:${academicYearId}:${quarter}`,
         honorOptIn: true,
       });
