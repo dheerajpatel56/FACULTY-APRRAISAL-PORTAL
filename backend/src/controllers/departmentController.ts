@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import { RoleType } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 
 const deptSchema = z.object({
@@ -7,8 +8,17 @@ const deptSchema = z.object({
   code: z.string().min(1),
 });
 
-export async function listDepartments(_req: Request, res: Response) {
-  const depts = await prisma.department.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+// Inactive departments are hidden from every form and picker, which also hides
+// anything still attached to one — an incharge role in a department that was
+// later switched off became invisible, and so unrevocable, on the Incharges
+// page. An admin may ask for the full list; nobody else can, whatever they pass.
+export async function listDepartments(req: Request, res: Response) {
+  const isAdmin = req.user?.roles.some((r) => r.role === RoleType.ADMIN) ?? false;
+  const includeInactive = isAdmin && req.query.includeInactive === 'true';
+  const depts = await prisma.department.findMany({
+    where: includeInactive ? {} : { isActive: true },
+    orderBy: { name: 'asc' },
+  });
   return res.json(depts);
 }
 

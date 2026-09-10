@@ -22,6 +22,7 @@ interface Dept {
   id: string;
   name: string;
   code: string;
+  isActive: boolean;
 }
 
 // Incharge = a Verifier, modelled as the REVIEWER role scoped to a department.
@@ -42,7 +43,10 @@ export default function AdminInchargesPage() {
       .catch(() => toast.error('Failed to load incharges'));
 
   useEffect(() => {
-    userApi.listDepartments().then(setDepts).catch(() => toast.error('Failed to load departments'));
+    // Inactive departments included on purpose: an incharge assigned before a
+    // department was switched off must stay visible, or the role cannot be
+    // revoked from anywhere in the UI.
+    userApi.listDepartments(true).then(setDepts).catch(() => toast.error('Failed to load departments'));
     userApi.listUsers().then(setAllUsers).catch(() => {});
     loadIncharges();
   }, []);
@@ -61,6 +65,25 @@ export default function AdminInchargesPage() {
     }
     return map;
   }, [incharges]);
+
+  // Only active departments may receive a new incharge.
+  const activeDepts = useMemo(() => depts.filter((d) => d.isActive), [depts]);
+
+  // A REVIEWER role pointing at no department, or at one that no longer exists,
+  // belongs to no card above — collect it so it is still revocable.
+  const orphans = useMemo(() => {
+    const known = new Set(depts.map((d) => d.id));
+    const out: { user: U; roleId: string; departmentId: string | null }[] = [];
+    for (const u of incharges) {
+      for (const r of u.userRoles) {
+        if (r.role !== 'REVIEWER') continue;
+        if (!r.departmentId || !known.has(r.departmentId)) {
+          out.push({ user: u, roleId: r.id, departmentId: r.departmentId });
+        }
+      }
+    }
+    return out;
+  }, [incharges, depts]);
 
   const assign = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +145,7 @@ export default function AdminInchargesPage() {
               <label className="block text-xs font-medium text-ink-secondary mb-1">Department</label>
               <select value={assignDept} onChange={(e) => { setAssignDept(e.target.value); setAssignUser(''); }} className={inputCls}>
                 <option value="">Select department…</option>
-                {depts.map((d) => (
+                {activeDepts.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} ({d.code})
                   </option>
@@ -168,11 +191,18 @@ export default function AdminInchargesPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="font-semibold text-ink-primary">
                   {d.name} <span className="text-ink-muted font-normal">({d.code})</span>
+                  {!d.isActive && (
+                    <span className="ml-2 text-[11px] font-normal uppercase tracking-wide text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
+                      Inactive
+                    </span>
+                  )}
                 </div>
                 <span className="text-xs text-ink-muted">{list.length} incharge{list.length === 1 ? '' : 's'}</span>
               </div>
               {list.length === 0 ? (
-                <div className="text-sm text-ink-muted">No incharge assigned.</div>
+                <div className="text-sm text-ink-muted">
+                  {d.isActive ? 'No incharge assigned.' : 'No incharge — department is switched off.'}
+                </div>
               ) : (
                 <div className="space-y-1.5">
                   {list.map(({ user, roleId }) => (
@@ -196,6 +226,41 @@ export default function AdminInchargesPage() {
             </Card>
           );
         })}
+
+        {orphans.length > 0 && (
+          <Card>
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-semibold text-ink-primary">
+                Unattached <span className="text-ink-muted font-normal">(no department)</span>
+              </div>
+              <span className="text-xs text-ink-muted">
+                {orphans.length} role{orphans.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <p className="text-xs text-ink-muted mb-2">
+              Incharge roles whose department is missing or was deleted. They still grant verify access, so remove any
+              that are no longer wanted.
+            </p>
+            <div className="space-y-1.5">
+              {orphans.map(({ user, roleId }) => (
+                <div key={roleId} className="flex items-center justify-between bg-surface-muted/50 rounded px-3 py-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <ShieldCheck size={15} className="text-amber-600" />
+                    <span className="font-medium text-ink-primary">{user.name}</span>
+                    <span className="text-ink-muted">{user.employeeCode}</span>
+                  </div>
+                  <button
+                    onClick={() => revoke(user.id, roleId, user.name)}
+                    className="p-1.5 rounded hover:bg-red-50 text-red-600"
+                    title="Remove incharge"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

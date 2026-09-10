@@ -1,0 +1,119 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import request from 'supertest';
+import bcrypt from 'bcryptjs';
+import app from '../app';
+import prisma from '../utils/prismaClient';
+
+// GET /departments hides inactive departments from every form and picker. That
+// also hid anything still attached to one: an incharge assigned before a
+// department was switched off disappeared from the Incharges page and could no
+// longer be revoked. An admin may now ask for the full list — and only an admin,
+// whatever anyone else passes.
+
+const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
+const PW = 'DeptTest@123';
+
+let ready = false;
+let adminTok = '';
+let facultyTok = '';
+let deadDeptId = '';
+let liveDeptId = '';
+let userId = '';
+
+beforeAll(async () => {
+  try {
+    const r = await request(app)
+      .post('/api/auth/login')
+      .send({ employeeCode: 'ADMIN001', password: process.env.SEED_ADMIN_PW ?? 'admin123' });
+    if (r.status !== 200) return;
+    adminTok = r.body.accessToken;
+
+    const stamp = Date.now() % 100000;
+    // Own both fixtures rather than borrowing a real department.
+    const dead = await prisma.department.create({
+      data: { name: `Switched Off Dept ${stamp}`, code: `OFF${stamp}`, isActive: false },
+    });
+    const live = await prisma.department.create({
+      data: { name: `Switched On Dept ${stamp}`, code: `ON${stamp}`, isActive: true },
+    });
+    deadDeptId = dead.id;
+    liveDeptId = live.id;
+
+    const u = await prisma.user.create({
+      data: {
+        employeeCode: `DEPTTEST${stamp}`,
+        name: 'Dept Flag Fixture',
+        email: `dept.flag.${stamp}@college.edu`,
+        passwordHash: await bcrypt.hash(PW, 10),
+        departmentId: live.id,
+      },
+    });
+    userId = u.id;
+
+    const fr = await request(app)
+      .post('/api/auth/login')
+      .send({ employeeCode: u.employeeCode, password: PW });
+    if (fr.status !== 200) return;
+    facultyTok = fr.body.accessToken;
+    ready = true;
+  } catch {
+    ready = false;
+  }
+});
+
+afterAll(async () => {
+  if (userId) {
+    await prisma.auditLog.deleteMany({ where: { userId } }); // RESTRICT — before the user
+    await prisma.userRole.deleteMany({ where: { userId } });
+    await prisma.user.deleteMany({ where: { id: userId } });
+  }
+  for (const id of [deadDeptId, liveDeptId]) {
+    if (id) {
+      await prisma.userRole.deleteMany({ where: { departmentId: id } });
+      await prisma.department.deleteMany({ where: { id } });
+    }
+  }
+});
+
+const ids = (body: any[]) => body.map((d) => d.id);
+
+describe('GET /departments — inactive departments', () => {
+  it('has a working fixture (guards against a vacuous pass)', () => {
+    expect(ready).toBe(true);
+    expect(deadDeptId).not.toBe('');
+    expect(facultyTok).not.toBe('');
+  });
+
+  it('hides inactive departments by default, even from an admin', async () => {
+    if (!ready) return;
+    const res = await request(app).get('/api/departments').set(bearer(adminTok));
+    expect(res.status).toBe(200);
+    expect(ids(res.body)).toContain(liveDeptId);
+    expect(ids(res.body)).not.toContain(deadDeptId);
+  });
+
+  it('includes them for an admin who asks', async () => {
+    if (!ready) return;
+    const res = await request(app)
+      .get('/api/departments?includeInactive=true')
+      .set(bearer(adminTok));
+    expect(res.status).toBe(200);
+    expect(ids(res.body)).toContain(deadDeptId);
+    expect(ids(res.body)).toContain(liveDeptId);
+    expect(res.body.find((d: any) => d.id === deadDeptId).isActive).toBe(false);
+  });
+
+  it('ignores the flag for a non-admin', async () => {
+    if (!ready) return;
+    const res = await request(app)
+      .get('/api/departments?includeInactive=true')
+      .set(bearer(facultyTok));
+    expect(res.status).toBe(200);
+    expect(ids(res.body)).not.toContain(deadDeptId);
+  });
+
+  it('needs authentication at all', async () => {
+    const res = await request(app).get('/api/departments?includeInactive=true');
+    expect(res.status).toBe(401);
+  });
+});

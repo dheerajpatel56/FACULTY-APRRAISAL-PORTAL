@@ -16,7 +16,12 @@ export const userApi = {
     api.post(`/admin/users/${id}/roles`, { role, departmentId }).then((r) => r.data),
   revokeRole: (userId: string, roleId: string) =>
     api.delete(`/admin/users/${userId}/roles/${roleId}`).then((r) => r.data),
-  listDepartments: () => api.get('/departments').then((r) => r.data),
+  // includeInactive is honoured for admins only — it keeps roles attached to a
+  // switched-off department visible so they can still be revoked.
+  listDepartments: (includeInactive?: boolean) =>
+    api
+      .get('/departments', includeInactive ? { params: { includeInactive: 'true' } } : undefined)
+      .then((r) => r.data),
   listAcademicYears: () => api.get('/academic-years').then((r) => r.data),
   listAdminAcademicYears: () => api.get('/admin/academic-years').then((r) => r.data),
   createAcademicYear: (data: any) => api.post('/admin/academic-years', data).then((r) => r.data),
