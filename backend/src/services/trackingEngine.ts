@@ -41,18 +41,30 @@ function patentCounts(p: any): boolean {
   );
 }
 
+/**
+ * The rows each count-based target actually counts. One set of filters, used
+ * by computeActuals for the numbers and by the quarterly email for the list
+ * behind them, so the two can never disagree.
+ */
+export function countedItems(sub: any) {
+  return {
+    indexedJournals: (sub.cat2Journals ?? []).filter(isIndexed),
+    indexedConferences: (sub.cat2Conferences ?? []).filter(isIndexed),
+    indexedConfBookChapters: (sub.cat2ConfBookChapters ?? []).filter(isIndexed),
+    patents: (sub.cat2Patents ?? []).filter(patentCounts),
+    projects: sub.cat2Projects ?? [],
+    consultancy: sub.cat2Consultancy ?? [],
+  };
+}
+
+export type CountedItems = ReturnType<typeof countedItems>;
+
 export function computeActuals(sub: any, reviewGrandTotal?: number | null): CriteriaActuals {
-  const journals = sub.cat2Journals ?? [];
-  const conferences = sub.cat2Conferences ?? [];
-  const confBookChapters = sub.cat2ConfBookChapters ?? [];
-  const patents = sub.cat2Patents ?? [];
-  const projects = sub.cat2Projects ?? [];
-  const consultancy = sub.cat2Consultancy ?? [];
+  const counted = countedItems(sub);
   const courseResults = sub.cat1CourseResults ?? [];
 
-  const indexedJournals = journals.filter(isIndexed);
-  const journalCount = indexedJournals.length;
-  const indexedCount = journalCount + conferences.filter(isIndexed).length + confBookChapters.filter(isIndexed).length;
+  const journalCount = counted.indexedJournals.length;
+  const indexedCount = journalCount + counted.indexedConferences.length + counted.indexedConfBookChapters.length;
 
   const fbVals = courseResults.map((c: any) => Number(c.feedbackReceived ?? 0)).filter((n: number) => !Number.isNaN(n));
   const feedback = fbVals.length ? fbVals.reduce((a: number, b: number) => a + b, 0) / fbVals.length : 0;
@@ -75,8 +87,8 @@ export function computeActuals(sub: any, reviewGrandTotal?: number | null): Crit
     feedback: Math.round(feedback * 100) / 100,
     indexedCount,
     journalCount,
-    patentCount: patents.filter(patentCounts).length,
-    projectCount: projects.length,
-    consultancyCount: consultancy.length,
+    patentCount: counted.patents.length,
+    projectCount: counted.projects.length,
+    consultancyCount: counted.consultancy.length,
   };
 }

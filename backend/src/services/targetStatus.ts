@@ -8,6 +8,8 @@
 // 500. The tracking engine measures that target against the reviewer's /550
 // grand total once a review exists, and that figure is withheld from faculty.
 
+import type { CountedItems } from './trackingEngine';
+
 export interface TargetRequirement {
   key: string;
   label: string;
@@ -72,4 +74,45 @@ export function targetStatus(requirements: TargetRequirement[] | null | undefine
     : `Still to achieve: ${open.map((r) => `${r.label} (${r.left} to go)`).join(', ')}.`;
 
   return { rows, achieved: done.length, total: n, achievedText, leftText };
+}
+
+// ─── What counts so far ──────────────────────────────────────────────
+// One short line per item behind the count targets, so "Indexed: 2" names the
+// two papers (venue, index, quartile, impact factor, date). Built from
+// trackingEngine.countedItems — the same rows the counts come from. Plain
+// text: the email template escapes it, since titles are typed by faculty.
+
+export interface TargetEvidence {
+  indexed: string[];
+  ppc: string[];
+}
+
+const clean = (v: unknown) => String(v ?? '').replace(/\s+/g, ' ').trim();
+const cap = (v: unknown) => { const s = clean(v).toLowerCase(); return s ? s[0].toUpperCase() + s.slice(1) : ''; };
+const monthYear = (d: unknown) => {
+  if (!d) return '';
+  const t = new Date(d as any);
+  return Number.isNaN(t.getTime()) ? '' : t.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+};
+const positive = (n: unknown) => { const x = Number(n); return Number.isFinite(x) && x > 0 ? x : 0; };
+const line = (kind: string, title: unknown, ...details: unknown[]) => {
+  const bits = details.map(clean).filter(Boolean);
+  return `${kind} — "${clean(title) || 'Untitled'}"${bits.length ? ' · ' + bits.join(' · ') : ''}`;
+};
+
+export function targetEvidence(c: CountedItems): TargetEvidence {
+  const indexed = [
+    ...c.indexedJournals.map((j: any) => line('Journal', j.title, j.journalName, j.indexed, j.quartile,
+      positive(j.impactFactor) ? `IF ${positive(j.impactFactor)}` : '', monthYear(j.dateOfPub))),
+    ...c.indexedConferences.map((x: any) => line('Conference', x.title, x.conferenceName, x.indexed, monthYear(x.dateOfPub))),
+    ...c.indexedConfBookChapters.map((x: any) => line('Book chapter', x.title, x.conferenceName, x.indexed)),
+  ];
+  const ppc = [
+    ...c.patents.map((p: any) => line('Patent', p.title, cap(p.status), p.country, monthYear(p.dateOfGrant ?? p.dateOfPub))),
+    ...c.projects.map((p: any) => line('Project', p.title, p.fundingAgency,
+      positive(p.amountLakhs) ? `₹${positive(p.amountLakhs)} lakh` : '', cap(p.status))),
+    ...c.consultancy.map((x: any) => line('Consultancy', x.name, x.agency,
+      positive(x.amountLakhs) ? `₹${positive(x.amountLakhs)} lakh` : '')),
+  ];
+  return { indexed, ppc };
 }

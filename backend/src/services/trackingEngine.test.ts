@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeActuals } from './trackingEngine';
+import { computeActuals, countedItems } from './trackingEngine';
 
 const richSub = {
   cat2Journals: [{ indexed: 'WOS' }, { indexed: 'SCOPUS' }, { indexed: 'ESCI' }, { indexed: 'NONE' }],
@@ -58,5 +58,15 @@ describe('computeActuals', () => {
     expect(a.indexedCount).toBe(0);
     expect(a.patentCount).toBe(0);
     expect(a.feedback).toBe(0);
+  });
+
+  it('counts exactly the rows countedItems lists (the email shows that list)', () => {
+    const a = computeActuals(richSub, 400);
+    const c = countedItems(richSub);
+    expect(c.indexedJournals.length).toBe(a.journalCount);
+    expect(c.indexedJournals.length + c.indexedConferences.length + c.indexedConfBookChapters.length).toBe(a.indexedCount);
+    expect(c.patents.length).toBe(a.patentCount);
+    expect(c.projects.length).toBe(a.projectCount);
+    expect(c.consultancy.length).toBe(a.consultancyCount);
   });
 });

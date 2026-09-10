@@ -106,7 +106,25 @@ function categoryRemarksBlock(cats: any): string {
 
 // Quarterly target status (see targetStatus.ts): required vs current per
 // target, then what is achieved and what is left. No cadre / tier / eligibility.
-function targetStatusBlock(t: any, year: string): string {
+const esc = (v: unknown) =>
+  String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// The items behind the count targets (targetStatus.targetEvidence). Titles are
+// faculty-typed, so every line is escaped.
+function evidenceBlock(e: any): string {
+  const groups: Array<[string, string[]]> = [
+    ['Indexed publications (WOS / Scopus)', Array.isArray(e?.indexed) ? e.indexed : []],
+    ['Patents / projects / consultancy', Array.isArray(e?.ppc) ? e.ppc : []],
+  ];
+  const shown = groups.filter(([, items]) => items.length);
+  if (!shown.length) return '';
+  return `<div style="margin:8px 0;font-size:12px;line-height:1.6;color:#334155">
+    <strong style="font-size:13px;color:#0f172a">What counts so far</strong>
+    ${shown.map(([heading, items]) => `<div style="margin-top:6px"><em>${heading} (${items.length})</em><br />${items.map((x) => `• ${esc(x)}`).join('<br />')}</div>`).join('')}
+  </div>`;
+}
+
+function targetStatusBlock(t: any, year: string, evidence?: any): string {
   const rows = Array.isArray(t?.rows) ? t.rows : [];
   const heading = `<div style="margin-top:16px"><strong>Your targets for ${year}</strong></div>`;
   if (!rows.length) {
@@ -123,6 +141,7 @@ function targetStatusBlock(t: any, year: string): string {
     <tr style="background:#f1f5f9"><th align="left" style="padding:8px">Target</th><th align="right" style="padding:8px">Required</th><th align="right" style="padding:8px">Current</th><th align="left" style="padding:8px">Status</th></tr>
     ${body}
   </table>
+  ${evidenceBlock(evidence)}
   <div style="margin:8px 0 12px;font-size:13px;line-height:1.6;background:#f8fafc;border-left:3px solid #1e3a5f;padding:8px 12px">
     <strong>Summary</strong><br />
     <span style="color:#065f46">${t.achievedText}</span><br />
@@ -289,7 +308,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
     <p>Dear <strong>${p.name}</strong>,</p>
     <p>Here is a short summary of your progress this quarter, with a few pointers for the months ahead.</p>
     ${categoryRemarksBlock(p.categories)}
-    ${p.targets ? targetStatusBlock(p.targets, p.year) : legacyNarrative(p)}
+    ${p.targets ? targetStatusBlock(p.targets, p.year, p.evidence) : legacyNarrative(p)}
     <p style="color:#64748b;font-size:13px">This is a provisional quarterly update to help you plan ahead.</p>
     <p style="margin-top:24px;color:#94a3b8;font-size:11px">Sent per your email preferences. <a href="${FRONTEND_URL}/profile" style="color:#94a3b8">Manage preferences</a>.</p>
   `),

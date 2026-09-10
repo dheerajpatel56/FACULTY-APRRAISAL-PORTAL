@@ -1,7 +1,45 @@
 import { describe, it, expect } from 'vitest';
-import { targetStatus } from './targetStatus';
+import { targetStatus, targetEvidence } from './targetStatus';
 import { renderTemplate } from './emailTemplates';
 import { categoryRemarks } from './categoryRemarks';
+import { countedItems } from './trackingEngine';
+
+const evidenceSub = {
+  cat2Journals: [
+    { title: 'Deep Nets for Crop Yield', journalName: 'IEEE Access', indexed: 'SCOPUS', quartile: 'Q2', impactFactor: 3.4, dateOfPub: '2026-03-10' },
+    { title: 'A Local Note', journalName: 'Local Journal', indexed: 'NONE', quartile: 'Q1' }, // not indexed — not counted
+  ],
+  cat2Conferences: [{ title: 'Edge AI', conferenceName: 'ICACECS 2026', indexed: 'WOS', dateOfPub: null }],
+  cat2ConfBookChapters: [],
+  cat2Patents: [
+    { title: 'Smart Irrigation Valve', country: 'India', patentType: 'Utility', applicantIsInstitute: true, status: 'GRANTED', dateOfGrant: '2026-01-05' },
+    { title: 'Not Counted', country: 'India', patentType: 'Design', applicantIsInstitute: true, status: 'GRANTED' },
+  ],
+  cat2Projects: [{ title: 'AI for Agriculture', fundingAgency: 'DST', amountLakhs: 12.5, status: 'ONGOING' }],
+  cat2Consultancy: [],
+};
+
+describe('targetEvidence', () => {
+  const e = targetEvidence(countedItems(evidenceSub));
+
+  it('names each counted paper with venue, index, quartile, impact factor and date', () => {
+    expect(e.indexed).toEqual([
+      'Journal — "Deep Nets for Crop Yield" · IEEE Access · SCOPUS · Q2 · IF 3.4 · Mar 2026',
+      'Conference — "Edge AI" · ICACECS 2026 · WOS',
+    ]);
+  });
+
+  it('lists only patents that pass the counting rule, plus projects and consultancy', () => {
+    expect(e.ppc).toEqual([
+      'Patent — "Smart Irrigation Valve" · Granted · India · Jan 2026',
+      'Project — "AI for Agriculture" · DST · ₹12.5 lakh · Ongoing',
+    ]);
+  });
+
+  it('is empty when nothing counts', () => {
+    expect(targetEvidence(countedItems({}))).toEqual({ indexed: [], ppc: [] });
+  });
+});
 
 // Shaped like cadreEngine.checkEligibility's requirement rows.
 const reqs = [
@@ -74,6 +112,23 @@ describe('quarterly_feedback email — target status', () => {
   it('never shows tier, cadre, eligibility, Category 6 or the /550 total', () => {
     expect(html).not.toMatch(/\btier\b|eligib|cadre|Cat\s*6|550|Grand Total/i);
     expect(html).not.toContain('412');
+  });
+
+  it('lists what counts so far, escaping faculty-typed titles', () => {
+    const withEvidence = renderTemplate('quarterly_feedback', {
+      ...base,
+      targets: targetStatus(reqs, 300),
+      evidence: { indexed: ['Journal — "<script>alert(1)</script>" · IEEE Access · SCOPUS · Q2'], ppc: [] },
+    });
+    expect(withEvidence).toContain('What counts so far');
+    expect(withEvidence).toContain('Indexed publications (WOS / Scopus) (1)');
+    expect(withEvidence).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(withEvidence).not.toContain('<script>');
+    expect(withEvidence).not.toContain('Patents / projects / consultancy');
+  });
+
+  it('shows no evidence block when nothing counts', () => {
+    expect(html).not.toContain('What counts so far');
   });
 
   it('says so when no targets have been set', () => {

@@ -5,7 +5,8 @@ import { enqueueEmail } from '../services/emailService';
 import { TRACKING_INCLUDE, loadTrackingContext, computeRow, latestPerFaculty, type TrackingRow } from '../services/trackingService';
 import { computeScore } from '../services/scoringEngine';
 import { categoryRemarks } from '../services/categoryRemarks';
-import { targetStatus } from '../services/targetStatus';
+import { targetStatus, targetEvidence } from '../services/targetStatus';
+import { countedItems } from '../services/trackingEngine';
 import { voidExpiredProofs } from './proofDeadline';
 
 /**
@@ -45,6 +46,8 @@ export function buildQuarterlyPayload(sub: any, row: TrackingRow, yearLabel: str
     // Each target: required, current, what is left, plus a summary. Measured
     // against the faculty's own /500 total, never the reviewer's /550.
     targets: targetStatus(row.eligibility.requirements, score.selfTotal),
+    // The papers / patents / projects behind those counts, one line each.
+    evidence: targetEvidence(countedItems(sub)),
   };
 }
 
