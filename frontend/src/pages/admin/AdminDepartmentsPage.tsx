@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { userApi } from '../../api/users';
 import toast from 'react-hot-toast';
-import { Plus, Edit2, Check, X, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Check, X, Trash2, RotateCcw } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 
@@ -13,11 +13,15 @@ export default function AdminDepartmentsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ code: '', name: '' });
   const [loading, setLoading] = useState(true);
+  // Inactive departments are hidden everywhere else; an admin turns them on here
+  // to find and restore one. Without this a deactivated department was
+  // unreachable, including from the page that deactivated it.
+  const [showInactive, setShowInactive] = useState(false);
 
   const load = () => {
     setLoading(true);
     Promise.all([
-      userApi.listDepartments(),
+      userApi.listDepartments(showInactive),
       userApi.listUsers(),
     ]).then(([d, u]) => {
       setDepts(d);
@@ -26,7 +30,7 @@ export default function AdminDepartmentsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [showInactive]);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +73,16 @@ export default function AdminDepartmentsPage() {
     }
   };
 
+  const reactivate = async (d: any) => {
+    try {
+      await userApi.reactivateDepartment(d.id);
+      toast.success('Department reactivated');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed');
+    }
+  };
+
   const facultyCount = (deptId: string) => users.filter((u) => u.departmentId === deptId).length;
   const hod = (deptId: string) => {
     const u = users.find((u) => u.userRoles?.some((r: any) => r.role === 'HOD' && r.departmentId === deptId));
@@ -81,12 +95,23 @@ export default function AdminDepartmentsPage() {
     <div>
       <PageHeader
         title="Departments"
-        subtitle={`${depts.length} active department(s)`}
+        subtitle={`${depts.filter((d) => d.isActive !== false).length} active department(s)`}
         breadcrumbs={[{ label: 'Admin', to: '/admin/dashboard' }, { label: 'Departments' }]}
         actions={
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-primary-700">
-            <Plus size={16} /> New Department
-          </button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-ink-secondary whitespace-nowrap cursor-pointer">
+              <input
+                type="checkbox"
+                className="cursor-pointer accent-accent-500"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+              />
+              Show deactivated
+            </label>
+            <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-primary-700">
+              <Plus size={16} /> New Department
+            </button>
+          </div>
         }
       />
 
@@ -151,7 +176,14 @@ export default function AdminDepartmentsPage() {
                   ) : (
                     <>
                       <td className="px-4 py-2.5 font-mono text-xs text-ink-primary">{d.code}</td>
-                      <td className="px-4 py-2.5 font-medium text-ink-primary">{d.name}</td>
+                      <td className="px-4 py-2.5 font-medium text-ink-primary">
+                        {d.name}
+                        {d.isActive === false && (
+                          <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
+                            Deactivated
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 text-ink-secondary">{hod(d.id)}</td>
                       <td className="px-4 py-2.5 text-ink-secondary">{facultyCount(d.id)}</td>
                       <td className="px-4 py-2.5">
@@ -159,9 +191,15 @@ export default function AdminDepartmentsPage() {
                           <button onClick={() => startEdit(d)} className="flex items-center gap-1 text-xs text-ink-secondary hover:text-primary-600">
                             <Edit2 size={11} /> Edit
                           </button>
-                          <button onClick={() => deactivate(d)} className="flex items-center gap-1 text-xs text-danger-500 hover:text-red-700">
-                            <Trash2 size={11} /> Deactivate
-                          </button>
+                          {d.isActive === false ? (
+                            <button onClick={() => reactivate(d)} className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700">
+                              <RotateCcw size={11} /> Reactivate
+                            </button>
+                          ) : (
+                            <button onClick={() => deactivate(d)} className="flex items-center gap-1 text-xs text-danger-500 hover:text-red-700">
+                              <Trash2 size={11} /> Deactivate
+                            </button>
+                          )}
                         </div>
                       </td>
                     </>

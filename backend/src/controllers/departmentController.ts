@@ -64,3 +64,35 @@ export async function deleteDepartment(req: Request, res: Response) {
 
   return res.json({ message: 'Department deactivated' });
 }
+
+/**
+ * Undo a deactivation.
+ *
+ * Deactivating a department hid it from every list, including the admin page
+ * that deactivated it, and `updateDepartment` only ever accepted name and code
+ * — so there was no way back at all. EEE, ECE and ME have been switched off by
+ * design since the project went CSE-only, and nothing could have turned them on
+ * again.
+ */
+export async function reactivateDepartment(req: Request, res: Response) {
+  const { id } = req.params;
+  const dept = await prisma.department.findUnique({ where: { id } });
+  if (!dept) return res.status(404).json({ error: 'Not found' });
+  if (dept.isActive) return res.json({ message: 'Department is already active', department: dept });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const d = await tx.department.update({ where: { id }, data: { isActive: true } });
+    await tx.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'DEPARTMENT_REACTIVATED',
+        entityType: 'Department',
+        entityId: id,
+        metadata: { code: dept.code, name: dept.name },
+      },
+    });
+    return d;
+  });
+
+  return res.json({ message: 'Department reactivated', department: updated });
+}

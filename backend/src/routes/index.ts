@@ -77,7 +77,9 @@ router.post('/admin/users/bulk-import', authenticate, roleGuard([RoleType.ADMIN]
 router.get('/admin/departments', authenticate, dept.listDepartments);
 router.post('/admin/departments', authenticate, roleGuard([RoleType.ADMIN]), dept.createDepartment);
 router.put('/admin/departments/:id', authenticate, roleGuard([RoleType.ADMIN]), dept.updateDepartment);
+// Soft delete: deactivates the department. Nothing attached to it is removed.
 router.delete('/admin/departments/:id', authenticate, roleGuard([RoleType.ADMIN]), dept.deleteDepartment);
+router.post('/admin/departments/:id/reactivate', authenticate, roleGuard([RoleType.ADMIN]), dept.reactivateDepartment);
 
 // Public departments (for forms)
 router.get('/departments', authenticate, dept.listDepartments);

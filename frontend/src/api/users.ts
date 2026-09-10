@@ -34,8 +34,11 @@ export const userApi = {
   createDepartment: (data: any) => api.post('/admin/departments', data).then((r) => r.data),
   updateDepartment: (id: string, data: any) =>
     api.put(`/admin/departments/${id}`, data).then((r) => r.data),
+  // Soft delete — deactivates the department; nothing attached to it is removed.
   deleteDepartment: (id: string) =>
     api.delete(`/admin/departments/${id}`).then((r) => r.data),
+  reactivateDepartment: (id: string) =>
+    api.post(`/admin/departments/${id}/reactivate`).then((r) => r.data),
   bulkImportUsers: (csv: string, departmentId: string, dryRun: boolean) =>
     api.post('/admin/users/bulk-import', { csv, departmentId, dryRun }).then((r) => r.data),
   bulkImportTemplateUrl: () => '/api/admin/users/bulk-import/template',

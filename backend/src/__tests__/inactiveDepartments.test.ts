@@ -69,6 +69,7 @@ afterAll(async () => {
   }
   for (const id of [deadDeptId, liveDeptId]) {
     if (id) {
+      await prisma.auditLog.deleteMany({ where: { entityType: 'Department', entityId: id } });
       await prisma.userRole.deleteMany({ where: { departmentId: id } });
       await prisma.department.deleteMany({ where: { id } });
     }
@@ -115,5 +116,57 @@ describe('GET /departments — inactive departments', () => {
   it('needs authentication at all', async () => {
     const res = await request(app).get('/api/departments?includeInactive=true');
     expect(res.status).toBe(401);
+  });
+});
+
+// Deactivating hid the department from every list, including the page that
+// deactivated it, and updateDepartment only ever accepted name and code — so
+// there was no way back. EEE, ECE and ME have been off by design since the
+// project went CSE-only and nothing could have switched them on again.
+describe('POST /admin/departments/:id/reactivate', () => {
+  it('turns a deactivated department back on', async () => {
+    if (!ready) return;
+    const res = await request(app)
+      .post(`/api/admin/departments/${deadDeptId}/reactivate`)
+      .set(bearer(adminTok));
+    expect(res.status).toBe(200);
+    expect(res.body.department.isActive).toBe(true);
+
+    // It is now in the plain list, with no flag needed.
+    const list = await request(app).get('/api/departments').set(bearer(adminTok));
+    expect(ids(list.body)).toContain(deadDeptId);
+  });
+
+  it('records it in the audit log', async () => {
+    if (!ready) return;
+    const rows = await prisma.auditLog.findMany({
+      where: { entityType: 'Department', entityId: deadDeptId },
+    });
+    expect(rows.map((r) => r.action)).toContain('DEPARTMENT_REACTIVATED');
+  });
+
+  it('is idempotent on an already-active department', async () => {
+    if (!ready) return;
+    const res = await request(app)
+      .post(`/api/admin/departments/${liveDeptId}/reactivate`)
+      .set(bearer(adminTok));
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatch(/already active/i);
+  });
+
+  it('404s for a department that does not exist', async () => {
+    if (!ready) return;
+    const res = await request(app)
+      .post('/api/admin/departments/00000000-0000-0000-0000-000000000000/reactivate')
+      .set(bearer(adminTok));
+    expect(res.status).toBe(404);
+  });
+
+  it('refuses a non-admin', async () => {
+    if (!ready) return;
+    const res = await request(app)
+      .post(`/api/admin/departments/${deadDeptId}/reactivate`)
+      .set(bearer(facultyTok));
+    expect(res.status).toBe(403);
   });
 });
