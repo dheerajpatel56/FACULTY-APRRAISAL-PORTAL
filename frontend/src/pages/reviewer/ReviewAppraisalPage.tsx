@@ -10,8 +10,9 @@ import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
 import {
   courseResultScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore,
 } from '../../utils/scoring';
+import { citationWarnings } from '../../utils/citations';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -290,6 +291,24 @@ export default function ReviewAppraisalPage() {
               </div>
             ) : null))}
             <div className="text-xs text-ink-muted">Patents: {submission.cat2Patents?.length ?? 0}</div>
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">2.2 Citations (Scopus / WoS only)</h2>
+            {(() => {
+              const c = submission.cat2Citations;
+              if (!c) return <div className="text-xs text-ink-muted">Not filled.</div>;
+              return (
+                <>
+                  <div className="text-xs text-ink-secondary">
+                    Publications / books till date: {c.totalPubsTillDate} | with citations: {c.pubsWithCitations} | total citations: {c.totalCitations} | h-index Scopus {c.hIndexScopus}, WoS {c.hIndexWos}
+                    {/* Same band helper the scoring engines use — never re-derive 2.2 here. */}
+                    {` → ${citationScore(c.totalCitations)}`}
+                  </div>
+                  {citationWarnings(c).map((w: string) => <div key={w} className="text-xs text-amber-700 mt-0.5">⚠ {w}</div>)}
+                </>
+              );
+            })()}
           </Card>
 
           <ProofVerificationPanel submissionId={id!} />

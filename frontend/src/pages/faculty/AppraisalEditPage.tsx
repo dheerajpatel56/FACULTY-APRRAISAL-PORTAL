@@ -10,8 +10,9 @@ import { toDateInputs } from '../../utils/dateInputs';
 import { useAuthStore } from '../../store/authStore';
 import {
   computeScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors, type PublicationKind, type ScoreBreakdown,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, type PublicationKind, type ScoreBreakdown,
 } from '../../utils/scoring';
+import { citationWarnings } from '../../utils/citations';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
@@ -830,18 +831,28 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.2 Citations</h2>
+                <h2 className="font-semibold text-ink-primary">2.2 Citations of Research Publications / Books</h2>
                 <ScoreBadge value={live.cat2.citations} max={5} />
               </div>
-              <p className="text-xs text-ink-muted mb-3">Score from Total Citations (Scopus / WoS only): 3–10→1, 11–50→2, 51–100→3, &gt;100→5.</p>
+              <p className="text-xs text-ink-muted mb-3">Only Scopus / WoS citations are considered. Score from cumulative citations: 3–10 → 1, 11–50 → 2, 51–100 → 3, more than 100 → 5. Max 5.</p>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className={labelCls}>Publications/Books (till date)</label><input type="number" {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>Publications/Books with Citations</label><input type="number" {...register('cat2Citations.pubsWithCitations', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>Total Citations</label><input type="number" {...register('cat2Citations.totalCitations', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>h-Index (Google Scholar)</label><input type="number" {...register('cat2Citations.hIndexGoogle', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>h-Index (Scopus)</label><input type="number" {...register('cat2Citations.hIndexScopus', { valueAsNumber: true })} className={inputCls} /></div>
-                <div><label className={labelCls}>h-Index (WoS)</label><input type="number" {...register('cat2Citations.hIndexWos', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>No. of Publications / Books till date</label><input type="number" min={0} step={1} {...register('cat2Citations.totalPubsTillDate', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>No. of Publications / Books with Citations</label><input type="number" min={0} step={1} {...register('cat2Citations.pubsWithCitations', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>Total No. of Citations (Scopus / WoS only)</label><input type="number" min={0} step={1} {...register('cat2Citations.totalCitations', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (Scopus)</label><input type="number" min={0} step={1} {...register('cat2Citations.hIndexScopus', { valueAsNumber: true })} className={inputCls} /></div>
+                <div><label className={labelCls}>h-Index (WoS)</label><input type="number" min={0} step={1} {...register('cat2Citations.hIndexWos', { valueAsNumber: true })} className={inputCls} /></div>
               </div>
+              {(() => {
+                // Same band helper the engines score with; warnings never block or change the score.
+                const c = (watchedValues as any)?.cat2Citations ?? {};
+                const total = Number.isFinite(c.totalCitations) ? c.totalCitations : 0;
+                return (
+                  <>
+                    <div className="mt-2 text-xs text-ink-muted">{total} citations → <span className="font-medium text-ink-secondary">{citationScore(total)}</span></div>
+                    {citationWarnings(c).map((w) => <div key={w} className="mt-1 text-xs text-amber-700">⚠ {w}</div>)}
+                  </>
+                );
+              })()}
             </div>
 
             <div>

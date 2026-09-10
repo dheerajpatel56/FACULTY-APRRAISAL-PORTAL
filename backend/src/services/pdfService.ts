@@ -2,7 +2,7 @@ import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
 import {
   lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore,
 } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
@@ -280,11 +280,11 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
       ])),
     ].join('');
   })()}
-  ${listTable('Citations',
-    ['Publications', 'Pubs w/ Citations', 'Total Citations', 'h-Index (Google)', 'h-Index (Scopus)', 'h-Index (WoS)'],
+  ${listTable('2.2 Citations of Research Publications / Books (Scopus / WoS only)',
+    ['No. of Publications / Books till date', 'No. with Citations', 'Total No. of Citations', 'h-Index (Scopus)', 'h-Index (WoS)', 'Score'],
     sub.cat2Citations ? [[
       sub.cat2Citations.totalPubsTillDate, sub.cat2Citations.pubsWithCitations, sub.cat2Citations.totalCitations,
-      sub.cat2Citations.hIndexGoogle, sub.cat2Citations.hIndexScopus, sub.cat2Citations.hIndexWos,
+      sub.cat2Citations.hIndexScopus, sub.cat2Citations.hIndexWos, citationScore(sub.cat2Citations.totalCitations),
     ]] : []
   )}
   ${listTable('2.3 Books & Book Chapters (combined, max 10)',

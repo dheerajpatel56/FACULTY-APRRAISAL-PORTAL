@@ -252,6 +252,13 @@ export function countAuthors(list?: string | null): number {
   return String(list ?? '').split(/[,;&]|\band\b/i).map((s) => s.trim()).filter(Boolean).length;
 }
 
+/** 2.2 score from Scopus / WoS citations. Mirror of the backend's citationScore. */
+export function citationScore(totalCitations?: number | null): number {
+  const tc = Number(totalCitations);
+  if (!Number.isFinite(tc)) return 0;
+  return tc > 100 ? 5 : tc >= 51 ? 3 : tc >= 11 ? 2 : tc >= 3 ? 1 : 0;
+}
+
 function scoreCategory1(v: ScoreFormValues) {
   // 1.1 Lectures (max 40) — per-course rules in lectureRowScore.
   let lectures = 0;
@@ -294,12 +301,8 @@ function scoreCategory2(v: ScoreFormValues) {
   for (const x of arr<Cat2ConfBookChapterInput>(v.cat2ConfBookChapters)) publications += publicationRowScore('chapter', x?.indexed);
   publications = Math.min(publications, 60);
 
-  // 2.2 Citations (max 5) — from total citations
-  let citations = 0;
-  if (v.cat2Citations) {
-    const tc = n(v.cat2Citations.totalCitations);
-    citations = tc > 100 ? 5 : tc >= 51 ? 3 : tc >= 11 ? 2 : tc >= 3 ? 1 : 0;
-  }
+  // 2.2 Citations (max 5) — bands in citationScore.
+  const citations = citationScore(v.cat2Citations?.totalCitations);
 
   // 2.3 Books & Chapters (max 10) — scope x role matrix.
   const bookRowScore = (scope: Scope | undefined, isEdited: boolean): number => {

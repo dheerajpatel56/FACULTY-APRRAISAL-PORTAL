@@ -294,6 +294,17 @@ export function countAuthors(list?: string | null): number {
   return String(list ?? '').split(/[,;&]|\band\b/i).map((s) => s.trim()).filter(Boolean).length;
 }
 
+/**
+ * 2.2 score from cumulative Scopus / WoS citations. PDF: 3-10 -> 1, 11-50 -> 2,
+ * 51-100 -> 3, >100 -> 5; fewer than 3, blank or negative -> 0. Exported for
+ * the views that show the working; mirrored in the frontend port.
+ */
+export function citationScore(totalCitations?: number | null): number {
+  const tc = Number(totalCitations);
+  if (!Number.isFinite(tc)) return 0;
+  return tc > 100 ? 5 : tc >= 51 ? 3 : tc >= 11 ? 2 : tc >= 3 ? 1 : 0;
+}
+
 function scoreCategory2(s: FullSubmission) {
   // 2.1 Publications — A journals + B conference proceedings + C conference
   // book chapters share one cap of 60. Per-row rules in publicationRowScore.
@@ -303,12 +314,8 @@ function scoreCategory2(s: FullSubmission) {
   for (const x of s.cat2ConfBookChapters) publications += publicationRowScore('chapter', x.indexed);
   publications = Math.min(publications, 60);
 
-  // 2.2 Citations (max 5) — from total citations
-  let citations = 0;
-  if (s.cat2Citations) {
-    const tc = s.cat2Citations.totalCitations;
-    citations = tc > 100 ? 5 : tc >= 51 ? 3 : tc >= 11 ? 2 : tc >= 3 ? 1 : 0;
-  }
+  // 2.2 Citations (max 5) — bands in citationScore.
+  const citations = citationScore(s.cat2Citations?.totalCitations);
 
   // 2.3 Books & Chapters (max 10) — scope x role matrix.
   // INTERNATIONAL: author 10, editor 5. NATIONAL: author 5, editor 3.
