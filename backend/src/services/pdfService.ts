@@ -3,6 +3,7 @@ import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
 import {
   lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
   publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore, patentRowScore,
+  sponsoredProjectRowScore,
 } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
@@ -316,9 +317,16 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
       fmtDate(p.dateOfPub), fmtDate(p.dateOfGrant), p.validDuration || '—', patentRowScore(p).score, proofCell(p.proofFile),
     ])
   )}
-  ${listTable('Funded Projects',
-    ['Title', 'Funding Agency', 'Amount (Lakhs)', 'Status', 'Proof'],
-    (sub.cat2Projects ?? []).map((p: any) => [p.title, p.fundingAgency, p.amountLakhs, p.status, proofCell(p.proofFile)])
+  ${listTable('2.5 Sponsored Research Projects',
+    ['Title of the Project', 'Funding Agency', 'Amount (Rs. Lakhs)', 'PI / Co-investigator', 'Status',
+      'Duration & Period / Date of Application', 'Score', 'Proof'],
+    // Same helper the engine scores with — never re-derive 2.5 here.
+    (sub.cat2Projects ?? []).map((p: any) => [
+      p.title, p.fundingAgency, p.amountLakhs ?? '—', p.role === 'Co-PI' ? 'Co-investigator' : 'Principal Investigator',
+      p.status ? p.status[0] + p.status.slice(1).toLowerCase() : '—',
+      p.status === 'APPLIED' ? fmtDate(p.dateOfApplication) : (p.durationPeriod || '—'),
+      sponsoredProjectRowScore(p).score, proofCell(p.proofFile),
+    ])
   )}
   ${listTable('Consultancy',
     ['Name', 'Agency', 'Amount (Lakhs)'],

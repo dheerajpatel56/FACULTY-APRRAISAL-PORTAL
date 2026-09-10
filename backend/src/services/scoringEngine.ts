@@ -339,6 +339,22 @@ export function patentRowScore(p: { title?: string | null; status?: string | nul
   return { score: 0, reason: 'Filed — scores once published (5) or granted (10)' };
 }
 
+/**
+ * 2.5 per-row working, exported for the views that show it; mirrored in the
+ * frontend port. PDF: Ongoing Projects 20, Applied Projects 5. Owner decisions
+ * 2026-09-11: those marks are PER PROJECT and add up (capped at 20) — the
+ * engine used to take only the best single project, so four applied projects
+ * earned 5; a Completed project is listed but scores 0, as the PDF names only
+ * Ongoing and Applied. An untitled row scores 0, as in 2.3 and 2.4.
+ */
+export function sponsoredProjectRowScore(p: { title?: string | null; status?: string | null }) {
+  if (!String(p.title ?? '').trim()) return { score: 0, reason: 'Enter the title to score this project' };
+  if (p.status === ProjectStatus.ONGOING) return { score: 20, reason: 'Ongoing' };
+  if (p.status === ProjectStatus.APPLIED) return { score: 5, reason: 'Applied' };
+  if (p.status === ProjectStatus.COMPLETED) return { score: 0, reason: 'Completed — listed for the record, not scored' };
+  return { score: 0, reason: 'Choose a status' };
+}
+
 function scoreCategory2(s: FullSubmission) {
   // 2.1 Publications — A journals + B conference proceedings + C conference
   // book chapters share one cap of 60. Per-row rules in publicationRowScore.
@@ -362,12 +378,9 @@ function scoreCategory2(s: FullSubmission) {
   for (const p of s.cat2Patents) patents += patentRowScore(p).score;
   patents = Math.min(patents, 20);
 
-  // 2.5 Sponsored Projects (max 20) — Ongoing 20, Applied 5
+  // 2.5 Sponsored Projects (max 20) — per project, summed; rules in sponsoredProjectRowScore.
   let sponsoredProjects = 0;
-  for (const p of s.cat2Projects) {
-    if (p.status === ProjectStatus.ONGOING) sponsoredProjects = Math.max(sponsoredProjects, 20);
-    else if (p.status === ProjectStatus.APPLIED) sponsoredProjects = Math.max(sponsoredProjects, 5);
-  }
+  for (const p of s.cat2Projects) sponsoredProjects += sponsoredProjectRowScore(p).score;
   sponsoredProjects = Math.min(sponsoredProjects, 20);
 
   // 2.6 Consultancy (max 10) — PDF bands: <=1L 2, 1-2L 4, 2-5L 6, 5-10L 8, >10L 10.

@@ -215,7 +215,7 @@ describe('Category 2 — Research', () => {
 
   it('sponsored projects: ongoing=20 max (not additive), capped 20', () => {
     const s = computeScore(emptySubmission({
-      cat2Projects: [{ status: 'ONGOING' }, { status: 'ONGOING' }],
+      cat2Projects: [{ title: 'Project A', status: 'ONGOING' }, { title: 'Project B', status: 'ONGOING' }], // 40 → cap 20
     }));
     expect(s.cat2.sponsoredProjects).toBe(20);
   });

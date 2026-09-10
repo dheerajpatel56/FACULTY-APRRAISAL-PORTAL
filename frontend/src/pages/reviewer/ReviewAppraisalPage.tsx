@@ -11,7 +11,9 @@ import FeedbackSection from '../../components/FeedbackSection';
 import {
   courseResultScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
   publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore, patentRowScore,
+  sponsoredProjectRowScore,
 } from '../../utils/scoring';
+import { sponsoredProjectWarnings } from '../../utils/sponsoredProjects';
 import { patentWarnings } from '../../utils/patents';
 import { citationWarnings } from '../../utils/citations';
 
@@ -346,6 +348,25 @@ export default function ReviewAppraisalPage() {
                 <div key={p.id} className="text-xs text-ink-secondary mb-1">
                   "{p.title}" — {bits} — <span className={r.score ? '' : 'text-amber-700'}>{r.reason}</span> → {r.score}
                   {patentWarnings(all, i).map((w) => <div key={w} className="text-amber-700">⚠ {w}</div>)}
+                </div>
+              );
+            })}
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">2.5 Sponsored Research Projects ({submission.cat2Projects?.length ?? 0})</h2>
+            {(submission.cat2Projects ?? []).map((p: any) => {
+              // Same helper the scoring engines use — never re-derive 2.5 here.
+              const r = sponsoredProjectRowScore(p);
+              const when = p.status === 'APPLIED'
+                ? (p.dateOfApplication ? `applied ${String(p.dateOfApplication).slice(0, 10)}` : '')
+                : (p.durationPeriod || '');
+              const bits = [p.fundingAgency, p.amountLakhs ? `Rs. ${p.amountLakhs} lakh` : '',
+                p.role === 'Co-PI' ? 'Co-investigator' : 'Principal Investigator', when].filter(Boolean).join(' · ');
+              return (
+                <div key={p.id} className="text-xs text-ink-secondary mb-1">
+                  "{p.title}" — {bits} — <span className={r.score ? '' : 'text-amber-700'}>{r.reason}</span> → {r.score}
+                  {sponsoredProjectWarnings(p).map((w) => <div key={w} className="text-amber-700">⚠ {w}</div>)}
                 </div>
               );
             })}

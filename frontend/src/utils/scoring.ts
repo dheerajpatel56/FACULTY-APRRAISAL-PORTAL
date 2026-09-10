@@ -278,6 +278,19 @@ export function patentRowScore(p: { title?: string | null; status?: string | nul
   return { score: 0, reason: 'Filed — scores once published (5) or granted (10)' };
 }
 
+/**
+ * 2.5 per-row working. Mirror of the backend's sponsoredProjectRowScore:
+ * Ongoing 20, Applied 5 per project (summed, capped at 20 by the section);
+ * Completed 0; untitled 0.
+ */
+export function sponsoredProjectRowScore(p: { title?: string | null; status?: string | null } | null | undefined) {
+  if (!String(p?.title ?? '').trim()) return { score: 0, reason: 'Enter the title to score this project' };
+  if (p?.status === 'ONGOING') return { score: 20, reason: 'Ongoing' };
+  if (p?.status === 'APPLIED') return { score: 5, reason: 'Applied' };
+  if (p?.status === 'COMPLETED') return { score: 0, reason: 'Completed — listed for the record, not scored' };
+  return { score: 0, reason: 'Choose a status' };
+}
+
 /** 2.2 score from Scopus / WoS citations. Mirror of the backend's citationScore. */
 export function citationScore(totalCitations?: number | null): number {
   const tc = Number(totalCitations);
@@ -341,12 +354,9 @@ function scoreCategory2(v: ScoreFormValues) {
   for (const p of arr<Cat2PatentInput>(v.cat2Patents)) patents += patentRowScore(p as any).score;
   patents = Math.min(patents, 20);
 
-  // 2.5 Sponsored Projects (max 20) — Ongoing 20, Applied 5
+  // 2.5 Sponsored Projects (max 20) — per project, summed; rules in sponsoredProjectRowScore.
   let sponsoredProjects = 0;
-  for (const p of arr<Cat2ProjectInput>(v.cat2Projects)) {
-    if (p?.status === 'ONGOING') sponsoredProjects = Math.max(sponsoredProjects, 20);
-    else if (p?.status === 'APPLIED') sponsoredProjects = Math.max(sponsoredProjects, 5);
-  }
+  for (const p of arr<Cat2ProjectInput>(v.cat2Projects)) sponsoredProjects += sponsoredProjectRowScore(p as any).score;
   sponsoredProjects = Math.min(sponsoredProjects, 20);
 
   // 2.6 Consultancy (max 10) — PDF bands: <=1L 2, 1-2L 4, 2-5L 6, 5-10L 8, >10L 10.

@@ -11,8 +11,9 @@ import { useAuthStore } from '../../store/authStore';
 import {
   computeScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
   publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore, patentRowScore,
-  type PublicationKind, type ScoreBreakdown,
+  sponsoredProjectRowScore, type PublicationKind, type ScoreBreakdown,
 } from '../../utils/scoring';
+import { sponsoredProjectWarnings } from '../../utils/sponsoredProjects';
 import { patentWarnings } from '../../utils/patents';
 import { citationWarnings } from '../../utils/citations';
 
@@ -1034,35 +1035,66 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.5 Sponsored Projects</h2>
+                <h2 className="font-semibold text-ink-primary">2.5 Sponsored Research Projects</h2>
                 <ScoreBadge value={live.cat2.sponsoredProjects} max={20} />
               </div>
-              {cat2Proj.fields.map((field, i) => (
+              <p className="text-xs text-ink-muted mb-3">Ongoing 20 and Applied 5 for each project, up to a maximum of 20. Completed projects are listed for the record but do not score.</p>
+              {cat2Proj.fields.map((field, i) => {
+                const row = (watchedValues as any)?.cat2Projects?.[i] ?? {};
+                const r = sponsoredProjectRowScore(row);
+                const statusReg = register(`cat2Projects.${i}.status`);
+                return (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2Projects.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Title of the Project</label><input {...register(`cat2Projects.${i}.title`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Funding Agency</label><input {...register(`cat2Projects.${i}.fundingAgency`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Amount (Lakhs)</label><input type="number" step="0.1" {...register(`cat2Projects.${i}.amountLakhs`, { valueAsNumber: true })} className={inputCls} /></div>
+                    <div><label className={labelCls}>Amount (Rs. Lakhs)</label><input type="number" min={0} step="0.1" {...register(`cat2Projects.${i}.amountLakhs`, { valueAsNumber: true })} className={inputCls} /></div>
                     <div>
-                      <label className={labelCls}>Status</label>
-                      <select {...register(`cat2Projects.${i}.status`)} className={inputCls}>
+                      <label className={labelCls}>Principal Investigator / Co-investigator</label>
+                      <select {...register(`cat2Projects.${i}.role`)} className={inputCls}>
+                        <option value="PI">Principal Investigator</option><option value="Co-PI">Co-investigator</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Status (Applied / Ongoing / Completed)</label>
+                      <select
+                        {...statusReg}
+                        className={inputCls}
+                        onChange={(e) => {
+                          statusReg.onChange(e); // keep RHF's own handler
+                          // The PDF asks for the application date only for Applied projects and the
+                          // duration only for Ongoing / Completed ones — drop whichever no longer shows.
+                          if (e.target.value === 'APPLIED') {
+                            setValue(`cat2Projects.${i}.durationPeriod`, '', { shouldDirty: true });
+                            setValue(`cat2Projects.${i}.dateOfGrant`, '', { shouldDirty: true });
+                          } else {
+                            setValue(`cat2Projects.${i}.dateOfApplication`, '', { shouldDirty: true });
+                          }
+                        }}
+                      >
                         <option value="APPLIED">Applied</option><option value="ONGOING">Ongoing</option><option value="COMPLETED">Completed</option>
                       </select>
                     </div>
-                    <div>
-                      <label className={labelCls}>Role</label>
-                      <select {...register(`cat2Projects.${i}.role`)} className={inputCls}>
-                        <option>PI</option><option>Co-PI</option>
-                      </select>
-                    </div>
-                    <div><label className={labelCls}>Date of Application</label><input type="date" {...register(`cat2Projects.${i}.dateOfApplication`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Date of Grant / Sanction</label><input type="date" {...register(`cat2Projects.${i}.dateOfGrant`)} className={inputCls} /></div>
+                    {row.status === 'APPLIED' ? (
+                      <div><label className={labelCls}>Date of Application</label><input type="date" {...register(`cat2Projects.${i}.dateOfApplication`)} className={inputCls} /></div>
+                    ) : (
+                      <>
+                        <div><label className={labelCls}>Project Duration &amp; Period</label><input {...register(`cat2Projects.${i}.durationPeriod`)} className={inputCls} placeholder="e.g. 3 years, Apr 2024 – Mar 2027" /></div>
+                        <div><label className={labelCls}>Date of Grant / Sanction</label><input type="date" {...register(`cat2Projects.${i}.dateOfGrant`)} className={inputCls} /></div>
+                      </>
+                    )}
                     {proofField(`cat2Projects.${i}.proofFile`)}
+                  </div>
+                  {/* Same helper the engines score with; warnings never block or change the score. */}
+                  <div className={`mt-2 text-xs ${r.score ? 'text-ink-muted' : 'text-amber-700'}`}>
+                    {r.reason} → <span className="font-medium">{r.score}</span>
+                    {sponsoredProjectWarnings(row).map((w) => <span key={w} className="block text-amber-700 mt-0.5">⚠ {w}</span>)}
                   </div>
                   <button type="button" onClick={() => cat2Proj.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
-              ))}
-              {addRowBtn('Add Project', () => cat2Proj.append({ title: '', fundingAgency: '', amountLakhs: 0, role: 'PI', status: 'APPLIED', dateOfApplication: '', dateOfGrant: '' }))}
+                );
+              })}
+              {addRowBtn('Add Project', () => cat2Proj.append({ title: '', fundingAgency: '', amountLakhs: 0, role: 'PI', status: 'APPLIED', durationPeriod: '', dateOfApplication: '', dateOfGrant: '' }))}
             </div>
 
             <div>
