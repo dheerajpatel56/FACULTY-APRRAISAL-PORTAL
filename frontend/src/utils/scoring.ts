@@ -229,10 +229,28 @@ function n(v: unknown): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : 0;
 }
 
-const QUALITY_JOURNAL: PublicationIndex[] = ['WOS', 'SCOPUS'];
-const OTHER_INDEXED: PublicationIndex[] = ['ESCI', 'ICI'];
-const isIndexed = (i: PublicationIndex | undefined) =>
-  !!i && (QUALITY_JOURNAL.includes(i) || OTHER_INDEXED.includes(i));
+/**
+ * 2.1 per-row score. Mirror of the backend's publicationRowScore: a journal
+ * paper earns 15 only in an SCI/SCIE/WoS or Scopus journal (ESCI and ICI
+ * journals 0 — owner decision 2026-09-11); a conference paper or conference
+ * book chapter earns 10 for any index.
+ */
+export type PublicationKind = 'journal' | 'conference' | 'chapter';
+export function publicationRowScore(kind: PublicationKind, indexed?: PublicationIndex | string | null): number {
+  const ix = indexed ?? 'NONE';
+  if (kind === 'journal') return ix === 'WOS' || ix === 'SCOPUS' ? 15 : 0;
+  return ix === 'WOS' || ix === 'SCOPUS' || ix === 'ESCI' || ix === 'ICI' ? 10 : 0;
+}
+
+/** Display labels for stored index values. SCI / SCIE journals are recorded as WOS. */
+export const INDEX_LABEL: Record<string, string> = {
+  WOS: 'SCI / SCIE / WoS', SCOPUS: 'Scopus', ESCI: 'ESCI', ICI: 'ICI', NONE: 'Not indexed',
+};
+
+/** Number of names in an author list ("A, B and C" -> 3). Display only. */
+export function countAuthors(list?: string | null): number {
+  return String(list ?? '').split(/[,;&]|\band\b/i).map((s) => s.trim()).filter(Boolean).length;
+}
 
 function scoreCategory1(v: ScoreFormValues) {
   // 1.1 Lectures (max 40) — per-course rules in lectureRowScore.
@@ -271,16 +289,9 @@ function scoreCategory1(v: ScoreFormValues) {
 function scoreCategory2(v: ScoreFormValues) {
   // 2.1 Publications (max 60) — see backend scoringEngine.ts for the PDF rule.
   let publications = 0;
-  for (const j of arr<Cat2JournalInput>(v.cat2Journals)) {
-    const ix = j?.indexed;
-    publications += ix && QUALITY_JOURNAL.includes(ix) ? 15 : ix && OTHER_INDEXED.includes(ix) ? 10 : 0;
-  }
-  for (const c of arr<Cat2ConferenceInput>(v.cat2Conferences)) {
-    publications += isIndexed(c?.indexed) ? 10 : 0;
-  }
-  for (const x of arr<Cat2ConfBookChapterInput>(v.cat2ConfBookChapters)) {
-    publications += isIndexed(x?.indexed) ? 10 : 0;
-  }
+  for (const j of arr<Cat2JournalInput>(v.cat2Journals)) publications += publicationRowScore('journal', j?.indexed);
+  for (const c of arr<Cat2ConferenceInput>(v.cat2Conferences)) publications += publicationRowScore('conference', c?.indexed);
+  for (const x of arr<Cat2ConfBookChapterInput>(v.cat2ConfBookChapters)) publications += publicationRowScore('chapter', x?.indexed);
   publications = Math.min(publications, 60);
 
   // 2.2 Citations (max 5) — from total citations

@@ -17,8 +17,8 @@ export const PROOF_SOURCES: Source[] = [
   // so change a label only while no rejected proof still carries the old one.
   { key: 'cat1EContent', section: '1.4 e-Content', title: (r) => r.contentName || r.courseName, fields: [['evidenceFile', 'Evidence']] },
   { key: 'cat1ICT', section: '1.5 ICT Tools', title: (r) => r.platform || r.courseName, fields: [['evidenceFile', 'Evidence']] },
-  { key: 'cat2Journals', section: '2.1 Journals', title: (r) => r.title, fields: [['proofFile', 'Proof'], ['indexProofFile', 'Index proof']] },
-  { key: 'cat2Conferences', section: '2.1 Conferences', title: (r) => r.title, fields: [['proofFile', 'Proof']] },
+  { key: 'cat2Journals', section: '2.1-A Journals', title: (r) => r.title, fields: [['proofFile', 'Proof'], ['indexProofFile', 'Index proof']] },
+  { key: 'cat2Conferences', section: '2.1-B Conferences', title: (r) => r.title, fields: [['proofFile', 'Proof']] },
   { key: 'cat2ConfBookChapters', section: '2.1-C Conference Book Chapters', title: (r) => r.title, fields: [['proofFile', 'Proof']] },
   { key: 'cat2BookChapters', section: '2.3 Book Chapters', title: (r) => r.title, fields: [['proofFile', 'Proof']] },
   { key: 'cat2Books', section: '2.3 Books', title: (r) => r.title, fields: [['proofFile', 'Proof']] },

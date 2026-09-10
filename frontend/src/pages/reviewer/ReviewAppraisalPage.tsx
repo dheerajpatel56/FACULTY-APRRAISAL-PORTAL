@@ -8,7 +8,10 @@ import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
-import { courseResultScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore } from '../../utils/scoring';
+import {
+  courseResultScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
+  publicationRowScore, INDEX_LABEL, countAuthors,
+} from '../../utils/scoring';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -260,10 +263,33 @@ export default function ReviewAppraisalPage() {
           </Card>
 
           <Card>
-            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">Publications</h2>
-            <div className="text-xs text-ink-secondary">
-              Journals: {submission.cat2Journals?.length ?? 0} | Conferences: {submission.cat2Conferences?.length ?? 0} | Patents: {submission.cat2Patents?.length ?? 0}
-            </div>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">
+              2.1 Research Papers ({(submission.cat2Journals?.length ?? 0) + (submission.cat2Conferences?.length ?? 0) + (submission.cat2ConfBookChapters?.length ?? 0)})
+            </h2>
+            {([
+              ['A. Journals', 'journal', submission.cat2Journals, 'journalName'],
+              ['B. Conference proceedings', 'conference', submission.cat2Conferences, 'conferenceName'],
+              ['C. Book chapters (from conferences)', 'chapter', submission.cat2ConfBookChapters, 'conferenceName'],
+            ] as const).map(([heading, kind, rows, venueKey]) => (rows?.length ? (
+              <div key={kind} className="mb-2">
+                <div className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide mb-0.5">{heading}</div>
+                {rows.map((p: any) => {
+                  // Same helper the scoring engines use — never re-derive 2.1 here.
+                  const score = publicationRowScore(kind, p.indexed);
+                  const n = countAuthors(p.authors);
+                  const bits = [
+                    INDEX_LABEL[p.indexed] ?? p.indexed, p.quartile, p.impactFactor ? `IF ${p.impactFactor}` : '',
+                    p.authorPosition ? `${p.authorPosition} author` : '', n ? `${n} authors` : '',
+                  ].filter(Boolean).join(' · ');
+                  return (
+                    <div key={p.id} className="text-xs text-ink-secondary mb-1">
+                      "{p.title}" — {p[venueKey]} — {bits} → {score}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null))}
+            <div className="text-xs text-ink-muted">Patents: {submission.cat2Patents?.length ?? 0}</div>
           </Card>
 
           <ProofVerificationPanel submissionId={id!} />

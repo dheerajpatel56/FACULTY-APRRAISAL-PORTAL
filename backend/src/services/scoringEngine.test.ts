@@ -119,7 +119,7 @@ describe('Category 1 — Teaching', () => {
 });
 
 describe('Category 2 — Research', () => {
-  it('2.1 journals: WoS/Scopus = 15, ESCI/ICI = 10, non-indexed = 0', () => {
+  it('2.1 journals: SCI/WoS/Scopus = 15; ESCI, ICI and non-indexed = 0 (strict PDF, 2026-09-11)', () => {
     const s = computeScore(emptySubmission({
       cat2Journals: [
         { indexed: 'SCOPUS' }, { indexed: 'WOS' },
@@ -127,7 +127,7 @@ describe('Category 2 — Research', () => {
         { indexed: 'NONE' },
       ],
     }));
-    expect(s.cat2.publications).toBe(50); // 15+15+10+10+0
+    expect(s.cat2.publications).toBe(30); // 15+15+0+0+0 (ESCI/ICI were 10 each until 2026-09-11)
   });
 
   it('2.1 conferences and conference book chapters: indexed = 10, non-indexed = 0', () => {

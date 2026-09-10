@@ -6,8 +6,12 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import SelectWithOther from '../../components/SelectWithOther';
+import { toDateInputs } from '../../utils/dateInputs';
 import { useAuthStore } from '../../store/authStore';
-import { computeScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore, type ScoreBreakdown } from '../../utils/scoring';
+import {
+  computeScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
+  publicationRowScore, INDEX_LABEL, countAuthors, type PublicationKind, type ScoreBreakdown,
+} from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
@@ -20,7 +24,9 @@ const NOVEL_PEDAGOGY_OPTIONS = [
   'Blended Learning', 'Experiential / Hands-on', 'Peer Learning',
 ];
 const ECONTENT_NATURES = ['Video', 'Audio', 'PPT'];
-const AUTHOR_POSITIONS = ['1st', 'Corresponding', 'Supervisor'];
+const AUTHOR_POSITIONS = ['1st', 'Second', 'Corresponding', 'Supervisor'];
+// 2.1 index values in dropdown order; labels come from INDEX_LABEL.
+const INDEX_OPTIONS = ['WOS', 'SCOPUS', 'ESCI', 'ICI', 'NONE'];
 const IMPACT_FACTOR_SOURCES = ['Clarivate Analytics (JCR)', 'Scopus / SCImago (SJR / CiteScore)', 'Google Scholar'];
 const PRESENTATION_STATUSES = ['Accepted', 'Presented'];
 const RESOURCE_PROGRAM_TYPES = ['FDP', 'Conference', 'Workshop', 'Guest Lecture', 'Webinar'];
@@ -193,14 +199,15 @@ export default function AppraisalEditPage() {
         cat1Projects: sub.cat1Projects ?? [],
         cat1EContent: sub.cat1EContent ?? [],
         cat1ICT: sub.cat1ICT ?? [],
-        cat2Journals: sub.cat2Journals ?? [],
-        cat2Conferences: sub.cat2Conferences ?? [],
-        cat2ConfBookChapters: sub.cat2ConfBookChapters ?? [],
+        // Date boxes need YYYY-MM-DD; the API sends timestamps (see toDateInputs).
+        cat2Journals: toDateInputs(sub.cat2Journals),
+        cat2Conferences: toDateInputs(sub.cat2Conferences),
+        cat2ConfBookChapters: toDateInputs(sub.cat2ConfBookChapters),
         cat2BookChapters: sub.cat2BookChapters ?? [],
         cat2Books: sub.cat2Books ?? [],
         cat2Citations: sub.cat2Citations ?? { totalPubsTillDate: 0, pubsWithCitations: 0, totalCitations: 0, hIndexGoogle: 0, hIndexScopus: 0, hIndexWos: 0 },
-        cat2Patents: sub.cat2Patents ?? [],
-        cat2Projects: sub.cat2Projects ?? [],
+        cat2Patents: toDateInputs(sub.cat2Patents),
+        cat2Projects: toDateInputs(sub.cat2Projects),
         cat2Consultancy: sub.cat2Consultancy ?? [],
         cat2Guidance: sub.cat2Guidance ?? [],
         cat2ResearchGroups: sub.cat2ResearchGroups ?? [],
@@ -351,6 +358,36 @@ export default function AppraisalEditPage() {
       )}
     />
   );
+
+  // 2.1 controls shared by journals (A), conference proceedings (B) and
+  // conference book chapters (C).
+  const indexSelect = (name: string) => (
+    <select {...register(name as any)} className={inputCls}>
+      {INDEX_OPTIONS.map((v) => <option key={v} value={v}>{INDEX_LABEL[v]}</option>)}
+    </select>
+  );
+  const quartileSelect = (name: string) => (
+    <select {...register(name as any)} className={inputCls}>
+      <option value="">N/A</option>
+      {['Q1', 'Q2', 'Q3', 'Q4'].map((q) => <option key={q} value={q}>{q}</option>)}
+    </select>
+  );
+  // Per-row 2.1 working, from the same helper the engines score with.
+  const publicationLine = (kind: PublicationKind, row: any) => {
+    const ix = row?.indexed ?? 'NONE';
+    const score = publicationRowScore(kind, ix);
+    const n = countAuthors(row?.authors);
+    const reason = score
+      ? `Indexed in ${INDEX_LABEL[ix] ?? ix}`
+      : kind === 'journal' && (ix === 'ESCI' || ix === 'ICI')
+        ? `${ix} journals score 0 — only SCI / SCIE / WoS or Scopus journals score`
+        : 'Not indexed';
+    return (
+      <div className={`mt-2 text-xs ${score ? 'text-ink-muted' : 'text-amber-700'}`}>
+        {n ? `${n} author${n === 1 ? '' : 's'} · ` : ''}{reason} → <span className="font-medium">{score}</span>
+      </div>
+    );
+  };
 
   const addRowBtn = (label: string, onClick: () => void) => (
     <button type="button" onClick={onClick} className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 mt-2">
@@ -673,52 +710,40 @@ export default function AppraisalEditPage() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.1 Journal Publications</h2>
+                <h2 className="font-semibold text-ink-primary">2.1-A Journal Publications</h2>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-xs text-ink-muted">(combined 2.1)</span>
+                  <span className="text-xs text-ink-muted">(2.1 combined: A + B + C)</span>
                   <ScoreBadge value={live.cat2.publications} max={60} />
                 </span>
               </div>
+              <p className="text-xs text-ink-muted mb-3">2.1 Research Papers Published in Journals / Conferences / Book Chapters — max 60 across A, B and C. 15 for each paper in an SCI / SCIE / WoS or Scopus journal (ESCI, ICI and unindexed journals score 0). 10 for each indexed conference paper or indexed book chapter from a conference.</p>
               {journals.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className={labelCls}>Title of the Publication</label><input {...register(`cat2Journals.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Journal Name</label><input {...register(`cat2Journals.${i}.journalName`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Journals.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Name of the Journal</label><input {...register(`cat2Journals.${i}.journalName`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>List of Authors (as listed in the paper)</label><input {...register(`cat2Journals.${i}.authors`)} className={inputCls} placeholder="A. Rao, B. Devi, C. Kumar" /></div>
                     <div>
-                      <label className={labelCls}>Author Position</label>
+                      <label className={labelCls}>Author Position (First / Second / Corresponding / Supervisor)</label>
                       {selectOther(`cat2Journals.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
-                    <div>
-                      <label className={labelCls}>Indexed</label>
-                      <select {...register(`cat2Journals.${i}.indexed`)} className={inputCls}>
-                        <option value="ESCI">ESCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="ICI">ICI</option><option value="NONE">None</option>
-                      </select>
-                    </div>
+                    <div><label className={labelCls}>Volume</label><input {...register(`cat2Journals.${i}.volume`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Issue No</label><input {...register(`cat2Journals.${i}.issueNo`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Page Nos</label><input {...register(`cat2Journals.${i}.pageNos`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Journals.${i}.dateOfPub`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>ISSN No.</label><input {...register(`cat2Journals.${i}.issn`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>DOI</label><input {...register(`cat2Journals.${i}.doi`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Impact Factor</label><input type="number" step="0.01" {...register(`cat2Journals.${i}.impactFactor`, { valueAsNumber: true })} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Impact Factor Source</label>
                       {selectOther(`cat2Journals.${i}.impactFactorSource`, IMPACT_FACTOR_SOURCES, 'Select...', 'Specify source')}
                     </div>
-                    <div><label className={labelCls}>DOI</label><input {...register(`cat2Journals.${i}.doi`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>ISSN</label><input {...register(`cat2Journals.${i}.issn`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Volume</label><input {...register(`cat2Journals.${i}.volume`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Issue No</label><input {...register(`cat2Journals.${i}.issueNo`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Page Nos</label><input {...register(`cat2Journals.${i}.pageNos`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Journals.${i}.dateOfPub`)} className={inputCls} /></div>
-                    <div>
-                      <label className={labelCls}>Quartile</label>
-                      <select {...register(`cat2Journals.${i}.quartile`)} className={inputCls}>
-                        <option value="">N/A</option>
-                        <option value="Q1">Q1</option>
-                        <option value="Q2">Q2</option>
-                        <option value="Q3">Q3</option>
-                        <option value="Q4">Q4</option>
-                      </select>
-                    </div>
+                    <div><label className={labelCls}>Indexed in</label>{indexSelect(`cat2Journals.${i}.indexed`)}</div>
+                    <div><label className={labelCls}>Quartile (if applicable)</label>{quartileSelect(`cat2Journals.${i}.quartile`)}</div>
                     {proofField(`cat2Journals.${i}.proofFile`, '1st Page Proof')}
                     {proofField(`cat2Journals.${i}.indexProofFile`, 'Index Proof')}
                   </div>
+                  {publicationLine('journal', (watchedValues as any)?.cat2Journals?.[i])}
                   <button type="button" onClick={() => journals.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
@@ -727,9 +752,9 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.1 Conference Proceedings</h2>
+                <h2 className="font-semibold text-ink-primary">2.1-B Conference Proceedings</h2>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-xs text-ink-muted">(combined 2.1)</span>
+                  <span className="text-xs text-ink-muted">(2.1 combined: A + B + C)</span>
                   <ScoreBadge value={live.cat2.publications} max={60} />
                 </span>
               </div>
@@ -738,63 +763,68 @@ export default function AppraisalEditPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className={labelCls}>Title of the Publication</label><input {...register(`cat2Conferences.${i}.title`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Name of the Conference Proceedings</label><input {...register(`cat2Conferences.${i}.conferenceName`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Conferences.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>List of Authors (as listed in the paper)</label><input {...register(`cat2Conferences.${i}.authors`)} className={inputCls} placeholder="A. Rao, B. Devi, C. Kumar" /></div>
                     <div>
-                      <label className={labelCls}>Author Position</label>
+                      <label className={labelCls}>Author Position (First / Second / Corresponding / Supervisor)</label>
                       {selectOther(`cat2Conferences.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
+                    <div><label className={labelCls}>Volume</label><input {...register(`cat2Conferences.${i}.volume`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Issue No</label><input {...register(`cat2Conferences.${i}.issueNo`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Page Nos</label><input {...register(`cat2Conferences.${i}.pageNos`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Conferences.${i}.dateOfPub`)} className={inputCls} /></div>
                     <div><label className={labelCls}>ISSN / ISBN</label><input {...register(`cat2Conferences.${i}.issn`)} className={inputCls} /></div>
                     <div><label className={labelCls}>DOI</label><input {...register(`cat2Conferences.${i}.doi`)} className={inputCls} /></div>
-                    <div>
-                      <label className={labelCls}>Indexed</label>
-                      <select {...register(`cat2Conferences.${i}.indexed`)} className={inputCls}>
-                        <option value="ESCI">ESCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="ICI">ICI</option><option value="NONE">None</option>
-                      </select>
-                    </div>
+                    <div><label className={labelCls}>Impact Factor</label><input type="number" step="0.01" {...register(`cat2Conferences.${i}.impactFactor`, { valueAsNumber: true })} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Presentation Status</label>
                       {selectOther(`cat2Conferences.${i}.presentationStatus`, PRESENTATION_STATUSES, 'Select...', 'Specify status')}
                     </div>
+                    <div><label className={labelCls}>Indexed in</label>{indexSelect(`cat2Conferences.${i}.indexed`)}</div>
+                    <div><label className={labelCls}>Quartile (if applicable)</label>{quartileSelect(`cat2Conferences.${i}.quartile`)}</div>
                     {proofField(`cat2Conferences.${i}.proofFile`)}
                   </div>
+                  {publicationLine('conference', (watchedValues as any)?.cat2Conferences?.[i])}
                   <button type="button" onClick={() => conferences.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Conference', () => conferences.append({ title: '', conferenceName: '', authors: '', authorPosition: '1st', dateOfPub: '', issn: '', doi: '', indexed: 'NONE', presentationStatus: '' }))}
+              {addRowBtn('Add Conference', () => conferences.append({ title: '', conferenceName: '', authors: '', authorPosition: '1st', volume: '', issueNo: '', pageNos: '', dateOfPub: '', issn: '', doi: '', impactFactor: 0, indexed: 'NONE', quartile: '', presentationStatus: '' }))}
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.1-C Conference Book Chapters</h2>
+                <h2 className="font-semibold text-ink-primary">2.1-C Book Chapters (from Conferences)</h2>
                 <span className="flex items-center gap-1.5">
-                  <span className="text-xs text-ink-muted">(combined 2.1)</span>
+                  <span className="text-xs text-ink-muted">(2.1 combined: A + B + C)</span>
                   <ScoreBadge value={live.cat2.publications} max={60} />
                 </span>
               </div>
-              <p className="text-xs text-ink-muted mb-3">Book chapters derived from a conference proceeding — scored as part of 2.1 Publications, same as journals/conference papers.</p>
+              <p className="text-xs text-ink-muted mb-3">Book chapters derived from a conference proceeding — 10 each when indexed, part of 2.1. Other book chapters belong in 2.3.</p>
               {confBookChapters.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2ConfBookChapters.${i}.title`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Conference Name</label><input {...register(`cat2ConfBookChapters.${i}.conferenceName`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2ConfBookChapters.${i}.authors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Title of the Chapter</label><input {...register(`cat2ConfBookChapters.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Name of the Conference Proceedings</label><input {...register(`cat2ConfBookChapters.${i}.conferenceName`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>List of Authors (as listed in the chapter)</label><input {...register(`cat2ConfBookChapters.${i}.authors`)} className={inputCls} placeholder="A. Rao, B. Devi, C. Kumar" /></div>
                     <div>
-                      <label className={labelCls}>Author Position</label>
+                      <label className={labelCls}>Author Position (First / Second / Corresponding / Supervisor)</label>
                       {selectOther(`cat2ConfBookChapters.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
-                    <div>
-                      <label className={labelCls}>Indexed</label>
-                      <select {...register(`cat2ConfBookChapters.${i}.indexed`)} className={inputCls}>
-                        <option value="ESCI">ESCI</option><option value="WOS">WOS</option><option value="SCOPUS">SCOPUS</option><option value="ICI">ICI</option><option value="NONE">None</option>
-                      </select>
-                    </div>
+                    <div><label className={labelCls}>Volume</label><input {...register(`cat2ConfBookChapters.${i}.volume`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Issue No</label><input {...register(`cat2ConfBookChapters.${i}.issueNo`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Page Nos</label><input {...register(`cat2ConfBookChapters.${i}.pageNos`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2ConfBookChapters.${i}.dateOfPub`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>ISSN / ISBN</label><input {...register(`cat2ConfBookChapters.${i}.issn`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>DOI</label><input {...register(`cat2ConfBookChapters.${i}.doi`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Impact Factor</label><input type="number" step="0.01" {...register(`cat2ConfBookChapters.${i}.impactFactor`, { valueAsNumber: true })} className={inputCls} /></div>
+                    <div><label className={labelCls}>Indexed in</label>{indexSelect(`cat2ConfBookChapters.${i}.indexed`)}</div>
+                    <div><label className={labelCls}>Quartile (if applicable)</label>{quartileSelect(`cat2ConfBookChapters.${i}.quartile`)}</div>
                     {proofField(`cat2ConfBookChapters.${i}.proofFile`)}
                   </div>
+                  {publicationLine('chapter', (watchedValues as any)?.cat2ConfBookChapters?.[i])}
                   <button type="button" onClick={() => confBookChapters.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add Conference Book Chapter', () => confBookChapters.append({ title: '', conferenceName: '', authors: '', authorPosition: '1st', indexed: 'NONE', proofFile: '' }))}
+              {addRowBtn('Add Conference Book Chapter', () => confBookChapters.append({ title: '', conferenceName: '', authors: '', authorPosition: '1st', volume: '', issueNo: '', pageNos: '', dateOfPub: '', issn: '', doi: '', impactFactor: 0, indexed: 'NONE', quartile: '', proofFile: '' }))}
             </div>
 
 

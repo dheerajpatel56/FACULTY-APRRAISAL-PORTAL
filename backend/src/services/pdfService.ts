@@ -1,6 +1,9 @@
 import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
-import { lectureRowScore, projectRowScore, eContentRowScore, ictRowScore } from './scoringEngine';
+import {
+  lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
+  publicationRowScore, INDEX_LABEL, countAuthors,
+} from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -89,9 +92,14 @@ function statusBadge(status: string): string {
   return `<span class="badge ${map[status] ?? 'badge-default'}">${status}</span>`;
 }
 
+// The official form asks for DD-MM-YYYY. Dates are stored as UTC midnight, so
+// read the UTC parts — local time could roll the day back.
 function fmtDate(d: any): string {
   if (!d) return '—';
-  try { return new Date(d).toLocaleDateString(); } catch { return '—'; }
+  const t = new Date(d);
+  if (Number.isNaN(t.getTime())) return '—';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(t.getUTCDate())}-${pad(t.getUTCMonth() + 1)}-${t.getUTCFullYear()}`;
 }
 
 const FRONTEND = process.env.FRONTEND_URL?.split(',')[0]?.trim() ?? '';
@@ -247,14 +255,31 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
   )}
 
   <h2>Cat 2 — Research &amp; Consultancy</h2>
-  ${listTable('Journal Publications',
-    ['Title', 'Journal', 'Index', 'Date', 'Authors', 'Proof'],
-    (sub.cat2Journals ?? []).map((j: any) => [j.title, j.journalName, j.indexed, fmtDate(j.dateOfPub), j.authors, proofCell(j.proofFile)])
-  )}
-  ${listTable('Conference Publications',
-    ['Title', 'Conference', 'Date', 'Index', 'Proof'],
-    (sub.cat2Conferences ?? []).map((c: any) => [c.title, c.conferenceName, fmtDate(c.dateOfPub), c.indexed, proofCell(c.proofFile)])
-  )}
+  ${(() => {
+    // 2.1 — one table per part, with the PDF's columns. Same helper the engine
+    // scores with — never re-derive 2.1 here. Part C was missing from this
+    // export entirely until 2026-09-11.
+    const head = ['Title of the Publication', 'Journal / Proceedings', 'No. & List of Authors', 'Author Position',
+      'Vol. / Issue / Pages', 'Date (DD-MM-YYYY)', 'ISSN & DOI', 'Impact Factor', 'Indexed & Quartile', 'Score', 'Proof'];
+    const cols = (p: any) => [
+      `${countAuthors(p.authors) || '—'}: ${p.authors ?? ''}`, p.authorPosition,
+      [p.volume, p.issueNo, p.pageNos].filter(Boolean).join(' / ') || '—',
+      fmtDate(p.dateOfPub), [p.issn, p.doi].filter(Boolean).join(' / ') || '—',
+      p.impactFactor || '—', [INDEX_LABEL[p.indexed] ?? p.indexed, p.quartile].filter(Boolean).join(', '),
+    ];
+    return [
+      listTable('2.1-A Journal Publications', head, (sub.cat2Journals ?? []).map((p: any) => [
+        p.title, p.journalName, ...cols(p), publicationRowScore('journal', p.indexed),
+        [proofCell(p.proofFile), p.indexProofFile ? `Index: ${proofCell(p.indexProofFile)}` : ''].filter(Boolean).join('<br/>'),
+      ])),
+      listTable('2.1-B Conference Proceedings', head, (sub.cat2Conferences ?? []).map((p: any) => [
+        p.title, p.conferenceName, ...cols(p), publicationRowScore('conference', p.indexed), proofCell(p.proofFile),
+      ])),
+      listTable('2.1-C Book Chapters (from Conferences)', head, (sub.cat2ConfBookChapters ?? []).map((p: any) => [
+        p.title, p.conferenceName, ...cols(p), publicationRowScore('chapter', p.indexed), proofCell(p.proofFile),
+      ])),
+    ].join('');
+  })()}
   ${listTable('Citations',
     ['Publications', 'Pubs w/ Citations', 'Total Citations', 'h-Index (Google)', 'h-Index (Scopus)', 'h-Index (WoS)'],
     sub.cat2Citations ? [[

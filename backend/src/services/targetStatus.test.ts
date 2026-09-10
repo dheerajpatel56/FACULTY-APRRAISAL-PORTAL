@@ -24,8 +24,8 @@ describe('targetEvidence', () => {
 
   it('names each counted paper with venue, index, quartile, impact factor and date', () => {
     expect(e.indexed).toEqual([
-      'Journal — "Deep Nets for Crop Yield" · IEEE Access · SCOPUS · Q2 · IF 3.4 · Mar 2026',
-      'Conference — "Edge AI" · ICACECS 2026 · WOS',
+      'Journal — "Deep Nets for Crop Yield" · IEEE Access · Scopus · Q2 · IF 3.4 · Mar 2026',
+      'Conference — "Edge AI" · ICACECS 2026 · SCI / SCIE / WoS',
     ]);
   });
 

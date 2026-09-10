@@ -264,25 +264,43 @@ function scoreCategory1(s: FullSubmission) {
   return { lectures, attendanceFeedback, projects, eContent, ict, total };
 }
 
-function scoreCategory2(s: FullSubmission) {
-  // 2.1 Publications — journals + conferences + conference-derived book chapters (max 60).
-  // PDF: 15 for quality journals (SCI/WoS/Scopus), 10 for indexed conference
-  // proceedings and indexed book chapters from conferences. Non-indexed work
-  // carries no score.
-  const QUALITY_JOURNAL: PublicationIndex[] = [PublicationIndex.WOS, PublicationIndex.SCOPUS];
-  const OTHER_INDEXED: PublicationIndex[] = [PublicationIndex.ESCI, PublicationIndex.ICI];
-  const isIndexed = (i: PublicationIndex) => QUALITY_JOURNAL.includes(i) || OTHER_INDEXED.includes(i);
+/**
+ * 2.1 per-row score, exported for the views that show the working. Mirrored
+ * by publicationRowScore in the frontend port.
+ *
+ * PDF: 15 for quality publications in SCI / WoS / Scopus journals; 10 for
+ * indexed conference proceedings and indexed book chapters from conferences;
+ * nothing else scores. Owner decision 2026-09-11 (strict PDF): an ESCI or ICI
+ * journal scores 0 — it earned 10 from 2026-08-12. For conference papers and
+ * conference book chapters the PDF says only "indexed", so any index (WoS,
+ * Scopus, ESCI, ICI) earns the 10. SCI / SCIE journals are stored as WOS; the
+ * form labels that choice "SCI / SCIE / WoS".
+ */
+export type PublicationKind = 'journal' | 'conference' | 'chapter';
+export function publicationRowScore(kind: PublicationKind, indexed?: string | null): number {
+  const ix = indexed ?? PublicationIndex.NONE;
+  if (kind === 'journal') return ix === PublicationIndex.WOS || ix === PublicationIndex.SCOPUS ? 15 : 0;
+  return ix === PublicationIndex.WOS || ix === PublicationIndex.SCOPUS ||
+    ix === PublicationIndex.ESCI || ix === PublicationIndex.ICI ? 10 : 0;
+}
 
+/** Display labels for stored index values (mirrored in the frontend port). */
+export const INDEX_LABEL: Record<string, string> = {
+  WOS: 'SCI / SCIE / WoS', SCOPUS: 'Scopus', ESCI: 'ESCI', ICI: 'ICI', NONE: 'Not indexed',
+};
+
+/** Number of names in an author list ("A, B and C" -> 3). Display only. */
+export function countAuthors(list?: string | null): number {
+  return String(list ?? '').split(/[,;&]|\band\b/i).map((s) => s.trim()).filter(Boolean).length;
+}
+
+function scoreCategory2(s: FullSubmission) {
+  // 2.1 Publications — A journals + B conference proceedings + C conference
+  // book chapters share one cap of 60. Per-row rules in publicationRowScore.
   let publications = 0;
-  for (const j of s.cat2Journals) {
-    publications += QUALITY_JOURNAL.includes(j.indexed) ? 15 : OTHER_INDEXED.includes(j.indexed) ? 10 : 0;
-  }
-  for (const c of s.cat2Conferences) {
-    publications += isIndexed(c.indexed) ? 10 : 0;
-  }
-  for (const x of s.cat2ConfBookChapters) {
-    publications += isIndexed(x.indexed) ? 10 : 0;
-  }
+  for (const j of s.cat2Journals) publications += publicationRowScore('journal', j.indexed);
+  for (const c of s.cat2Conferences) publications += publicationRowScore('conference', c.indexed);
+  for (const x of s.cat2ConfBookChapters) publications += publicationRowScore('chapter', x.indexed);
   publications = Math.min(publications, 60);
 
   // 2.2 Citations (max 5) — from total citations

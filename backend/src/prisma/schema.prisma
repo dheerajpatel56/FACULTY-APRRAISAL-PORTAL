@@ -577,6 +577,12 @@ model Cat2Conference {
   dateOfPub          DateTime?
   issn               String?
   doi                String?
+  // The PDF's 2.1 columns apply to all three parts (added 2026-09-11).
+  volume             String?
+  issueNo            String?
+  pageNos            String?
+  impactFactor       Float?
+  quartile           String?
   indexed            PublicationIndex @default(NONE)
   presentationStatus String? // Accepted / Presented / Other
   proofFile          String?
@@ -609,6 +615,15 @@ model Cat2ConfBookChapter {
   authors        String
   authorPosition String
   conferenceName String
+  // The PDF's 2.1 columns apply to all three parts (added 2026-09-11).
+  dateOfPub      DateTime?
+  issn           String?
+  doi            String?
+  volume         String?
+  issueNo        String?
+  pageNos        String?
+  impactFactor   Float?
+  quartile       String?
   indexed        PublicationIndex @default(NONE)
   proofFile      String?
 

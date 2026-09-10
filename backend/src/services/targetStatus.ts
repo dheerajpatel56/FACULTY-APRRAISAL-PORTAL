@@ -9,6 +9,7 @@
 // grand total once a review exists, and that figure is withheld from faculty.
 
 import type { CountedItems } from './trackingEngine';
+import { INDEX_LABEL } from './scoringEngine';
 
 export interface TargetRequirement {
   key: string;
@@ -102,10 +103,12 @@ const line = (kind: string, title: unknown, ...details: unknown[]) => {
 
 export function targetEvidence(c: CountedItems): TargetEvidence {
   const indexed = [
-    ...c.indexedJournals.map((j: any) => line('Journal', j.title, j.journalName, j.indexed, j.quartile,
+    ...c.indexedJournals.map((j: any) => line('Journal', j.title, j.journalName, INDEX_LABEL[j.indexed] ?? j.indexed, j.quartile,
       positive(j.impactFactor) ? `IF ${positive(j.impactFactor)}` : '', monthYear(j.dateOfPub))),
-    ...c.indexedConferences.map((x: any) => line('Conference', x.title, x.conferenceName, x.indexed, monthYear(x.dateOfPub))),
-    ...c.indexedConfBookChapters.map((x: any) => line('Book chapter', x.title, x.conferenceName, x.indexed)),
+    ...c.indexedConferences.map((x: any) => line('Conference', x.title, x.conferenceName, INDEX_LABEL[x.indexed] ?? x.indexed, x.quartile,
+      positive(x.impactFactor) ? `IF ${positive(x.impactFactor)}` : '', monthYear(x.dateOfPub))),
+    ...c.indexedConfBookChapters.map((x: any) => line('Book chapter', x.title, x.conferenceName, INDEX_LABEL[x.indexed] ?? x.indexed, x.quartile,
+      positive(x.impactFactor) ? `IF ${positive(x.impactFactor)}` : '', monthYear(x.dateOfPub))),
   ];
   const ppc = [
     ...c.patents.map((p: any) => line('Patent', p.title, cap(p.status), p.country, monthYear(p.dateOfGrant ?? p.dateOfPub))),
