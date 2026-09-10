@@ -35,7 +35,7 @@ the authority when an example file disagrees.
 | `PORT` / `NODE_ENV` / `LOG_LEVEL` | server, logger | `5000` / `production` / `info` | |
 | `PUPPETEER_EXECUTABLE_PATH` | `pdfService` | `/usr/bin/chromium-browser` | Set in the backend image; PDF export fails without it. |
 | `MAX_UPLOAD_MB` | `middleware/upload` | e.g. `5` | Per-file ceiling for **uploaded** files. Proofs pasted as a link are not size-checked. An unparseable value logs a warning and falls back to 5. |
-| _(upload path)_ | — | — | The destination `backend/uploads/appraisals` is **hardcoded**. It must be a mounted volume or proofs vanish on redeploy, and it is outside the database backup. |
+| `UPLOAD_DIR` | `utils/uploadPaths` | `/app/uploads` (set in compose) | Where proofs are stored (files go in `<UPLOAD_DIR>/appraisals`). Absolute, or relative to `backend/`; unset means `backend/uploads`. Must be a mounted volume or proofs vanish on redeploy. It is **not** in the database — `scripts/backup.sh` archives it with the DB dump. |
 
 ## Before the first production deploy
 

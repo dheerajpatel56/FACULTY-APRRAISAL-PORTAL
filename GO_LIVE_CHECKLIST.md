@@ -97,8 +97,8 @@ Whichever you pick, `FRONTEND_URL` must be the **https://** origin.
 
 | # | Task | Notes |
 |---|------|-------|
-| 7.1 | **Postgres backups** | `docker compose exec postgres pg_dump …` on a schedule; the `postgres_data` volume holds all data |
-| 7.2 | **Proof-file backups** | `backend/uploads` volume holds uploaded proof files — back it up too |
+| 7.1 | **Backups (DB + proof files)** | `scripts/backup.sh` nightly in cron — dumps Postgres and archives `backend/uploads` together. Copy `backups/` off the host |
+| 7.2 | **Restore drill** | Once after 7.1 is set up: restore into a scratch DB and check counts (`DEPLOYMENT.md`, "Backups and restore") |
 | 7.3 | Schema updates on redeploy | Entrypoint runs `prisma db push` each boot; additive changes apply automatically. Destructive changes need review |
 | 7.4 | Monitor disk (Puppeteer temp, Postgres, Loki/Prometheus TSDB) | |
 | 7.5 | Log rotation / retention for Loki + Prometheus | |

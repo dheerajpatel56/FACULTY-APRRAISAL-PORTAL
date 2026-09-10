@@ -561,6 +561,61 @@ Import pre-built dashboards from Grafana marketplace or create custom ones for:
 
 ---
 
+## Backups and restore
+
+Proof files are stored on disk in `backend/uploads` (the backend's
+`UPLOAD_DIR`, mounted at `/app/uploads`), **not** in Postgres. A database dump
+on its own restores rows that point at files which no longer exist, so back
+both up together:
+
+```bash
+scripts/backup.sh
+```
+
+This writes `backups/<timestamp>/` holding `db.dump` (pg_dump custom format),
+`uploads.tar.gz`, and a `MANIFEST` with checksums plus a cross-check of every
+proof row against the archived files. It refuses to run if the uploads folder
+is missing, never leaves a half-written backup under a final name, and prunes
+backups older than `KEEP_DAYS` (default 14) only after a successful run. The
+other settings are listed at the top of the script.
+
+Schedule it nightly on the host:
+
+```cron
+0 2 * * * /srv/p1/scripts/backup.sh >> /srv/p1/backups/backup.log 2>&1
+```
+
+`backups/` is git-ignored — it holds every account's password hash. Copy it
+off the machine as well; a backup on the same disk does not survive the disk.
+
+### Restore drill (does not touch the live database)
+
+Do this once after setting up backups, and again after changing them:
+
+```bash
+B=backups/<timestamp>
+docker compose -f docker-compose.prod.yml exec -T postgres createdb -U appraisal_user restore_drill
+docker compose -f docker-compose.prod.yml exec -T postgres pg_restore -U appraisal_user -d restore_drill --no-owner < $B/db.dump
+docker compose -f docker-compose.prod.yml exec -T postgres psql -U appraisal_user -d restore_drill -c 'SELECT count(*) FROM "User"'
+docker compose -f docker-compose.prod.yml exec -T postgres dropdb -U appraisal_user restore_drill
+tar -tzf $B/uploads.tar.gz | head
+```
+
+The user count should match the live database, and the archive should list
+the files under `./appraisals/`.
+
+### Real restore (replaces live data)
+
+```bash
+B=backups/<timestamp>
+docker compose -f docker-compose.prod.yml stop backend
+docker compose -f docker-compose.prod.yml exec -T postgres pg_restore -U appraisal_user -d faculty_appraisal --clean --if-exists --no-owner < $B/db.dump
+tar -xzf $B/uploads.tar.gz -C backend/uploads
+docker compose -f docker-compose.prod.yml start backend
+```
+
+---
+
 ## Part 7: Production Checklist
 
 - [ ] Environment variables set securely (`.env` NOT in git)
@@ -574,7 +629,7 @@ Import pre-built dashboards from Grafana marketplace or create custom ones for:
 - [ ] Database connection pooling configured (Prisma defaults to 10 connections)
 - [ ] Logs aggregated and monitored
 - [ ] Health checks working (`/health` and `/health/ready`)
-- [ ] Backups scheduled (database + uploads folder)
+- [ ] Backups scheduled — `scripts/backup.sh` in cron (database + uploads together), copied off the host, restore drill done once
 - [ ] Error tracking set up (Sentry optional)
 - [ ] Performance monitoring active
 - [ ] Admin user created and password changed

@@ -3,8 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../utils/prismaClient';
 import { RoleType } from '@prisma/client';
-
-const UPLOAD_ROOT = path.join(__dirname, '..', '..', 'uploads', 'appraisals');
+import { PROOF_DIR as UPLOAD_ROOT } from '../utils/uploadPaths';
 
 export async function uploadProof(req: Request, res: Response) {
   const file = (req as any).file;

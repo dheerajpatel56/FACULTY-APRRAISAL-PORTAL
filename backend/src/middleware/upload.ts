@@ -2,8 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { randomUUID } from 'crypto';
-
-const UPLOAD_ROOT = path.join(__dirname, '..', '..', 'uploads', 'appraisals');
+import { PROOF_DIR as UPLOAD_ROOT } from '../utils/uploadPaths';
 
 // Ensure dest dir exists
 fs.mkdirSync(UPLOAD_ROOT, { recursive: true });

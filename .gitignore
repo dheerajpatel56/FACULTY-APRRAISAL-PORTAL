@@ -19,6 +19,9 @@ build/
 # Uploads (runtime user data)
 backend/uploads/
 
+# Backups from scripts/backup.sh — a full database dump plus every proof file
+backups/
+
 # Logs
 *.log
 npm-debug.log*

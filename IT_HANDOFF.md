@@ -75,8 +75,7 @@ You already front Docker apps with a reverse proxy + TLS — plug this in the sa
 
 | Item | Note |
 |------|------|
-| **DB backup** | `docker compose exec postgres pg_dump -U appraisal_user faculty_appraisal > backup.sql` (schedule it). Data lives in the `postgres_data` volume. |
-| **Proof-file backup** | Uploaded evidence lives in the `backend/uploads` volume — back it up too. |
+| **Backups** | `scripts/backup.sh` — database dump **and** the `backend/uploads` proof files in one timestamped folder, with a manifest. Schedule it nightly in cron and copy `backups/` off the host. Proof files are not in the database, so a `pg_dump` alone is not a backup. Restore drill: `DEPLOYMENT.md`, "Backups and restore". |
 | **Redeploy / updates** | `git pull && docker compose -f docker-compose.prod.yml up -d --build`. Entrypoint re-syncs schema (additive changes auto-apply; destructive ones need review). |
 | **Health checks** | `/health` (liveness), `/health/ready` (DB check). Both used by the container healthcheck. |
 | **Monitoring** | `/metrics` (Prometheus) + JSON logs to stdout (Loki). Wire into your Grafana or the bundled stack. See `OBSERVABILITY.md`. |

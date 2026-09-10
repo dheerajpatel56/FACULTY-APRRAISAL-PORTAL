@@ -40,6 +40,9 @@ services:
       NODE_ENV: production
       LOG_LEVEL: info
       PORT: 5000
+      # Proof files are written here, and this path is the volume below. The
+      # database does not hold them — scripts/backup.sh archives both.
+      UPLOAD_DIR: /app/uploads
     ports:
       - "5000:5000"
     depends_on:
