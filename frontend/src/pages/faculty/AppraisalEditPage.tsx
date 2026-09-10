@@ -5,20 +5,26 @@ import { appraisalApi } from '../../api/appraisals';
 import toast from 'react-hot-toast';
 import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
+import SelectWithOther from '../../components/SelectWithOther';
 import { useAuthStore } from '../../store/authStore';
 import { computeScore, type ScoreBreakdown } from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
-// Fixed 1.1 Novel Pedagogy Method options. "Other" reveals a free-text input
-// that overwrites the same `novelPedagogyMethod` field (no schema field added) —
-// the input stays visible for any value not in this fixed list (not just the
-// literal string "Other"), so it doesn't vanish as soon as the user types.
+// Listed choices for every dropdown that also offers "Other". SelectWithOther
+// appends "Other" itself and stores whatever the faculty types in the same
+// field (no schema field added). None of these fields feed a score.
 const NOVEL_PEDAGOGY_OPTIONS = [
   'Flipped Classroom', 'Project-Based Learning', 'Problem-Based Learning', 'Case Study / Case-Based',
   'Collaborative / Team-Based Learning', 'Active Learning (Think-Pair-Share)', 'Gamification',
   'Blended Learning', 'Experiential / Hands-on', 'Peer Learning',
 ];
+const ECONTENT_NATURES = ['Video', 'Audio', 'PPT'];
+const AUTHOR_POSITIONS = ['1st', 'Corresponding', 'Supervisor'];
+const IMPACT_FACTOR_SOURCES = ['Clarivate Analytics (JCR)', 'Scopus / SCImago (SJR / CiteScore)', 'Google Scholar'];
+const PRESENTATION_STATUSES = ['Accepted', 'Presented'];
+const RESOURCE_PROGRAM_TYPES = ['FDP', 'Conference', 'Workshop', 'Guest Lecture', 'Webinar'];
+const EDITORIAL_NATURES = ['Editorial Board', 'Review Committee', 'Org Committee', 'Reviewer'];
 
 // A row is only saved if the faculty actually filled its free-text identifier
 // (an alphanumeric char) — this drops the empty "Add Row" placeholders and their
@@ -323,6 +329,24 @@ export default function AppraisalEditPage() {
     </div>
   );
 
+  // Dropdown whose "Other" opens a text box, bound to a form field path.
+  const selectOther = (name: string, options: readonly string[], placeholder?: string, otherPlaceholder?: string) => (
+    <Controller
+      control={control}
+      name={name as any}
+      render={({ field }) => (
+        <SelectWithOther
+          value={field.value}
+          onChange={field.onChange}
+          options={options}
+          placeholder={placeholder}
+          otherPlaceholder={otherPlaceholder}
+          className={inputCls}
+        />
+      )}
+    />
+  );
+
   const addRowBtn = (label: string, onClick: () => void) => (
     <button type="button" onClick={onClick} className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 mt-2">
       <Plus size={14} /> {label}
@@ -449,23 +473,7 @@ export default function AppraisalEditPage() {
                     </div>
                     <div>
                       <label className={labelCls}>Novel Pedagogy Method</label>
-                      <select {...register(`cat1Courses.${i}.novelPedagogyMethod`)} className={inputCls}>
-                        <option value="">Select...</option>
-                        {NOVEL_PEDAGOGY_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                        <option value="Other">Other</option>
-                      </select>
-                      {(() => {
-                        const v = (watchedValues as any)?.cat1Courses?.[i]?.novelPedagogyMethod;
-                        return v && !NOVEL_PEDAGOGY_OPTIONS.includes(v) ? (
-                          <input
-                            key={`npm-other-${i}`}
-                            className={`${inputCls} mt-2`}
-                            placeholder="Specify method"
-                            defaultValue={v === 'Other' ? '' : v}
-                            onChange={(e) => setValue(`cat1Courses.${i}.novelPedagogyMethod`, e.target.value, { shouldDirty: true })}
-                          />
-                        ) : null;
-                      })()}
+                      {selectOther(`cat1Courses.${i}.novelPedagogyMethod`, NOVEL_PEDAGOGY_OPTIONS, 'Select...', 'Specify method')}
                     </div>
                     <div className="flex items-end pb-1">
                       <label className="flex items-center gap-2 text-sm text-ink-secondary">
@@ -559,12 +567,7 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Content Name</label><input {...register(`cat1EContent.${i}.contentName`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Nature</label>
-                      <select {...register(`cat1EContent.${i}.nature`)} className={inputCls}>
-                        <option value="Video">Video</option>
-                        <option value="Audio">Audio</option>
-                        <option value="PPT">PPT</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat1EContent.${i}.nature`, ECONTENT_NATURES, undefined, 'Specify nature')}
                     </div>
                     <div>
                       <label className={labelCls}>Link / URL</label>
@@ -643,9 +646,7 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Journals.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
-                      <select {...register(`cat2Journals.${i}.authorPosition`)} className={inputCls}>
-                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat2Journals.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
                     <div>
                       <label className={labelCls}>Indexed</label>
@@ -656,13 +657,7 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Impact Factor</label><input type="number" step="0.01" {...register(`cat2Journals.${i}.impactFactor`, { valueAsNumber: true })} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Impact Factor Source</label>
-                      <select {...register(`cat2Journals.${i}.impactFactorSource`)} className={inputCls}>
-                        <option value="">Select...</option>
-                        <option value="Clarivate Analytics (JCR)">Clarivate Analytics (JCR)</option>
-                        <option value="Scopus / SCImago (SJR / CiteScore)">Scopus / SCImago (SJR / CiteScore)</option>
-                        <option value="Google Scholar">Google Scholar</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat2Journals.${i}.impactFactorSource`, IMPACT_FACTOR_SOURCES, 'Select...', 'Specify source')}
                     </div>
                     <div><label className={labelCls}>DOI</label><input {...register(`cat2Journals.${i}.doi`)} className={inputCls} /></div>
                     <div><label className={labelCls}>ISSN</label><input {...register(`cat2Journals.${i}.issn`)} className={inputCls} /></div>
@@ -705,9 +700,7 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2Conferences.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
-                      <select {...register(`cat2Conferences.${i}.authorPosition`)} className={inputCls}>
-                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat2Conferences.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
                     <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Conferences.${i}.dateOfPub`)} className={inputCls} /></div>
                     <div><label className={labelCls}>ISSN / ISBN</label><input {...register(`cat2Conferences.${i}.issn`)} className={inputCls} /></div>
@@ -720,12 +713,7 @@ export default function AppraisalEditPage() {
                     </div>
                     <div>
                       <label className={labelCls}>Presentation Status</label>
-                      <select {...register(`cat2Conferences.${i}.presentationStatus`)} className={inputCls}>
-                        <option value="">Select...</option>
-                        <option value="Accepted">Accepted</option>
-                        <option value="Presented">Presented</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat2Conferences.${i}.presentationStatus`, PRESENTATION_STATUSES, 'Select...', 'Specify status')}
                     </div>
                     {proofField(`cat2Conferences.${i}.proofFile`)}
                   </div>
@@ -752,9 +740,7 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2ConfBookChapters.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
-                      <select {...register(`cat2ConfBookChapters.${i}.authorPosition`)} className={inputCls}>
-                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat2ConfBookChapters.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
                     <div>
                       <label className={labelCls}>Indexed</label>
@@ -828,9 +814,7 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Authors (as listed in order)</label><input {...register(`cat2BookChapters.${i}.authors`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Author Position</label>
-                      <select {...register(`cat2BookChapters.${i}.authorPosition`)} className={inputCls}>
-                        <option value="1st">1st</option><option value="Corresponding">Corresponding</option><option value="Supervisor">Supervisor</option><option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat2BookChapters.${i}.authorPosition`, AUTHOR_POSITIONS, undefined, 'Specify position')}
                     </div>
                     <div><label className={labelCls}>Publisher</label><input {...register(`cat2BookChapters.${i}.publisher`)} className={inputCls} /></div>
                     <div><label className={labelCls}>ISBN</label><input {...register(`cat2BookChapters.${i}.isbn`)} className={inputCls} /></div>
@@ -1167,10 +1151,7 @@ export default function AppraisalEditPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Program Type</label>
-                      <select {...register(`cat3ResourcePerson.${i}.programType`)} className={inputCls}>
-                        <option>FDP</option><option>Conference</option><option>Workshop</option>
-                        <option>Guest Lecture</option><option>Webinar</option><option>Other</option>
-                      </select>
+                      {selectOther(`cat3ResourcePerson.${i}.programType`, RESOURCE_PROGRAM_TYPES, undefined, 'Specify program type')}
                     </div>
                     <div><label className={labelCls}>Program Name</label><input {...register(`cat3ResourcePerson.${i}.programName`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Topic</label><input {...register(`cat3ResourcePerson.${i}.topic`)} className={inputCls} /></div>
@@ -1195,10 +1176,7 @@ export default function AppraisalEditPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={labelCls}>Nature of Contribution</label>
-                      <select {...register(`cat3Editorial.${i}.natureOfContrib`)} className={inputCls}>
-                        <option>Editorial Board</option><option>Review Committee</option>
-                        <option>Org Committee</option><option>Reviewer</option><option>Other</option>
-                      </select>
+                      {selectOther(`cat3Editorial.${i}.natureOfContrib`, EDITORIAL_NATURES, undefined, 'e.g. Program Chair')}
                     </div>
                     <div><label className={labelCls}>Organization / Journal</label><input {...register(`cat3Editorial.${i}.orgOrJournal`)} className={inputCls} /></div>
                     <div>
@@ -1375,7 +1353,7 @@ export default function AppraisalEditPage() {
                     <select {...register(`cat5Differentiators.${i}.role`)} className={inputCls}>
                       <option value="participating">Participating</option>
                       <option value="leading">Leading</option>
-                      <option value="initiating">Initiating</option>
+                      <option value="initiating">Initiating, shaping &amp; executing</option>
                     </select>
                   </div>
                   {proofField(`cat5Differentiators.${i}.proofFile`)}

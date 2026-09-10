@@ -100,6 +100,13 @@ function proofCell(file: any): string {
   return `<a href="${FRONTEND}${file}">Attached (${name})</a>`;
 }
 
+// 5.3 roles are stored as keys; print the form's wording, not the key.
+const DIFFERENTIATOR_ROLE_LABEL: Record<string, string> = {
+  participating: 'Participating',
+  leading: 'Leading',
+  initiating: 'Initiating, shaping & executing',
+};
+
 function listTable(title: string, headers: string[], rows: any[][]): string {
   if (!rows.length) return '';
   return `
@@ -306,7 +313,7 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
   )}
   ${listTable('Differentiators',
     ['Name', 'Role'],
-    (sub.cat5Differentiators ?? []).map((d: any) => [d.name, d.role])
+    (sub.cat5Differentiators ?? []).map((d: any) => [d.name, DIFFERENTIATOR_ROLE_LABEL[d.role] ?? d.role])
   )}
   ${listTable('Internships Coordinated',
     ['Industry/Institute', 'Batch', 'Details', 'Period'],
