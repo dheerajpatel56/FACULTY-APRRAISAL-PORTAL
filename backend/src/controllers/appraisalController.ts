@@ -10,6 +10,7 @@ import {
   serializeSubmissionForAdmin,
 } from '../utils/serializers';
 import { canViewUserResource } from '../utils/access';
+import { isOwnerView, stripReviewerAssessment } from '../utils/reviewVisibility';
 import { dropBlankRows } from '../utils/blankRows';
 
 const FULL_INCLUDE = {
@@ -77,6 +78,9 @@ export function cleanRow(row: any) {
 
 function serializeByRole(req: Request, sub: any) {
   const review = sub.review || null;
+  // Ownership first: a HoD or incharge looking at their OWN appraisal is the
+  // faculty here, whatever roles they hold elsewhere (utils/reviewVisibility).
+  if (isOwnerView(req.user!, sub.userId)) return serializeSubmissionForFaculty(sub, review);
   if (hasRole(req, RoleType.ADMIN)) return serializeSubmissionForAdmin(sub, review);
   if (hasRole(req, RoleType.HOD) || hasRole(req, RoleType.REVIEWER)) return serializeSubmissionForReviewer(sub, review);
   return serializeSubmissionForFaculty(sub, review);
@@ -477,17 +481,20 @@ export async function downloadAppraisalPdf(req: Request, res: Response) {
   });
   if (!sub) return res.status(404).json({ error: 'Not found' });
 
-  const isFaculty = !hasRole(req, RoleType.ADMIN) && !hasRole(req, RoleType.HOD) && !hasRole(req, RoleType.REVIEWER);
   if (!canViewUserResource(req.user!, sub.userId, (sub.user as any)?.departmentId ?? null)) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
   const score = computeScore(sub as any);
 
-  // Faculty can only see reviewer scores/comments if APPROVED or REJECTED
+  // The faculty's own copy shows the reviewer's marks only once the appraisal
+  // is decided, and never Category 6 or the /550 grand total — those are the
+  // reviewer's assessment of them. Keyed on ownership, so a HoD or incharge
+  // downloading their own appraisal gets the same document a faculty does.
   let review: any = sub.review;
-  if (isFaculty && review && !([SubmissionStatus.APPROVED, SubmissionStatus.REJECTED] as SubmissionStatus[]).includes(sub.status)) {
-    review = null;
+  if (isOwnerView(req.user!, sub.userId)) {
+    const decided = ([SubmissionStatus.APPROVED, SubmissionStatus.REJECTED] as SubmissionStatus[]).includes(sub.status);
+    review = decided ? stripReviewerAssessment(review) : null;
   }
 
   const { renderAppraisalHtml, renderHtmlToPdf } = await import('../services/pdfService');

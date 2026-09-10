@@ -119,8 +119,15 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
   const yearLabel = sub.academicYear?.label ?? '—';
   const user = sub.user ?? {};
 
-  const cat6 = review ? (review.cat6Punctuality ?? 0) + (review.cat6Professionalism ?? 0) +
-    (review.cat6Willingness ?? 0) + (review.cat6Cordiality ?? 0) + (review.cat6Classroom ?? 0) : null;
+  // Only render the reviewer's assessment when it was actually handed to us.
+  // The faculty's copy has those fields removed (utils/reviewVisibility), and
+  // treating absent marks as zeroes would print a Cat 6 block of 0.0s and a
+  // "/ 550" line to the very person they are withheld from.
+  const CAT6_KEYS = ['cat6Punctuality', 'cat6Professionalism', 'cat6Willingness', 'cat6Cordiality', 'cat6Classroom'];
+  const hasCat6 = review != null && CAT6_KEYS.some((k) => review[k] != null);
+  const cat6 = hasCat6
+    ? CAT6_KEYS.reduce((sum, k) => sum + (review[k] ?? 0), 0)
+    : null;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>${BASE_STYLES}</style></head>

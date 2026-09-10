@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { RoleType, SubmissionStatus, ReviewerRole } from '@prisma/client';
 import prisma from '../utils/prismaClient';
+import { isOwnerView, stripReviewerAssessment } from '../utils/reviewVisibility';
 import { computeScore } from '../services/scoringEngine';
 import { enqueueEmail } from '../services/emailService';
 import { canViewUserResource } from '../utils/access';
@@ -256,26 +257,16 @@ export async function getReview(req: Request, res: Response) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const isStaff = req.user!.roles.some((r) =>
-    ([RoleType.ADMIN, RoleType.HOD, RoleType.REVIEWER] as RoleType[]).includes(r.role)
-  );
-  // Restrict on ownership, not just on role. A HoD or reviewer files their own
-  // appraisal, and a role-only check handed them their OWN core-values marks
-  // and grand total. Nobody sees the reviewer's assessment of themselves.
-  const isOwner = sub.userId === req.user!.id;
-
-  if (isOwner || !isStaff) {
+  // Ownership, not role — see utils/reviewVisibility.
+  if (isOwnerView(req.user!, sub.userId)) {
     if (!sub.review) return res.json(null);
     if (!([SubmissionStatus.APPROVED, SubmissionStatus.REJECTED] as SubmissionStatus[]).includes(sub.status)) {
       return res.json({ status: sub.review.status, comments: null });
     }
-    // Faculty see the reviewer's marks for categories 1-5 and the resulting
-    // total out of 500 — that is their score, and they are entitled to it.
-    // Category 6 (core values) and the /550 grand total are withheld: those are
-    // the reviewer's assessment of them, for the HoD and dean only.
-    const { cat6Punctuality, cat6Professionalism, cat6Willingness, cat6Cordiality,
-      cat6Classroom, grandTotal, ...safeReview } = sub.review;
-    return res.json(safeReview);
+    // The reviewer's marks for categories 1-5 and the resulting total out of
+    // 500 are the faculty's own score; Category 6 and the /550 grand total are
+    // the reviewer's assessment of them and are withheld.
+    return res.json(stripReviewerAssessment(sub.review));
   }
 
   return res.json(sub.review);
