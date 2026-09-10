@@ -1,6 +1,6 @@
 import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
-import { lectureRowScore, projectRowScore } from './scoringEngine';
+import { lectureRowScore, projectRowScore, eContentRowScore } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -95,10 +95,15 @@ function fmtDate(d: any): string {
 }
 
 const FRONTEND = process.env.FRONTEND_URL?.split(',')[0]?.trim() ?? '';
+// A proof is either a file uploaded to the portal (a path) or a pasted link
+// (Google Drive etc.). Only paths get the portal prefix — prefixing a full URL
+// produced "http://portalhttps://drive..." for every pasted link.
 function proofCell(file: any): string {
   if (!file) return '—';
-  const name = String(file).split('/').pop() ?? 'file';
-  return `<a href="${FRONTEND}${file}">Attached (${name})</a>`;
+  const f = String(file).trim();
+  if (/^https?:\/\//i.test(f)) return `<a href="${esc(f)}">Link</a>`;
+  const name = f.split('/').pop() ?? 'file';
+  return `<a href="${esc(`${FRONTEND}${f}`)}">Attached (${esc(name)})</a>`;
 }
 
 // 5.3 roles are stored as keys; print the form's wording, not the key.
@@ -224,9 +229,13 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
       return [p.course === 'MTECH' ? 'M.Tech' : 'B.Tech', p.projectType === 'MAJOR' ? 'Major Project' : 'Mini Project', `${r.count} ${units}`, r.score];
     })
   )}
-  ${listTable('E-Content Developed',
-    ['Course', 'Content', 'Nature'],
-    (sub.cat1EContent ?? []).map((e: any) => [e.courseName, e.contentName, e.nature])
+  ${listTable('1.4 e-Content Development / Other Instructional Material',
+    ['Course Name (B.Tech/M.Tech)', 'Name of the Content', 'Nature of the Content', 'Evidence', 'Score'],
+    (sub.cat1EContent ?? []).map((e: any) => {
+      // Same helper the engine scores with — never re-derive 1.4 here.
+      const r = eContentRowScore(e);
+      return [e.courseName, e.contentName, e.nature, r.evidence ? proofCell(e.evidenceFile) : 'No evidence link', r.score];
+    })
   )}
   ${listTable('ICT Usage',
     ['Course', 'Platform', 'Nature of Use'],

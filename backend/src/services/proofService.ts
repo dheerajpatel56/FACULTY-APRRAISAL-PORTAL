@@ -12,8 +12,11 @@ type Source = {
 };
 
 export const PROOF_SOURCES: Source[] = [
-  { key: 'cat1EContent', section: '1.5 e-Content', title: (r) => r.contentName || r.courseName, fields: [['evidenceFile', 'Evidence']] },
-  { key: 'cat1ICT', section: '1.6 ICT Tools', title: (r) => r.platform || r.courseName, fields: [['evidenceFile', 'Evidence']] },
+  // Section labels must match the form's numbering (1.2 was split in two, which
+  // left these one number high). proofDeadline maps stored labels back to keys,
+  // so change a label only while no rejected proof still carries the old one.
+  { key: 'cat1EContent', section: '1.4 e-Content', title: (r) => r.contentName || r.courseName, fields: [['evidenceFile', 'Evidence']] },
+  { key: 'cat1ICT', section: '1.5 ICT Tools', title: (r) => r.platform || r.courseName, fields: [['evidenceFile', 'Evidence']] },
   { key: 'cat2Journals', section: '2.1 Journals', title: (r) => r.title, fields: [['proofFile', 'Proof'], ['indexProofFile', 'Index proof']] },
   { key: 'cat2Conferences', section: '2.1 Conferences', title: (r) => r.title, fields: [['proofFile', 'Proof']] },
   { key: 'cat2ConfBookChapters', section: '2.1-C Conference Book Chapters', title: (r) => r.title, fields: [['proofFile', 'Proof']] },

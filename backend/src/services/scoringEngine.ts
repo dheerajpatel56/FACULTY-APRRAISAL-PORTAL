@@ -194,6 +194,28 @@ export function projectRowScore(p: { course?: string | null; projectType?: strin
   return { rate, count, unit: p.course === 'MTECH' ? 'student' : 'batch', score: rate * count };
 }
 
+/**
+ * Whether a proof field holds real evidence: an http(s) link with a real host
+ * (Google Drive, YouTube, ...) or a file uploaded to the portal. Mirrored in
+ * the frontend port.
+ */
+export function isEvidenceLink(v: unknown): boolean {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(s) || /^\/uploads\/\S+$/.test(s);
+}
+
+/**
+ * 1.4 per-row working. PDF: "2 marks for e-content development with evidence"
+ * (internally audited). Owner decision 2026-09-11: a row scores only when its
+ * evidence is a real link — an empty box or made-up text earns nothing. HoD
+ * proof verification still applies on top: a rejected link that is never
+ * corrected voids the section (applyVoidedSources).
+ */
+export function eContentRowScore(e: { evidenceFile?: string | null }) {
+  const evidence = isEvidenceLink(e.evidenceFile);
+  return { evidence, score: evidence ? 2 : 0 };
+}
+
 function scoreCategory1(s: FullSubmission) {
   // 1.1 Lectures (max 40) — per-course rules in lectureRowScore.
   let lectures = 0;
@@ -218,7 +240,9 @@ function scoreCategory1(s: FullSubmission) {
   projects = Math.min(projects, 20);
 
   // 1.4 e-Content (max 5)
-  const eContent = Math.min(s.cat1EContent.length * 2, 5);
+  let eContent = 0;
+  for (const e of s.cat1EContent) eContent += eContentRowScore(e).score;
+  eContent = Math.min(eContent, 5);
 
   // 1.5 ICT (max 5)
   const ict = Math.min(s.cat1ICT.length * 2, 5);

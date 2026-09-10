@@ -11,8 +11,9 @@
     { "course": "MTECH", "projectType": "MAJOR", "count": 1 }
   ],
   "cat1EContent": [
-    { "courseName": "Data Structures", "contentName": "DS Video Lectures", "nature": "Video", "evidenceFile": "" },
-    { "courseName": "Operating Systems", "contentName": "OS Quiz Bank", "nature": "PPT", "evidenceFile": "" }
+    { "courseName": "Data Structures", "contentName": "DS Video Lectures", "nature": "Video", "evidenceFile": "https://drive.google.com/file/d/ds-video-lectures/view" },
+    { "courseName": "Operating Systems", "contentName": "OS Quiz Bank", "nature": "PPT", "evidenceFile": "https://www.youtube.com/playlist?list=os-quiz-bank" },
+    { "courseName": "Computer Networks", "contentName": "CN Notes (no evidence link)", "nature": "PPT", "evidenceFile": "" }
   ],
   "cat1ICT": [
     { "courseName": "Data Structures", "platform": "Google Classroom", "natureOfUse": "Assignments", "evidenceFile": "" }

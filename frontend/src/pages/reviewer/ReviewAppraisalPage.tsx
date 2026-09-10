@@ -8,7 +8,7 @@ import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
-import { courseResultScore, lectureRowScore, projectRowScore } from '../../utils/scoring';
+import { courseResultScore, lectureRowScore, projectRowScore, eContentRowScore } from '../../utils/scoring';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -214,6 +214,26 @@ export default function ReviewAppraisalPage() {
               return (
                 <div key={p.id} className="text-xs text-ink-secondary mb-1">
                   {p.course === 'MTECH' ? 'M.Tech' : 'B.Tech'} {p.projectType === 'MAJOR' ? 'major' : 'mini'} — {r.count} {units} × {r.rate} = {r.score}
+                </div>
+              );
+            })}
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">1.4 e-Content ({submission.cat1EContent?.length ?? 0})</h2>
+            {submission.cat1EContent?.map((e: any) => {
+              // Same helper the scoring engines use — never re-derive 1.4 here.
+              const r = eContentRowScore(e);
+              const link = /^https?:\/\//i.test(String(e.evidenceFile ?? '').trim());
+              return (
+                <div key={e.id} className="text-xs text-ink-secondary mb-1">
+                  {e.contentName || '(untitled)'} — {e.courseName} ({e.nature}) —{' '}
+                  {r.evidence
+                    ? (link
+                      ? <a href={e.evidenceFile.trim()} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">evidence</a>
+                      : <span>file attached</span>)
+                    : <span className="text-amber-700">no evidence link</span>}
+                  {` → ${r.score}`}
                 </div>
               );
             })}

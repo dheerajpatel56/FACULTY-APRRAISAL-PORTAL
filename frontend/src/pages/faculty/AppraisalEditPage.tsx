@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import SelectWithOther from '../../components/SelectWithOther';
 import { useAuthStore } from '../../store/authStore';
-import { computeScore, lectureRowScore, projectRowScore, type ScoreBreakdown } from '../../utils/scoring';
+import { computeScore, lectureRowScore, projectRowScore, eContentRowScore, type ScoreBreakdown } from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
@@ -593,23 +593,31 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">1.4 e-Content Developed</h2>
+                <h2 className="font-semibold text-ink-primary">1.4 e-Content Development / Other Instructional Material</h2>
                 <ScoreBadge value={live.cat1.eContent} max={5} />
               </div>
+              <p className="text-xs text-ink-muted mb-3">2 marks for each e-content or other instructional material developed, with evidence — paste the link to it. Content is internally audited. Section max 5.</p>
               {eContent.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Course Name</label><input {...register(`cat1EContent.${i}.courseName`)} className={inputCls} /></div>
-                    <div><label className={labelCls}>Content Name</label><input {...register(`cat1EContent.${i}.contentName`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Course Name (B.Tech/M.Tech)</label><input {...register(`cat1EContent.${i}.courseName`)} className={inputCls} placeholder="e.g. Data Structures — B.Tech" /></div>
+                    <div><label className={labelCls}>Name of the Content</label><input {...register(`cat1EContent.${i}.contentName`)} className={inputCls} /></div>
                     <div>
-                      <label className={labelCls}>Nature</label>
+                      <label className={labelCls}>Nature of the Content</label>
                       {selectOther(`cat1EContent.${i}.nature`, ECONTENT_NATURES, undefined, 'Specify nature')}
                     </div>
                     <div>
-                      <label className={labelCls}>Link / URL</label>
+                      <label className={labelCls}>Evidence Link (URL)</label>
                       <input {...register(`cat1EContent.${i}.evidenceFile`)} className={inputCls} placeholder="https://..." />
                     </div>
                   </div>
+                  {(() => {
+                    // Same helper the engines score with — no evidence link, no marks.
+                    const r = eContentRowScore((watchedValues as any)?.cat1EContent?.[i] ?? {});
+                    return r.evidence
+                      ? <div className="mt-2 text-xs text-ink-muted">Evidence link given → <span className="font-medium text-ink-secondary">2</span></div>
+                      : <div className="mt-2 text-xs text-amber-700">Add the evidence link (https://…) to score this item — currently 0.</div>;
+                  })()}
                   <button type="button" onClick={() => eContent.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}

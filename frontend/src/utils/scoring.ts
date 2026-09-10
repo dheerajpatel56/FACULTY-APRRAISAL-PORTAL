@@ -42,6 +42,10 @@ export interface Cat1CourseResultInput {
   passPercentage?: number;
 }
 
+export interface Cat1EContentInput {
+  evidenceFile?: string | null;
+}
+
 export interface Cat1ProjectInput {
   course?: CourseLevel;
   projectType?: ProjectType;
@@ -124,7 +128,7 @@ export interface ScoreFormValues {
   cat1Courses?: Cat1CourseInput[];
   cat1CourseResults?: Cat1CourseResultInput[];
   cat1Projects?: Cat1ProjectInput[];
-  cat1EContent?: unknown[];
+  cat1EContent?: Cat1EContentInput[];
   cat1ICT?: unknown[];
 
   cat2Journals?: Cat2JournalInput[];
@@ -247,7 +251,9 @@ function scoreCategory1(v: ScoreFormValues) {
   projects = Math.min(projects, 20);
 
   // 1.4 e-Content (max 5)
-  const eContent = Math.min(arr(v.cat1EContent).length * 2, 5);
+  let eContent = 0;
+  for (const e of arr<Cat1EContentInput>(v.cat1EContent)) eContent += eContentRowScore(e).score;
+  eContent = Math.min(eContent, 5);
 
   // 1.5 ICT (max 5)
   const ict = Math.min(arr(v.cat1ICT).length * 2, 5);
@@ -465,6 +471,18 @@ export function projectRowScore(p: Cat1ProjectInput | null | undefined) {
   const raw = n(p?.count);
   const count = raw > 0 ? Math.floor(raw) : 0;
   return { rate, count, unit: p?.course === 'MTECH' ? 'student' : 'batch', score: rate * count };
+}
+
+/** Mirror of the backend's isEvidenceLink: an http(s) link with a real host, or a portal upload. */
+export function isEvidenceLink(v: unknown): boolean {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(s) || /^\/uploads\/\S+$/.test(s);
+}
+
+/** 1.4 per-row working. Mirror of the backend's eContentRowScore: 2 only with an evidence link. */
+export function eContentRowScore(e: Cat1EContentInput | null | undefined) {
+  const evidence = isEvidenceLink(e?.evidenceFile);
+  return { evidence, score: evidence ? 2 : 0 };
 }
 
 export function courseResultScore(c: Cat1CourseResultInput | null | undefined) {
