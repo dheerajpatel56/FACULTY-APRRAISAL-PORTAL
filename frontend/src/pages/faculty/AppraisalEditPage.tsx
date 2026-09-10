@@ -10,9 +10,10 @@ import { toDateInputs } from '../../utils/dateInputs';
 import { useAuthStore } from '../../store/authStore';
 import {
   computeScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore, patentRowScore,
   type PublicationKind, type ScoreBreakdown,
 } from '../../utils/scoring';
+import { patentWarnings } from '../../utils/patents';
 import { citationWarnings } from '../../utils/citations';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
@@ -937,13 +938,14 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">2.4 Patents</h2>
+                <h2 className="font-semibold text-ink-primary">2.4 Patents / Transfer of Technology / Trade Marks / Copyrights / Any Other IPR</h2>
                 <ScoreBadge value={live.cat2.patents} max={20} />
               </div>
+              <p className="text-xs text-ink-muted mb-3">Published 5, Granted 10 — for any kind of IPR. A filing alone scores 0. Transfer of Technology: choose Type of IPR → Other and describe it. Max 20.</p>
               {patents.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Title</label><input {...register(`cat2Patents.${i}.title`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Title of the Patent / Design / etc.</label><input {...register(`cat2Patents.${i}.title`)} className={inputCls} /></div>
                     <div>
                       <label className={labelCls}>Country</label>
                       <select {...register(`cat2Patents.${i}.country`)} className={inputCls}>
@@ -951,9 +953,9 @@ export default function AppraisalEditPage() {
                         <option value="US">US</option>
                       </select>
                     </div>
-                    <div><label className={labelCls}>Inventors</label><input {...register(`cat2Patents.${i}.inventors`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Name of the Inventor(s)</label><input {...register(`cat2Patents.${i}.inventors`)} className={inputCls} /></div>
                     <div>
-                      <label className={labelCls}>Status</label>
+                      <label className={labelCls}>Status (Filed / Published / Granted)</label>
                       {(() => {
                         const reg = register(`cat2Patents.${i}.status`);
                         return (
@@ -1002,7 +1004,7 @@ export default function AppraisalEditPage() {
                         Institute is the applicant
                       </label>
                     </div>
-                    <div><label className={labelCls}>Application Number</label><input {...register(`cat2Patents.${i}.appNumber`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Application / Patent Number</label><input {...register(`cat2Patents.${i}.appNumber`)} className={inputCls} /></div>
                     <div><label className={labelCls}>Date of Filing</label><input type="date" {...register(`cat2Patents.${i}.dateOfFiling`)} className={inputCls} /></div>
                     {['PUBLISHED', 'GRANTED'].includes((watchedValues as any)?.cat2Patents?.[i]?.status) && (
                       <div><label className={labelCls}>Date of Publication</label><input type="date" {...register(`cat2Patents.${i}.dateOfPub`)} className={inputCls} /></div>
@@ -1013,6 +1015,17 @@ export default function AppraisalEditPage() {
                     <div><label className={labelCls}>Valid Duration</label><input {...register(`cat2Patents.${i}.validDuration`)} className={inputCls} /></div>
                     {proofField(`cat2Patents.${i}.proofFile`)}
                   </div>
+                  {(() => {
+                    // Same helper the engines score with; warnings never block or change the score.
+                    const all = (watchedValues as any)?.cat2Patents ?? [];
+                    const r = patentRowScore(all[i]);
+                    return (
+                      <div className={`mt-2 text-xs ${r.score ? 'text-ink-muted' : 'text-amber-700'}`}>
+                        {r.reason} → <span className="font-medium">{r.score}</span>
+                        {patentWarnings(all, i).map((w) => <span key={w} className="block text-amber-700 mt-0.5">⚠ {w}</span>)}
+                      </div>
+                    );
+                  })()}
                   <button type="button" onClick={() => patents.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}

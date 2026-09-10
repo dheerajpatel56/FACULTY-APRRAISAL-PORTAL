@@ -187,13 +187,13 @@ describe('Category 2 — Research', () => {
 
   it('2.4 patents: granted 10, published 5, filed 0', () => {
     const s = computeScore(emptySubmission({
-      cat2Patents: [{ status: 'GRANTED' }, { status: 'PUBLISHED' }, { status: 'FILED' }],
+      cat2Patents: [{ title: 'P1', status: 'GRANTED' }, { title: 'P2', status: 'PUBLISHED' }, { title: 'P3', status: 'FILED' }],
     }));
     expect(s.cat2.patents).toBe(15);
   });
 
   it('patents capped at 20', () => {
-    const patents = Array.from({ length: 5 }, () => ({ status: 'GRANTED' })); // 50 → cap 20
+    const patents = Array.from({ length: 5 }, (_, i) => ({ title: `P${i}`, status: 'GRANTED' })); // 50 → cap 20
     expect(computeScore(emptySubmission({ cat2Patents: patents })).cat2.patents).toBe(20);
   });
 
@@ -428,8 +428,9 @@ describe('sample appraisal — form alignment', () => {
     // 2.3 — 1 published book chapter, international publisher, author -> 10.
     // Scope is explicit: since 2026-09-11 a row with no scope scores 0.
     cat2BookChapters: [{ title: 'Book chapter', scope: 'INTERNATIONAL', isEdited: false }],
-    // 2.4 — 1 published patent -> 5 (published tier, not granted)
-    cat2Patents: [{ status: 'PUBLISHED' }],
+    // 2.4 — 1 published patent -> 5 (published tier, not granted). Titled: since
+    // 2026-09-11 an untitled row scores 0, as a blank-row placeholder would.
+    cat2Patents: [{ title: 'Published patent', status: 'PUBLISHED' }],
     // 2.8 -> 5, 2.9 institute + industry linkages (2 + 3 = 5 x 5 = 25) -> capped 10
     cat2ResearchGroups: [{}],
     cat2Linkages: [{}, {}],

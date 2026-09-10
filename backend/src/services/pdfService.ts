@@ -2,7 +2,7 @@ import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
 import {
   lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore, patentRowScore,
 } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
@@ -306,9 +306,15 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
         ...(sub.cat2BookChapters ?? []).map((b: any) => row(b, 'Chapter')),
       ]);
   })()}
-  ${listTable('Patents',
-    ['Title', 'Status', 'Application No', 'Date', 'Proof'],
-    (sub.cat2Patents ?? []).map((p: any) => [p.title, p.status, p.appNumber, fmtDate(p.dateOfPub), proofCell(p.proofFile)])
+  ${listTable('2.4 Patents / Transfer of Technology / Trade Marks / Copyrights / Other IPR',
+    ['Title of the Patent / Design / etc.', 'Type', 'Country', 'Name of the Inventor', 'Application / Patent Number',
+      'Status', 'Date of Publication', 'Date of Grant', 'Valid Duration', 'Score', 'Proof'],
+    // Same helper the engine scores with — never re-derive 2.4 here.
+    (sub.cat2Patents ?? []).map((p: any) => [
+      p.title, p.iprType === 'Other' ? (p.iprTypeOther || 'Other') : (p.iprType || '—'), p.country, p.inventors,
+      p.appNumber || '—', p.status ? p.status[0] + p.status.slice(1).toLowerCase() : '—',
+      fmtDate(p.dateOfPub), fmtDate(p.dateOfGrant), p.validDuration || '—', patentRowScore(p).score, proofCell(p.proofFile),
+    ])
   )}
   ${listTable('Funded Projects',
     ['Title', 'Funding Agency', 'Amount (Lakhs)', 'Status', 'Proof'],

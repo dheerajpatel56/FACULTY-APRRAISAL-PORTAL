@@ -324,6 +324,21 @@ export function bookRowScore(r: { title?: string | null; scope?: string | null; 
   return { score, reason: `${scope === Scope.INTERNATIONAL ? 'International' : 'National'} publisher, ${edited ? 'editor' : 'author'}` };
 }
 
+/**
+ * 2.4 per-row working, exported for the views that show it; mirrored in the
+ * frontend port. PDF: Published 5, Granted 10 — for any kind of IPR (patent,
+ * copyright, trademark, design; transfer of technology goes under Other).
+ * Filed alone scores 0 (2026-08-12). An untitled row is a placeholder: the
+ * blank-row filters already drop it before saving, and this guard keeps the
+ * engine honest on its own, as bookRowScore does.
+ */
+export function patentRowScore(p: { title?: string | null; status?: string | null }) {
+  if (!String(p.title ?? '').trim()) return { score: 0, reason: 'Enter the title to score this entry' };
+  if (p.status === PatentStatus.GRANTED) return { score: 10, reason: 'Granted' };
+  if (p.status === PatentStatus.PUBLISHED) return { score: 5, reason: 'Published' };
+  return { score: 0, reason: 'Filed — scores once published (5) or granted (10)' };
+}
+
 function scoreCategory2(s: FullSubmission) {
   // 2.1 Publications — A journals + B conference proceedings + C conference
   // book chapters share one cap of 60. Per-row rules in publicationRowScore.
@@ -342,13 +357,9 @@ function scoreCategory2(s: FullSubmission) {
   for (const bc of s.cat2BookChapters) books += bookRowScore(bc).score;
   books = Math.min(books, 10);
 
-  // 2.4 Patents / IPR (max 20) — PDF scores Granted 10 and Published 5 only;
-  // a patent that is merely Filed carries no score.
+  // 2.4 Patents / IPR (max 20) — per-row rules in patentRowScore.
   let patents = 0;
-  for (const p of s.cat2Patents) {
-    if (p.status === PatentStatus.GRANTED) patents += 10;
-    else if (p.status === PatentStatus.PUBLISHED) patents += 5;
-  }
+  for (const p of s.cat2Patents) patents += patentRowScore(p).score;
   patents = Math.min(patents, 20);
 
   // 2.5 Sponsored Projects (max 20) — Ongoing 20, Applied 5

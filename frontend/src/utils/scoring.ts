@@ -267,6 +267,17 @@ export function bookRowScore(r: { title?: string | null; scope?: string | null; 
   return { score, reason: `${scope === 'INTERNATIONAL' ? 'International' : 'National'} publisher, ${edited ? 'editor' : 'author'}` };
 }
 
+/**
+ * 2.4 per-row working. Mirror of the backend's patentRowScore: Granted 10,
+ * Published 5, Filed 0, for any kind of IPR; an untitled row scores 0.
+ */
+export function patentRowScore(p: { title?: string | null; status?: string | null } | null | undefined) {
+  if (!String(p?.title ?? '').trim()) return { score: 0, reason: 'Enter the title to score this entry' };
+  if (p?.status === 'GRANTED') return { score: 10, reason: 'Granted' };
+  if (p?.status === 'PUBLISHED') return { score: 5, reason: 'Published' };
+  return { score: 0, reason: 'Filed — scores once published (5) or granted (10)' };
+}
+
 /** 2.2 score from Scopus / WoS citations. Mirror of the backend's citationScore. */
 export function citationScore(totalCitations?: number | null): number {
   const tc = Number(totalCitations);
@@ -325,13 +336,9 @@ function scoreCategory2(v: ScoreFormValues) {
   for (const bc of arr<Cat2BookChapterInput>(v.cat2BookChapters)) books += bookRowScore(bc as any).score;
   books = Math.min(books, 10);
 
-  // 2.4 Patents / IPR (max 20) — Granted 10, Published 5; a merely Filed
-  // patent carries no score.
+  // 2.4 Patents / IPR (max 20) — per-row rules in patentRowScore.
   let patents = 0;
-  for (const p of arr<Cat2PatentInput>(v.cat2Patents)) {
-    if (p?.status === 'GRANTED') patents += 10;
-    else if (p?.status === 'PUBLISHED') patents += 5;
-  }
+  for (const p of arr<Cat2PatentInput>(v.cat2Patents)) patents += patentRowScore(p as any).score;
   patents = Math.min(patents, 20);
 
   // 2.5 Sponsored Projects (max 20) — Ongoing 20, Applied 5

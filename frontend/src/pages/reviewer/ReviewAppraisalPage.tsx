@@ -10,8 +10,9 @@ import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
 import {
   courseResultScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore,
-  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore,
+  publicationRowScore, INDEX_LABEL, countAuthors, citationScore, bookRowScore, patentRowScore,
 } from '../../utils/scoring';
+import { patentWarnings } from '../../utils/patents';
 import { citationWarnings } from '../../utils/citations';
 
 export default function ReviewAppraisalPage() {
@@ -290,7 +291,6 @@ export default function ReviewAppraisalPage() {
                 })}
               </div>
             ) : null))}
-            <div className="text-xs text-ink-muted">Patents: {submission.cat2Patents?.length ?? 0}</div>
           </Card>
 
           <Card>
@@ -333,6 +333,22 @@ export default function ReviewAppraisalPage() {
                 })}
               </div>
             ) : null))}
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">2.4 Patents / IPR ({submission.cat2Patents?.length ?? 0})</h2>
+            {(submission.cat2Patents ?? []).map((p: any, i: number, all: any[]) => {
+              // Same helper the scoring engines use — never re-derive 2.4 here.
+              const r = patentRowScore(p);
+              const type = p.iprType === 'Other' ? (p.iprTypeOther || 'Other') : (p.iprType || 'Patent');
+              const bits = [type, p.country, p.appNumber ? `No. ${p.appNumber}` : '', p.inventors].filter(Boolean).join(' · ');
+              return (
+                <div key={p.id} className="text-xs text-ink-secondary mb-1">
+                  "{p.title}" — {bits} — <span className={r.score ? '' : 'text-amber-700'}>{r.reason}</span> → {r.score}
+                  {patentWarnings(all, i).map((w) => <div key={w} className="text-amber-700">⚠ {w}</div>)}
+                </div>
+              );
+            })}
           </Card>
 
           <ProofVerificationPanel submissionId={id!} />
