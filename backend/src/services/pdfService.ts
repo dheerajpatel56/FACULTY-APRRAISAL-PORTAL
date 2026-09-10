@@ -1,6 +1,6 @@
 import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
-import { lectureRowScore, projectRowScore, eContentRowScore } from './scoringEngine';
+import { lectureRowScore, projectRowScore, eContentRowScore, ictRowScore } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -237,9 +237,13 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
       return [e.courseName, e.contentName, e.nature, r.evidence ? proofCell(e.evidenceFile) : 'No evidence link', r.score];
     })
   )}
-  ${listTable('ICT Usage',
-    ['Course', 'Platform', 'Nature of Use'],
-    (sub.cat1ICT ?? []).map((i: any) => [i.courseName, i.platform, i.natureOfUse])
+  ${listTable('1.5 Use of ICT &amp; Digital Platforms',
+    ['Course Name (B.Tech/M.Tech)', 'Platform / Tool Used', 'Nature of Use', 'Evidence', 'Score'],
+    (sub.cat1ICT ?? []).map((i: any) => {
+      // Same helper the engine scores with — never re-derive 1.5 here.
+      const r = ictRowScore(i);
+      return [i.courseName, i.platform, i.natureOfUse, r.evidence ? proofCell(i.evidenceFile) : 'No evidence link', r.score];
+    })
   )}
 
   <h2>Cat 2 — Research &amp; Consultancy</h2>

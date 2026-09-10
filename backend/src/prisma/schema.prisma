@@ -538,7 +538,7 @@ model Cat1ICT {
   courseName       String
   platform         String
   natureOfUse      String
-  otherDescription String? // free text shown when platform/nature = "Other"
+  otherDescription String? // legacy, no longer written: "Other" text is now stored in platform / natureOfUse themselves (2026-09-11)
   evidenceFile     String?
 
   submission AppraisalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)

@@ -107,11 +107,11 @@ describe('Category 1 — Teaching', () => {
     expect(s.cat1.projects).toBe(16);
   });
 
-  it('eContent +2 per row WITH an evidence link, capped 5; ICT +2 each capped 5', () => {
+  it('eContent and ICT: +2 per row WITH an evidence link, each capped 5', () => {
     const link = { evidenceFile: 'https://drive.google.com/file/d/x/view' };
     const s = computeScore(emptySubmission({
       cat1EContent: [link, link, link, {}],  // 6 → cap 5; the linkless row adds nothing
-      cat1ICT: [{}, {}, {}],       // 6 → cap 5
+      cat1ICT: [link, link, link, {}],       // 6 → cap 5; the linkless row adds nothing
     }));
     expect(s.cat1.eContent).toBe(5);
     expect(s.cat1.ict).toBe(5);

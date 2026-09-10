@@ -8,7 +8,7 @@ import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
-import { courseResultScore, lectureRowScore, projectRowScore, eContentRowScore } from '../../utils/scoring';
+import { courseResultScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore } from '../../utils/scoring';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -231,6 +231,26 @@ export default function ReviewAppraisalPage() {
                   {r.evidence
                     ? (link
                       ? <a href={e.evidenceFile.trim()} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">evidence</a>
+                      : <span>file attached</span>)
+                    : <span className="text-amber-700">no evidence link</span>}
+                  {` → ${r.score}`}
+                </div>
+              );
+            })}
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">1.5 ICT &amp; Digital Platforms ({submission.cat1ICT?.length ?? 0})</h2>
+            {submission.cat1ICT?.map((x: any) => {
+              // Same helper the scoring engines use — never re-derive 1.5 here.
+              const r = ictRowScore(x);
+              const link = /^https?:\/\//i.test(String(x.evidenceFile ?? '').trim());
+              return (
+                <div key={x.id} className="text-xs text-ink-secondary mb-1">
+                  {x.courseName} — {x.platform} ({x.natureOfUse}) —{' '}
+                  {r.evidence
+                    ? (link
+                      ? <a href={x.evidenceFile.trim()} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">evidence</a>
                       : <span>file attached</span>)
                     : <span className="text-amber-700">no evidence link</span>}
                   {` → ${r.score}`}

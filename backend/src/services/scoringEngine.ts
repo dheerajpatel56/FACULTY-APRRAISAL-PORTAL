@@ -216,6 +216,17 @@ export function eContentRowScore(e: { evidenceFile?: string | null }) {
   return { evidence, score: evidence ? 2 : 0 };
 }
 
+/**
+ * 1.5 per-row working. PDF: "LMS usage, online quizzes, digital assignments,
+ * flipped classrooms with documentary evidence", max 5, no per-row figure.
+ * Owner decisions 2026-09-11: 2 per documented course (3 reach the max), and
+ * "documented" means an evidence link, exactly as in 1.4.
+ */
+export function ictRowScore(i: { evidenceFile?: string | null }) {
+  const evidence = isEvidenceLink(i.evidenceFile);
+  return { evidence, score: evidence ? 2 : 0 };
+}
+
 function scoreCategory1(s: FullSubmission) {
   // 1.1 Lectures (max 40) — per-course rules in lectureRowScore.
   let lectures = 0;
@@ -245,7 +256,9 @@ function scoreCategory1(s: FullSubmission) {
   eContent = Math.min(eContent, 5);
 
   // 1.5 ICT (max 5)
-  const ict = Math.min(s.cat1ICT.length * 2, 5);
+  let ict = 0;
+  for (const i of s.cat1ICT) ict += ictRowScore(i).score;
+  ict = Math.min(ict, 5);
 
   const total = Math.min(lectures + attendanceFeedback + projects + eContent + ict, 150);
   return { lectures, attendanceFeedback, projects, eContent, ict, total };

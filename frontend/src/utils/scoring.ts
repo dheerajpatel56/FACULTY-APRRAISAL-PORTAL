@@ -46,6 +46,10 @@ export interface Cat1EContentInput {
   evidenceFile?: string | null;
 }
 
+export interface Cat1ICTInput {
+  evidenceFile?: string | null;
+}
+
 export interface Cat1ProjectInput {
   course?: CourseLevel;
   projectType?: ProjectType;
@@ -129,7 +133,7 @@ export interface ScoreFormValues {
   cat1CourseResults?: Cat1CourseResultInput[];
   cat1Projects?: Cat1ProjectInput[];
   cat1EContent?: Cat1EContentInput[];
-  cat1ICT?: unknown[];
+  cat1ICT?: Cat1ICTInput[];
 
   cat2Journals?: Cat2JournalInput[];
   cat2Conferences?: Cat2ConferenceInput[];
@@ -256,7 +260,9 @@ function scoreCategory1(v: ScoreFormValues) {
   eContent = Math.min(eContent, 5);
 
   // 1.5 ICT (max 5)
-  const ict = Math.min(arr(v.cat1ICT).length * 2, 5);
+  let ict = 0;
+  for (const i of arr<Cat1ICTInput>(v.cat1ICT)) ict += ictRowScore(i).score;
+  ict = Math.min(ict, 5);
 
   const total = Math.min(lectures + attendanceFeedback + projects + eContent + ict, 150);
   return { lectures, attendanceFeedback, projects, eContent, ict, total };
@@ -482,6 +488,12 @@ export function isEvidenceLink(v: unknown): boolean {
 /** 1.4 per-row working. Mirror of the backend's eContentRowScore: 2 only with an evidence link. */
 export function eContentRowScore(e: Cat1EContentInput | null | undefined) {
   const evidence = isEvidenceLink(e?.evidenceFile);
+  return { evidence, score: evidence ? 2 : 0 };
+}
+
+/** 1.5 per-row working. Mirror of the backend's ictRowScore: 2 only with an evidence link. */
+export function ictRowScore(i: Cat1ICTInput | null | undefined) {
+  const evidence = isEvidenceLink(i?.evidenceFile);
   return { evidence, score: evidence ? 2 : 0 };
 }
 

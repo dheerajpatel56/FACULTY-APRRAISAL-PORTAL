@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import SelectWithOther from '../../components/SelectWithOther';
 import { useAuthStore } from '../../store/authStore';
-import { computeScore, lectureRowScore, projectRowScore, eContentRowScore, type ScoreBreakdown } from '../../utils/scoring';
+import { computeScore, lectureRowScore, projectRowScore, eContentRowScore, ictRowScore, type ScoreBreakdown } from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
@@ -25,6 +25,8 @@ const IMPACT_FACTOR_SOURCES = ['Clarivate Analytics (JCR)', 'Scopus / SCImago (S
 const PRESENTATION_STATUSES = ['Accepted', 'Presented'];
 const RESOURCE_PROGRAM_TYPES = ['FDP', 'Conference', 'Workshop', 'Guest Lecture', 'Webinar'];
 const EDITORIAL_NATURES = ['Editorial Board', 'Review Committee', 'Org Committee', 'Reviewer'];
+const ICT_PLATFORMS = ['Google Classroom', 'Moodle', 'MS Teams'];
+const ICT_USES = ['Assignments', 'Quizzes', 'Recorded Lectures', 'Discussion Forums'];
 
 // A row is only saved if the faculty actually filled its free-text identifier
 // (an alphanumeric char) — this drops the empty "Add Row" placeholders and their
@@ -626,43 +628,38 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">1.5 ICT Usage</h2>
+                <h2 className="font-semibold text-ink-primary">1.5 Use of ICT &amp; Digital Platforms</h2>
                 <ScoreBadge value={live.cat1.ict} max={5} />
               </div>
+              <p className="text-xs text-ink-muted mb-3">LMS usage (Google Classroom, Moodle, MS Teams, etc.), online quizzes, digital assignments, flipped classrooms — 2 marks for each course with documentary evidence (paste the link). Section max 5.</p>
               {ict.fields.map((field, i) => (
                 <div key={field.id} className="border border-surface-border rounded p-3 mb-2">
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className={labelCls}>Course Name</label><input {...register(`cat1ICT.${i}.courseName`)} className={inputCls} /></div>
+                    <div><label className={labelCls}>Course Name (B.Tech/M.Tech)</label><input {...register(`cat1ICT.${i}.courseName`)} className={inputCls} placeholder="e.g. Data Structures — B.Tech" /></div>
                     <div>
-                      <label className={labelCls}>Platform</label>
-                      <select {...register(`cat1ICT.${i}.platform`)} className={inputCls}>
-                        <option value="Google Classroom">Google Classroom</option>
-                        <option value="Moodle">Moodle</option>
-                        <option value="MS Teams">MS Teams</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      <label className={labelCls}>Platform / Tool Used</label>
+                      {selectOther(`cat1ICT.${i}.platform`, ICT_PLATFORMS, undefined, 'Specify platform or tool')}
                     </div>
                     <div>
                       <label className={labelCls}>Nature of Use</label>
-                      <select {...register(`cat1ICT.${i}.natureOfUse`)} className={inputCls}>
-                        <option value="Assignments">Assignments</option>
-                        <option value="Quizzes">Quizzes</option>
-                        <option value="Recorded Lectures">Recorded Lectures</option>
-                        <option value="Discussion Forums">Discussion Forums</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      {selectOther(`cat1ICT.${i}.natureOfUse`, ICT_USES, undefined, 'Specify how it was used')}
                     </div>
-                    {((watchedValues as any)?.cat1ICT?.[i]?.platform === 'Other' || (watchedValues as any)?.cat1ICT?.[i]?.natureOfUse === 'Other') && (
-                      <div>
-                        <label className={labelCls}>Other — specify</label>
-                        <input {...register(`cat1ICT.${i}.otherDescription`)} className={inputCls} />
-                      </div>
-                    )}
+                    <div>
+                      <label className={labelCls}>Evidence Link (URL)</label>
+                      <input {...register(`cat1ICT.${i}.evidenceFile`)} className={inputCls} placeholder="https://..." />
+                    </div>
                   </div>
+                  {(() => {
+                    // Same helper the engines score with — no evidence link, no marks.
+                    const r = ictRowScore((watchedValues as any)?.cat1ICT?.[i] ?? {});
+                    return r.evidence
+                      ? <div className="mt-2 text-xs text-ink-muted">Evidence link given → <span className="font-medium text-ink-secondary">2</span></div>
+                      : <div className="mt-2 text-xs text-amber-700">Add the evidence link (https://…) to score this course — currently 0.</div>;
+                  })()}
                   <button type="button" onClick={() => ict.remove(i)} className="text-red-400 text-xs mt-2">Remove</button>
                 </div>
               ))}
-              {addRowBtn('Add ICT Usage', () => ict.append({ courseName: '', platform: 'Google Classroom', natureOfUse: 'Assignments', otherDescription: '' }))}
+              {addRowBtn('Add ICT Usage', () => ict.append({ courseName: '', platform: 'Google Classroom', natureOfUse: 'Assignments', evidenceFile: '' }))}
             </div>
           </div>
         )}

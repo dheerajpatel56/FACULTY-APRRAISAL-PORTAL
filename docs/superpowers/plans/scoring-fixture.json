@@ -16,7 +16,8 @@
     { "courseName": "Computer Networks", "contentName": "CN Notes (no evidence link)", "nature": "PPT", "evidenceFile": "" }
   ],
   "cat1ICT": [
-    { "courseName": "Data Structures", "platform": "Google Classroom", "natureOfUse": "Assignments", "evidenceFile": "" }
+    { "courseName": "Data Structures", "platform": "Google Classroom", "natureOfUse": "Assignments", "evidenceFile": "https://classroom.google.com/c/ds-assignments" },
+    { "courseName": "Operating Systems", "platform": "Moodle", "natureOfUse": "Quizzes", "evidenceFile": "" }
   ],
   "cat2Journals": [
     { "title": "A Scalable Approach to X", "journalName": "Intl J. of CS", "authors": "A, B", "authorPosition": "First", "indexed": "SCOPUS", "impactFactor": 3.2, "volume": "12", "issueNo": "4", "pageNos": "100-110", "dateOfPub": "2025-06-01", "issn": "", "doi": "", "quartile": "Q2" },
