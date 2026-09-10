@@ -177,6 +177,23 @@ export function lectureRowScore(c: {
   return { pct, engagement, novelty, total: engagement + novelty };
 }
 
+/**
+ * 1.3 per-row working, exported for the PDF export. Mirrored by
+ * projectRowScore in the frontend port.
+ *
+ * PDF: B.Tech mini 2 and major 5 per batch; M.Tech mini 3 and major 5 per
+ * student. The count is a whole number: a negative or blank count scores 0 — a
+ * negative row once subtracted from the rest of the section — and a fraction
+ * is dropped, because the database stores an Int.
+ */
+const PROJECT_RATE: Record<string, number> = { 'BTECH:MINI': 2, 'BTECH:MAJOR': 5, 'MTECH:MINI': 3, 'MTECH:MAJOR': 5 };
+export function projectRowScore(p: { course?: string | null; projectType?: string | null; count?: number | null }) {
+  const rate = PROJECT_RATE[`${p.course}:${p.projectType}`] ?? 0;
+  const raw = Number(p.count);
+  const count = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+  return { rate, count, unit: p.course === 'MTECH' ? 'student' : 'batch', score: rate * count };
+}
+
 function scoreCategory1(s: FullSubmission) {
   // 1.1 Lectures (max 40) — per-course rules in lectureRowScore.
   let lectures = 0;
@@ -195,14 +212,9 @@ function scoreCategory1(s: FullSubmission) {
   }
   attendanceFeedback = Math.min(attendanceFeedback, 80);
 
-  // 1.3 Projects (max 20)
+  // 1.3 Projects (max 20) — per-row rules in projectRowScore.
   let projects = 0;
-  for (const p of s.cat1Projects) {
-    if (p.course === CourseLevel.BTECH && p.projectType === ProjectType.MINI) projects += 2 * p.count;
-    else if (p.course === CourseLevel.BTECH && p.projectType === ProjectType.MAJOR) projects += 5 * p.count;
-    else if (p.course === CourseLevel.MTECH && p.projectType === ProjectType.MINI) projects += 3 * p.count;
-    else if (p.course === CourseLevel.MTECH && p.projectType === ProjectType.MAJOR) projects += 5 * p.count;
-  }
+  for (const p of s.cat1Projects) projects += projectRowScore(p).score;
   projects = Math.min(projects, 20);
 
   // 1.4 e-Content (max 5)

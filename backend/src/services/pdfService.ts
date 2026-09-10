@@ -1,6 +1,6 @@
 import puppeteer, { Browser } from 'puppeteer';
 import { VNRVJIET_LOGO_DATA_URI } from './logoAsset';
-import { lectureRowScore } from './scoringEngine';
+import { lectureRowScore, projectRowScore } from './scoringEngine';
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -216,8 +216,13 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
     (sub.cat1CourseResults ?? []).map((c: any) => [c.courseName, c.classSize, c.avgAttendancePct, c.feedbackReceived, c.passPercentage])
   )}
   ${listTable('1.3 Academic Projects Guided',
-    ['Course', 'Type', 'Count'],
-    (sub.cat1Projects ?? []).map((p: any) => [p.course, p.projectType, p.count])
+    ['Course', 'Type of Project', 'Number of Projects Guided', 'Score'],
+    (sub.cat1Projects ?? []).map((p: any) => {
+      // Same helper the engine scores with — never re-derive 1.3 here.
+      const r = projectRowScore(p);
+      const units = r.unit === 'student' ? (r.count === 1 ? 'student' : 'students') : (r.count === 1 ? 'batch' : 'batches');
+      return [p.course === 'MTECH' ? 'M.Tech' : 'B.Tech', p.projectType === 'MAJOR' ? 'Major Project' : 'Mini Project', `${r.count} ${units}`, r.score];
+    })
   )}
   ${listTable('E-Content Developed',
     ['Course', 'Content', 'Nature'],

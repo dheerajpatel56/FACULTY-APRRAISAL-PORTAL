@@ -8,7 +8,7 @@ import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import ProofVerificationPanel from '../../components/ProofVerificationPanel';
 import FeedbackSection from '../../components/FeedbackSection';
-import { courseResultScore, lectureRowScore } from '../../utils/scoring';
+import { courseResultScore, lectureRowScore, projectRowScore } from '../../utils/scoring';
 
 export default function ReviewAppraisalPage() {
   const { id } = useParams<{ id: string }>();
@@ -200,6 +200,20 @@ export default function ReviewAppraisalPage() {
               return (
                 <div key={c.id} className="text-xs text-ink-secondary mb-1">
                   {c.courseName} (Y={Y}) — A: {A.toFixed(2)} | B: {B.toFixed(2)} | C: {C.toFixed(2)} | Total: {total.toFixed(2)}
+                </div>
+              );
+            })}
+          </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-ink-primary mb-2 pb-2 border-b border-accent-500/30 font-serif">1.3 Academic Projects Guided ({submission.cat1Projects?.length ?? 0})</h2>
+            {submission.cat1Projects?.map((p: any) => {
+              // Same helper the scoring engines use — never re-derive 1.3 here.
+              const r = projectRowScore(p);
+              const units = r.unit === 'student' ? (r.count === 1 ? 'student' : 'students') : (r.count === 1 ? 'batch' : 'batches');
+              return (
+                <div key={p.id} className="text-xs text-ink-secondary mb-1">
+                  {p.course === 'MTECH' ? 'M.Tech' : 'B.Tech'} {p.projectType === 'MAJOR' ? 'major' : 'mini'} — {r.count} {units} × {r.rate} = {r.score}
                 </div>
               );
             })}

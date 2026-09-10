@@ -88,4 +88,10 @@ export function dropBlankRows(categories: any) {
       categories[key] = categories[key].filter((r: any) => rowHasContent(r, fields));
     }
   }
+  // Projects (1.3) have no free-text field — keep only rows with a positive
+  // count, as the form's stripBlankRows does. A negative count reaching the
+  // database used to subtract from the rest of the section.
+  if (Array.isArray(categories.cat1Projects)) {
+    categories.cat1Projects = categories.cat1Projects.filter((p: any) => Number(p?.count) > 0);
+  }
 }

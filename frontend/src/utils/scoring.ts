@@ -241,15 +241,9 @@ function scoreCategory1(v: ScoreFormValues) {
   }
   attendanceFeedback = Math.min(attendanceFeedback, 80);
 
-  // 1.3 Projects (max 20)
+  // 1.3 Projects (max 20) — per-row rules in projectRowScore.
   let projects = 0;
-  for (const p of arr<Cat1ProjectInput>(v.cat1Projects)) {
-    const count = n(p?.count);
-    if (p?.course === 'BTECH' && p?.projectType === 'MINI') projects += 2 * count;
-    else if (p?.course === 'BTECH' && p?.projectType === 'MAJOR') projects += 5 * count;
-    else if (p?.course === 'MTECH' && p?.projectType === 'MINI') projects += 3 * count;
-    else if (p?.course === 'MTECH' && p?.projectType === 'MAJOR') projects += 5 * count;
-  }
+  for (const p of arr<Cat1ProjectInput>(v.cat1Projects)) projects += projectRowScore(p).score;
   projects = Math.min(projects, 20);
 
   // 1.4 e-Content (max 5)
@@ -458,6 +452,19 @@ export function lectureRowScore(c: Cat1CourseInput | null | undefined) {
   const used = !!c?.novelPedagogyUsed || !!(c?.novelPedagogyMethod ?? '').trim();
   const novelty = used ? 5 : 0;
   return { pct, engagement, novelty, total: engagement + novelty };
+}
+
+/**
+ * 1.3 per-row working (rate, whole count, unit, score). Mirror of the
+ * backend's projectRowScore: negative/blank counts score 0, fractions are
+ * dropped (the database stores an Int).
+ */
+const PROJECT_RATE: Record<string, number> = { 'BTECH:MINI': 2, 'BTECH:MAJOR': 5, 'MTECH:MINI': 3, 'MTECH:MAJOR': 5 };
+export function projectRowScore(p: Cat1ProjectInput | null | undefined) {
+  const rate = PROJECT_RATE[`${p?.course}:${p?.projectType}`] ?? 0;
+  const raw = n(p?.count);
+  const count = raw > 0 ? Math.floor(raw) : 0;
+  return { rate, count, unit: p?.course === 'MTECH' ? 'student' : 'batch', score: rate * count };
 }
 
 export function courseResultScore(c: Cat1CourseResultInput | null | undefined) {

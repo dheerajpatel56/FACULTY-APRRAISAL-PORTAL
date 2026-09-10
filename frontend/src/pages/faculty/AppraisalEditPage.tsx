@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, Plus, Send } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import SelectWithOther from '../../components/SelectWithOther';
 import { useAuthStore } from '../../store/authStore';
-import { computeScore, lectureRowScore, type ScoreBreakdown } from '../../utils/scoring';
+import { computeScore, lectureRowScore, projectRowScore, type ScoreBreakdown } from '../../utils/scoring';
 
 const STEPS = ['Leave & Info', 'Teaching (Cat 1)', 'Research (Cat 2)', 'Development (Cat 3)', 'Governance (Cat 4)', 'Supplementary (Cat 5)', 'Preview & Submit'];
 
@@ -549,9 +549,10 @@ export default function AppraisalEditPage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-ink-primary">1.3 Projects Guided</h2>
+                <h2 className="font-semibold text-ink-primary">1.3 Academic Projects Guided</h2>
                 <ScoreBadge value={live.cat1.projects} max={20} />
               </div>
+              <p className="text-xs text-ink-muted mb-3">B.Tech: mini project 2, major project 5 for each batch. M.Tech: mini project 3, major project 5 for each student. Section max 20.</p>
               {projects.fields.map((field, i) => (
                 <div key={field.id} className="grid grid-cols-3 gap-3 mb-2">
                   <div>
@@ -568,11 +569,23 @@ export default function AppraisalEditPage() {
                       <option value="MAJOR">Major</option>
                     </select>
                   </div>
-                  <div>
-                    <label className={labelCls}>Count</label>
-                    <input type="number" {...register(`cat1Projects.${i}.count`, { valueAsNumber: true })} className={inputCls} />
-                  </div>
-                  <button type="button" onClick={() => projects.remove(i)} className="text-red-400 text-xs">Remove</button>
+                  {(() => {
+                    // Same helper the engines score with — the working, per row.
+                    const row = (watchedValues as any)?.cat1Projects?.[i] ?? {};
+                    const r = projectRowScore(row);
+                    return (
+                      <>
+                        <div>
+                          <label className={labelCls}>Number of Projects Guided ({row.course === 'MTECH' ? 'students' : 'batches'})</label>
+                          <input type="number" min={0} step={1} {...register(`cat1Projects.${i}.count`, { valueAsNumber: true })} className={inputCls} />
+                        </div>
+                        <button type="button" onClick={() => projects.remove(i)} className="text-red-400 text-xs">Remove</button>
+                        <div className="col-span-3 text-xs text-ink-muted -mt-1">
+                          {r.rate} per {r.unit} × {r.count} = <span className="font-medium text-ink-secondary">{r.score}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
               {addRowBtn('Add Project Row', () => projects.append({ course: 'BTECH', projectType: 'MINI', count: 0 }))}
