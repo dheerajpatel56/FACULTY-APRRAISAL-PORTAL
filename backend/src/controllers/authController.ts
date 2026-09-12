@@ -67,6 +67,12 @@ export async function login(req: Request, res: Response) {
   // Refresh token goes in the httpOnly cookie, never the JSON body.
   res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOpts);
 
+  // Security audit trail — record the successful login (id + action only, no
+  // credentials). Best-effort: never fail the login on an audit write error.
+  prisma.auditLog.create({
+    data: { userId: user.id, action: 'LOGIN', entityType: 'User', entityId: user.id },
+  }).catch(() => {});
+
   return res.json({
     accessToken,
     user: {
@@ -180,7 +186,10 @@ export async function forgotPassword(req: Request, res: Response) {
 const resetSchema = z.object({
   employeeCode: z.string().min(1),
   otp: z.string().length(6, 'OTP must be 6 digits'),
-  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+  newPassword: z.string()
+    .min(8, 'New password must be at least 8 characters')
+    .regex(/[A-Za-z]/, 'Password must include a letter')
+    .regex(/\d/, 'Password must include a number'),
 });
 
 export async function resetPassword(req: Request, res: Response) {

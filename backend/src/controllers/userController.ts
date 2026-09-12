@@ -102,7 +102,10 @@ export async function requestPasswordOtp(req: Request, res: Response) {
 
 const verifyChangeSchema = z.object({
   otp: z.string().length(6, 'OTP must be 6 digits'),
-  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+  newPassword: z.string()
+    .min(8, 'New password must be at least 8 characters')
+    .regex(/[A-Za-z]/, 'Password must include a letter')
+    .regex(/\d/, 'Password must include a number'),
 });
 
 export async function changePasswordWithOtp(req: Request, res: Response) {

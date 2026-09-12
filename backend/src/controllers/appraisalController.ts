@@ -95,7 +95,14 @@ export async function listAppraisals(req: Request, res: Response) {
 
   let whereClause: any = {};
   if (year) whereClause.academicYearId = year;
-  if (status) whereClause.status = status;
+  if (status) {
+    // Reject an unknown status instead of passing it to Prisma (which throws a
+    // 500). Only the SubmissionStatus enum values are valid filters.
+    if (!Object.values(SubmissionStatus).includes(status as SubmissionStatus)) {
+      return res.status(400).json({ error: 'Invalid status filter' });
+    }
+    whereClause.status = status;
+  }
 
   if (hasRole(req, RoleType.ADMIN)) {
     if (dept) whereClause.user = { departmentId: dept };
