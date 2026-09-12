@@ -10,18 +10,40 @@ let browserPromise: Promise<Browser> | null = null;
 
 async function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
-    browserPromise = puppeteer.launch({
+    const launching = puppeteer.launch({
       headless: true,
       // In Docker we install system Chromium and point here; locally this is
       // unset and puppeteer uses its bundled browser.
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    }).then((browser) => {
+      // Forget a browser we lose, so the next render launches a fresh one.
+      browser.on('disconnected', () => { if (browserPromise === launching) browserPromise = null; });
+      return browser;
     });
+    launching.catch(() => { if (browserPromise === launching) browserPromise = null; });
+    browserPromise = launching;
   }
   return browserPromise;
 }
 
+// Chromium can outlive the server's link to it (seen 2026-09-11 after the
+// machine slept: the process still answered, yet every render from the
+// long-lived handle failed until a restart). On failure, drop the handle and
+// retry once on a fresh browser.
 export async function renderHtmlToPdf(html: string, opts?: { landscape?: boolean }): Promise<Buffer> {
+  try {
+    return await renderOnce(html, opts);
+  } catch (err) {
+    console.error('PDF render failed; retrying on a fresh browser:', err);
+    const stale = browserPromise;
+    browserPromise = null;
+    stale?.then((b) => b.close()).catch(() => {});
+    return renderOnce(html, opts);
+  }
+}
+
+async function renderOnce(html: string, opts?: { landscape?: boolean }): Promise<Buffer> {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
