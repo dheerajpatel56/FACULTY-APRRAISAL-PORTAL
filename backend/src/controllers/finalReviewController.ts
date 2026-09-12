@@ -5,6 +5,7 @@ import prisma from '../utils/prismaClient';
 import { enqueueEmail } from '../services/emailService';
 import { computeScore } from '../services/scoringEngine';
 import { FULL_INCLUDE } from './reviewController';
+import { canViewUserResource } from '../utils/access';
 
 // The review layer ABOVE the HoD. The admin/dean assigns any number of final
 // reviewers to an annual appraisal, drawn from ANY department. After the HoD
@@ -54,6 +55,22 @@ export async function assignFinalReviewers(req: Request, res: Response) {
 
 // GET /appraisals/:id/final-reviews — the assignments + their decisions.
 export async function getFinalReviews(req: Request, res: Response) {
+  const sub = await prisma.appraisalSubmission.findUnique({
+    where: { id: req.params.id },
+    select: { userId: true, user: { select: { departmentId: true } } },
+  });
+  if (!sub) return res.status(404).json({ error: 'Not found' });
+
+  // Owner / admin / same-dept HoD or reviewer, or an assigned final reviewer.
+  // Without this, any authenticated user could read who reviews whom and their
+  // rejection comments for any submission id.
+  if (!canViewUserResource(req.user!, sub.userId, sub.user.departmentId)) {
+    const assigned = await prisma.finalReview.findUnique({
+      where: { submissionId_reviewerId: { submissionId: req.params.id, reviewerId: req.user!.id } },
+    });
+    if (!assigned) return res.status(403).json({ error: 'Forbidden' });
+  }
+
   const rows = await prisma.finalReview.findMany({
     where: { submissionId: req.params.id },
     include: { reviewer: { select: { id: true, name: true, employeeCode: true } } },

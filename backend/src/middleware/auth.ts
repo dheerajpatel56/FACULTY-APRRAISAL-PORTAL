@@ -33,11 +33,16 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       where: { id: payload.userId },
       select: {
         isActive: true,
+        tokenVersion: true,
         userRoles: { where: { isActive: true }, select: { role: true, departmentId: true } },
       },
     });
     if (!user || !user.isActive) {
       return res.status(401).json({ error: 'Account inactive or not found' });
+    }
+    // Reject a token from before the last logout / password change.
+    if ((payload.tokenVersion ?? 0) !== user.tokenVersion) {
+      return res.status(401).json({ error: 'Session expired — please log in again' });
     }
 
     req.user = {

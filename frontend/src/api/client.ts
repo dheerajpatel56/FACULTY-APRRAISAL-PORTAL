@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-const api = axios.create({ baseURL: '/api' });
+// withCredentials so the httpOnly refresh-token cookie is sent to /api/auth.
+const api = axios.create({ baseURL: '/api', withCredentials: true });
 
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;

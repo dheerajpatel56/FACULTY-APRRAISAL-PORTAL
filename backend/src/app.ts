@@ -20,8 +20,17 @@ const app = express();
 app.use(httpLogger);
 app.use(metricsMiddleware);
 
-// Observability endpoints — root path, no auth (scraped on internal network).
-app.get('/metrics', metricsHandler);   // Prometheus
+// Observability endpoints — root path. /health(/ready) stay open for the
+// container/proxy probes. /metrics leaks route and timing internals, so when
+// METRICS_TOKEN is set it requires `Authorization: Bearer <token>`; unset keeps
+// it open for local/dev (deploy keeps the port off the public network).
+const METRICS_TOKEN = process.env.METRICS_TOKEN;
+app.get('/metrics', (req, res) => {
+  if (METRICS_TOKEN && req.headers.authorization !== `Bearer ${METRICS_TOKEN}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  return metricsHandler(req, res);
+});
 app.get('/health', health);            // liveness
 app.get('/health/ready', ready);       // readiness (DB ping)
 

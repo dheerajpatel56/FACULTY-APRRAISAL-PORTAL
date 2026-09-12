@@ -19,6 +19,9 @@ if (JWT_SECRET === REFRESH_SECRET) {
 export interface TokenPayload {
   userId: string;
   employeeCode: string;
+  // Session generation. Compared against User.tokenVersion on every request and
+  // on refresh; a bump (logout / password change) invalidates old tokens.
+  tokenVersion?: number;
 }
 
 export function signAccessToken(payload: TokenPayload): string {

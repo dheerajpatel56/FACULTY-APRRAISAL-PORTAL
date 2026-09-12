@@ -13,6 +13,10 @@ export async function listEmails(req: Request, res: Response) {
 
   const include = { toUser: { select: { id: true, name: true, employeeCode: true, email: true } } };
 
+  // The payload can carry a one-time code (password_otp). It is not needed by
+  // the admin Emails list and must never be exposed there, so drop it.
+  const stripPayload = <T extends { payload?: unknown }>(r: T) => { const { payload, ...rest } = r; return rest; };
+
   if (paginated === 'true') {
     const take = Math.min(Number(limit ?? 50), 200);
     const skip = Number(offset ?? 0);
@@ -20,7 +24,7 @@ export async function listEmails(req: Request, res: Response) {
       prisma.emailNotification.findMany({ where, include, orderBy: { createdAt: 'desc' }, take, skip }),
       prisma.emailNotification.count({ where }),
     ]);
-    return res.json({ rows, total, limit: take, offset: skip });
+    return res.json({ rows: rows.map(stripPayload), total, limit: take, offset: skip });
   }
 
   const rows = await prisma.emailNotification.findMany({
@@ -28,7 +32,7 @@ export async function listEmails(req: Request, res: Response) {
     orderBy: { createdAt: 'desc' },
     take: limit ? Number(limit) : 100,
   });
-  return res.json(rows);
+  return res.json(rows.map(stripPayload));
 }
 
 export async function retryEmail(req: Request, res: Response) {

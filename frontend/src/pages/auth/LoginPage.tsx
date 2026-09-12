@@ -24,7 +24,7 @@ export default function LoginPage() {
   const onSubmit = async (data: FormData) => {
     try {
       const res = await authApi.login(data.employeeCode, data.password);
-      login(res.accessToken, res.refreshToken, res.user);
+      login(res.accessToken, res.user);
       const isAdmin = res.user.roles.some((r: any) => r.role === 'ADMIN');
       const isHodOrReviewer = res.user.roles.some((r: any) => r.role === 'HOD' || r.role === 'REVIEWER');
       if (isAdmin) navigate('/admin/dashboard');

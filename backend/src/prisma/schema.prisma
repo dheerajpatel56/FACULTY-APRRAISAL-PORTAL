@@ -164,6 +164,10 @@ model User {
   contactAddress        String?
   isActive              Boolean   @default(true)
   emailOptIn            Boolean   @default(true)
+  // Bumped on logout / password change / password reset. Access and refresh
+  // tokens carry the value they were signed with; a mismatch is rejected, so a
+  // stolen token stops working the moment the user logs out or changes password.
+  tokenVersion          Int       @default(0)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 

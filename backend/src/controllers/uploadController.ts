@@ -5,9 +5,56 @@ import prisma from '../utils/prismaClient';
 import { RoleType } from '@prisma/client';
 import { PROOF_DIR as UPLOAD_ROOT } from '../utils/uploadPaths';
 
+// Ceiling on how many files one account may hold, so an authenticated user
+// cannot fill the disk by uploading indefinitely. Generous vs a real faculty's
+// proof count (a few dozen), tight enough to bound abuse.
+const MAX_FILES_PER_USER = 500;
+
+// Verify a file's leading bytes match its declared MIME. Covers the four
+// allowed types (see middleware/upload ALLOWED_MIME).
+async function magicMatches(filePath: string, mime: string): Promise<boolean> {
+  let fd: fs.promises.FileHandle | null = null;
+  try {
+    fd = await fs.promises.open(filePath, 'r');
+    const buf = Buffer.alloc(12);
+    const { bytesRead } = await fd.read(buf, 0, 12, 0);
+    if (bytesRead < 4) return false;
+    switch (mime) {
+      case 'application/pdf':
+        return buf.toString('latin1', 0, 4) === '%PDF';
+      case 'image/png':
+        return buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+      case 'image/jpeg':
+        return buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+      case 'image/webp':
+        return buf.toString('latin1', 0, 4) === 'RIFF' && bytesRead >= 12 && buf.toString('latin1', 8, 12) === 'WEBP';
+      default:
+        return false;
+    }
+  } catch {
+    return false;
+  } finally {
+    await fd?.close().catch(() => {});
+  }
+}
+
 export async function uploadProof(req: Request, res: Response) {
   const file = (req as any).file;
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const owned = await prisma.uploadedFile.count({ where: { uploaderId: req.user!.id } });
+  if (owned >= MAX_FILES_PER_USER) {
+    await fs.promises.unlink(path.join(UPLOAD_ROOT, file.filename)).catch(() => {});
+    return res.status(400).json({ error: 'Upload limit reached — delete old files before adding more.' });
+  }
+
+  // The multer fileFilter trusts the client-declared MIME. Verify the bytes on
+  // disk actually match, so a script renamed with Content-Type: application/pdf
+  // cannot be stored (defence in depth alongside nosniff on serve).
+  if (!(await magicMatches(path.join(UPLOAD_ROOT, file.filename), file.mimetype))) {
+    await fs.promises.unlink(path.join(UPLOAD_ROOT, file.filename)).catch(() => {});
+    return res.status(400).json({ error: 'File content does not match its type (PDF/PNG/JPEG/WEBP only).' });
+  }
 
   // Record ownership so downloads can be authorized.
   await prisma.uploadedFile.create({

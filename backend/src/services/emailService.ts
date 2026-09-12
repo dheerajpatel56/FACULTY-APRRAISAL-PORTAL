@@ -43,7 +43,10 @@ interface EnqueueOpts {
   payload: Record<string, any>;
   // Idempotency — if set, prevents duplicate sends with same key
   dedupeKey?: string;
-  // Respect emailOptIn (default true; set false for critical status emails)
+  // Whether to skip this send when the user has opted out (emailOptIn=false).
+  // Defaults to FALSE: transactional/status mail (approvals, OTPs, holds) must
+  // reach the faculty regardless of the opt-out. Only bulk/advisory sends (the
+  // quarterly digest) pass honorOptIn:true so the opt-out is respected there.
   honorOptIn?: boolean;
 }
 
@@ -90,6 +93,18 @@ export async function enqueueEmail(opts: EnqueueOpts): Promise<string | null> {
   return row.id;
 }
 
+// Secret payload keys that must not survive at rest once the mail is rendered.
+const SECRET_PAYLOAD_KEYS = ['otp'];
+
+// Return the payload with secret keys removed. Used after a send completes so a
+// one-time code (password_otp) is not retained in EmailNotification.payload.
+function redactPayload(_template: string, payload: unknown): any {
+  if (!payload || typeof payload !== 'object') return payload as any;
+  const out: Record<string, any> = { ...(payload as Record<string, any>) };
+  for (const k of SECRET_PAYLOAD_KEYS) if (k in out) out[k] = '[redacted]';
+  return out;
+}
+
 /**
  * Actually send an email via SMTP. Called by worker.
  */
@@ -102,7 +117,7 @@ export async function sendEmail(notificationId: string): Promise<void> {
     console.log(`[email:DISABLED] would send ${row.template} to ${row.toEmail} — ${row.subject}`);
     await prisma.emailNotification.update({
       where: { id: row.id },
-      data: { status: EmailStatus.SENT, sentAt: new Date() },
+      data: { status: EmailStatus.SENT, sentAt: new Date(), payload: redactPayload(row.template, row.payload) },
     });
     return;
   }
@@ -117,7 +132,9 @@ export async function sendEmail(notificationId: string): Promise<void> {
     });
     await prisma.emailNotification.update({
       where: { id: row.id },
-      data: { status: EmailStatus.SENT, sentAt: new Date(), attempts: { increment: 1 } },
+      // Drop secrets (the OTP) from the row once the mail is out, so the code
+      // does not sit in the database or leak through the admin Emails list.
+      data: { status: EmailStatus.SENT, sentAt: new Date(), attempts: { increment: 1 }, payload: redactPayload(row.template, row.payload) },
     });
     console.log(`[email] Sent ${row.template} to ${row.toEmail}`);
   } catch (e: any) {
@@ -129,6 +146,9 @@ export async function sendEmail(notificationId: string): Promise<void> {
         status: failed ? EmailStatus.FAILED : EmailStatus.PENDING,
         attempts,
         error: String(e?.message ?? e),
+        // Once we give up, drop the secret too — a FAILED OTP row must not keep
+        // the cleartext code at rest.
+        ...(failed ? { payload: redactPayload(row.template, row.payload) } : {}),
       },
     });
     console.error(`[email] Failed ${row.template} to ${row.toEmail} (attempt ${attempts}/3):`, e?.message);

@@ -10,6 +10,34 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+// A valid bcrypt hash (of a random string) compared against when the account
+// is unknown/inactive, so login timing does not leak account existence.
+const DUMMY_HASH = '$2b$12$duvCNJakmNHd0zv7RFluk./a5qKxD9bExM479bQqjlEUQ/3f0vinq';
+
+// The refresh token is the long-lived (7d) credential, so it lives in an
+// httpOnly cookie out of JavaScript's reach — an XSS can no longer read it.
+// Scoped to the auth routes that use it. `secure` only in production, so plain
+// HTTP dev still works (prod is fronted by TLS at the campus proxy).
+const REFRESH_COOKIE = 'refreshToken';
+const refreshCookieOpts = {
+  httpOnly: true as const,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/api/auth',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+// Minimal cookie reader — avoids adding cookie-parser for one cookie.
+function readCookie(req: Request, name: string): string | undefined {
+  const raw = req.headers.cookie;
+  if (!raw) return undefined;
+  for (const part of raw.split(';')) {
+    const i = part.indexOf('=');
+    if (i > -1 && part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return undefined;
+}
+
 export async function login(req: Request, res: Response) {
   const { employeeCode, password } = loginSchema.parse(req.body);
 
@@ -23,20 +51,24 @@ export async function login(req: Request, res: Response) {
     },
   });
 
-  if (!user || !user.isActive) {
+  // Constant-time-ish: always run one bcrypt compare, even for an unknown or
+  // inactive account, so response timing does not reveal whether the employee
+  // code exists. DUMMY_HASH is a real bcrypt hash of a random string.
+  const hash = user?.isActive ? user.passwordHash : DUMMY_HASH;
+  const valid = await bcrypt.compare(password, hash);
+  if (!user || !user.isActive || !valid) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-
-  const payload = { userId: user.id, employeeCode: user.employeeCode };
+  const payload = { userId: user.id, employeeCode: user.employeeCode, tokenVersion: user.tokenVersion };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
+  // Refresh token goes in the httpOnly cookie, never the JSON body.
+  res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOpts);
+
   return res.json({
     accessToken,
-    refreshToken,
     user: {
       id: user.id,
       name: user.name,
@@ -49,22 +81,37 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function refresh(req: Request, res: Response) {
-  const { refreshToken } = req.body;
+  // Prefer the httpOnly cookie; fall back to the body for older clients.
+  const refreshToken = readCookie(req, REFRESH_COOKIE) ?? req.body?.refreshToken;
   if (!refreshToken) return res.status(400).json({ error: 'Refresh token required' });
 
   try {
     const payload = verifyRefreshToken(refreshToken);
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
     if (!user || !user.isActive) return res.status(401).json({ error: 'User not found' });
+    // A refresh token from before the last logout / password change is dead.
+    if ((payload.tokenVersion ?? 0) !== user.tokenVersion) {
+      return res.status(401).json({ error: 'Session expired — please log in again' });
+    }
 
-    const accessToken = signAccessToken({ userId: user.id, employeeCode: user.employeeCode });
+    const accessToken = signAccessToken({ userId: user.id, employeeCode: user.employeeCode, tokenVersion: user.tokenVersion });
     return res.json({ accessToken });
   } catch {
     return res.status(401).json({ error: 'Invalid refresh token' });
   }
 }
 
-export async function logout(_req: Request, res: Response) {
+// Logout invalidates every outstanding token for the user by bumping the
+// session generation, so a stolen access/refresh token stops working now
+// rather than living out its expiry.
+export async function logout(req: Request, res: Response) {
+  if (req.user?.id) {
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { tokenVersion: { increment: 1 } },
+    }).catch(() => {});
+  }
+  res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
   return res.json({ message: 'Logged out' });
 }
 
@@ -163,7 +210,8 @@ export async function resetPassword(req: Request, res: Response) {
   const newHash = await bcrypt.hash(newPassword, 12);
 
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
+    // Bump the session generation so any token issued before this reset dies.
+    await tx.user.update({ where: { id: user.id }, data: { passwordHash: newHash, tokenVersion: { increment: 1 } } });
     await tx.passwordOtp.delete({ where: { userId: user.id } });
     await tx.auditLog.create({
       data: {

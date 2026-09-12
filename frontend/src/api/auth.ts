@@ -4,8 +4,8 @@ export const authApi = {
   login: (employeeCode: string, password: string) =>
     api.post('/auth/login', { employeeCode, password }).then((r) => r.data),
   logout: () => api.post('/auth/logout'),
-  refresh: (refreshToken: string) =>
-    api.post('/auth/refresh', { refreshToken }).then((r) => r.data),
+  // The refresh token rides in the httpOnly cookie — no body needed.
+  refresh: () => api.post('/auth/refresh').then((r) => r.data),
   forgotPassword: (employeeCode: string) =>
     api.post('/auth/forgot-password', { employeeCode }).then((r) => r.data),
   resetPassword: (employeeCode: string, otp: string, newPassword: string) =>

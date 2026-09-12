@@ -141,7 +141,8 @@ export async function changePasswordWithOtp(req: Request, res: Response) {
   if (sameAsOld) return res.status(400).json({ error: 'New password must differ from current' });
 
   await prisma.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
+    // Bump the session generation so tokens issued before this change die.
+    await tx.user.update({ where: { id: user.id }, data: { passwordHash: newHash, tokenVersion: { increment: 1 } } });
     await tx.passwordOtp.delete({ where: { userId: user.id } });
     await tx.auditLog.create({
       data: {

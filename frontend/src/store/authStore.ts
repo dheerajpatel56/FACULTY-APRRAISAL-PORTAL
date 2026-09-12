@@ -17,9 +17,8 @@ export interface AuthUser {
 
 interface AuthState {
   accessToken: string | null;
-  refreshToken: string | null;
   user: AuthUser | null;
-  login: (accessToken: string, refreshToken: string, user: AuthUser) => void;
+  login: (accessToken: string, user: AuthUser) => void;
   logout: () => void;
   hasRole: (role: UserRole['role']) => boolean;
   isAdmin: () => boolean;
@@ -30,10 +29,11 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       accessToken: null,
-      refreshToken: null,
       user: null,
-      login: (accessToken, refreshToken, user) => set({ accessToken, refreshToken, user }),
-      logout: () => set({ accessToken: null, refreshToken: null, user: null }),
+      // The refresh token is no longer held in JS — it lives in an httpOnly
+      // cookie. Only the short-lived access token is kept here.
+      login: (accessToken, user) => set({ accessToken, user }),
+      logout: () => set({ accessToken: null, user: null }),
       hasRole: (role) => get().user?.roles.some((r) => r.role === role) ?? false,
       isAdmin: () => get().user?.roles.some((r) => r.role === 'ADMIN') ?? false,
       isHodOrReviewer: () =>
