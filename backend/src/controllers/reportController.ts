@@ -6,6 +6,16 @@ import { computeScore } from '../services/scoringEngine';
 import { TRACKING_INCLUDE } from '../services/trackingService';
 import { AuthUser } from '../middleware/auth';
 
+// Neutralise spreadsheet formula injection. A cell whose text begins with
+// = + - @ (or a leading tab/CR that Excel trims first) is run as a formula by
+// Excel / LibreOffice — e.g. =HYPERLINK / =WEBSERVICE can exfiltrate data or
+// chain a command. Faculty control name and designation, so prefix any such
+// value with a single quote, which forces the cell to be read as text.
+function csvSafe<T>(v: T): T | string {
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) return `'${v}`;
+  return v;
+}
+
 // Dept scoping for report reads. Admins see every department (or an optional
 // single-dept filter); a HoD is hard-scoped to their own dept(s), so a foreign
 // ?dept can't leak another department's data — and the default no longer spills
@@ -154,11 +164,11 @@ export async function exportReport(req: Request, res: Response) {
 
   // Columns mirror the Faculty-wise Breakdown table.
   const rows = reviews.map((r) => ({
-    'Name': r.submission.user.name,
-    'Employee Code': r.submission.user.employeeCode,
-    'Designation': r.submission.user.designation ?? '',
-    'Department': r.submission.user.department?.name ?? '',
-    'Academic Year': r.submission.academicYear.label,
+    'Name': csvSafe(r.submission.user.name),
+    'Employee Code': csvSafe(r.submission.user.employeeCode),
+    'Designation': csvSafe(r.submission.user.designation ?? ''),
+    'Department': csvSafe(r.submission.user.department?.name ?? ''),
+    'Academic Year': csvSafe(r.submission.academicYear.label),
     'C1': r.cat1Score ?? '',
     'C2': r.cat2Score ?? '',
     'C3': r.cat3Score ?? '',

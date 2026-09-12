@@ -126,15 +126,22 @@ function fmtDate(d: any): string {
 }
 
 const FRONTEND = process.env.FRONTEND_URL?.split(',')[0]?.trim() ?? '';
+
+// Trusted-HTML marker. listTable escapes every cell by default (faculty free
+// text must not break out of its <td>); a cell wrapped in raw() is HTML the
+// server built itself (proofCell, joined markup) and is passed through as-is.
+class RawHtml { constructor(readonly html: string) {} }
+function raw(html: string): RawHtml { return new RawHtml(html); }
+
 // A proof is either a file uploaded to the portal (a path) or a pasted link
 // (Google Drive etc.). Only paths get the portal prefix — prefixing a full URL
 // produced "http://portalhttps://drive..." for every pasted link.
-function proofCell(file: any): string {
-  if (!file) return '—';
+function proofCell(file: any): RawHtml {
+  if (!file) return raw('—');
   const f = String(file).trim();
-  if (/^https?:\/\//i.test(f)) return `<a href="${esc(f)}">Link</a>`;
+  if (/^https?:\/\//i.test(f)) return raw(`<a href="${esc(f)}">Link</a>`);
   const name = f.split('/').pop() ?? 'file';
-  return `<a href="${esc(`${FRONTEND}${f}`)}">Attached (${esc(name)})</a>`;
+  return raw(`<a href="${esc(`${FRONTEND}${f}`)}">Attached (${esc(name)})</a>`);
 }
 
 // 5.3 roles are stored as keys; print the form's wording, not the key.
@@ -149,9 +156,11 @@ function listTable(title: string, headers: string[], rows: any[][]): string {
   return `
     <h3>${title}</h3>
     <table>
-      <thead><tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr></thead>
+      <thead><tr>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
       <tbody>
-        ${rows.map((r) => `<tr>${r.map((c) => `<td>${c ?? '—'}</td>`).join('')}</tr>`).join('')}
+        ${rows.map((r) => `<tr>${r.map((c) =>
+          `<td>${c == null ? '—' : c instanceof RawHtml ? c.html : esc(c)}</td>`
+        ).join('')}</tr>`).join('')}
       </tbody>
     </table>
   `;
@@ -184,12 +193,12 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
 
   <h2>Faculty Profile</h2>
   <div class="meta">
-    <div><b>Name:</b> ${user.name ?? '—'}</div>
-    <div><b>Employee Code:</b> ${user.employeeCode ?? '—'}</div>
-    <div><b>Designation:</b> ${user.designation ?? '—'}</div>
-    <div><b>Department:</b> ${user.department?.name ?? '—'}</div>
-    <div><b>Email:</b> ${user.email ?? '—'}</div>
-    <div><b>Phone:</b> ${user.phone ?? '—'}</div>
+    <div><b>Name:</b> ${esc(user.name) || '—'}</div>
+    <div><b>Employee Code:</b> ${esc(user.employeeCode) || '—'}</div>
+    <div><b>Designation:</b> ${esc(user.designation) || '—'}</div>
+    <div><b>Department:</b> ${esc(user.department?.name) || '—'}</div>
+    <div><b>Email:</b> ${esc(user.email) || '—'}</div>
+    <div><b>Phone:</b> ${esc(user.phone) || '—'}</div>
     <div><b>Date of Joining:</b> ${fmtDate(user.dateOfJoining)}</div>
     <div><b>Submitted:</b> ${fmtDate(sub.submittedAt)}</div>
   </div>
@@ -229,7 +238,7 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
         ['Governance', review.governanceComment],
         ['Supplementary', review.supplementaryComment],
         ['Overall', review.overallComment],
-      ].filter(([, v]) => v).map(([k, v]) => `<tr><td style="width:140px;font-weight:600;color:#334155">${k}</td><td>${v}</td></tr>`).join('')}
+      ].filter(([, v]) => v).map(([k, v]) => `<tr><td style="width:140px;font-weight:600;color:#334155">${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}
     </table>
   ` : ''}
 
@@ -293,7 +302,7 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
     return [
       listTable('2.1-A Journal Publications', head, (sub.cat2Journals ?? []).map((p: any) => [
         p.title, p.journalName, ...cols(p), publicationRowScore('journal', p.indexed),
-        [proofCell(p.proofFile), p.indexProofFile ? `Index: ${proofCell(p.indexProofFile)}` : ''].filter(Boolean).join('<br/>'),
+        raw([proofCell(p.proofFile).html, p.indexProofFile ? `Index: ${proofCell(p.indexProofFile).html}` : ''].filter(Boolean).join('<br/>')),
       ])),
       listTable('2.1-B Conference Proceedings', head, (sub.cat2Conferences ?? []).map((p: any) => [
         p.title, p.conferenceName, ...cols(p), publicationRowScore('conference', p.indexed), proofCell(p.proofFile),
@@ -422,7 +431,7 @@ export function renderAppraisalHtml(sub: any, score: any, review: any | null): s
   )}
 
   <div class="sig-grid">
-    <div class="sig-box">${sub.submittedAt ? `Signed ${fmtDate(sub.submittedAt)}` : ''}<br /><b>Signature of Faculty</b><br />${user.name ?? ''}</div>
+    <div class="sig-box">${sub.submittedAt ? `Signed ${fmtDate(sub.submittedAt)}` : ''}<br /><b>Signature of Faculty</b><br />${esc(user.name)}</div>
     <div class="sig-box">${review?.reviewedAt ? `Reviewed ${fmtDate(review.reviewedAt)}` : ''}<br /><b>Signature of Reviewer/HoD</b></div>
   </div>
 
@@ -440,9 +449,9 @@ function renderRows(rows: any[]): string {
   const keys = Array.from(new Set(rows.flatMap((r) => Object.keys(r || {}))));
   return `
     <table>
-      <thead><tr>${keys.map((k) => `<th>${k}</th>`).join('')}</tr></thead>
+      <thead><tr>${keys.map((k) => `<th>${esc(k)}</th>`).join('')}</tr></thead>
       <tbody>
-        ${rows.map((r) => `<tr>${keys.map((k) => `<td>${r[k] ?? '—'}</td>`).join('')}</tr>`).join('')}
+        ${rows.map((r) => `<tr>${keys.map((k) => `<td>${r[k] == null ? '—' : esc(r[k])}</td>`).join('')}</tr>`).join('')}
       </tbody>
     </table>
   `;
@@ -463,11 +472,11 @@ export function renderFpgpHtml(plan: any, template: any[]): string {
   const renderSub = (def: any) => {
     const s = subBySub.get(def.sub) || {};
     const parts: string[] = [];
-    if (s.sem1Text) parts.push(`<div><b>Semester 1:</b> ${s.sem1Text}</div>`);
-    if (s.sem2Text) parts.push(`<div><b>Semester 2:</b> ${s.sem2Text}</div>`);
-    if (s.extraText1) parts.push(`<div>${s.extraText1}</div>`);
-    if (s.extraText2) parts.push(`<div>${s.extraText2}</div>`);
-    if (s.extraText3) parts.push(`<div>${s.extraText3}</div>`);
+    if (s.sem1Text) parts.push(`<div><b>Semester 1:</b> ${esc(s.sem1Text)}</div>`);
+    if (s.sem2Text) parts.push(`<div><b>Semester 2:</b> ${esc(s.sem2Text)}</div>`);
+    if (s.extraText1) parts.push(`<div>${esc(s.extraText1)}</div>`);
+    if (s.extraText2) parts.push(`<div>${esc(s.extraText2)}</div>`);
+    if (s.extraText3) parts.push(`<div>${esc(s.extraText3)}</div>`);
     const rowsHtml = renderRows(s.rows ?? []);
     if (parts.length === 0 && !rowsHtml) return '';
     return `
@@ -489,10 +498,10 @@ export function renderFpgpHtml(plan: any, template: any[]): string {
 
   <h2>Faculty Profile</h2>
   <div class="meta">
-    <div><b>Name:</b> ${user.name ?? '—'}</div>
-    <div><b>Employee Code:</b> ${user.employeeCode ?? '—'}</div>
-    <div><b>Designation:</b> ${plan.designationSnap ?? user.designation ?? '—'}</div>
-    <div><b>Department:</b> ${plan.departmentSnap ?? user.department?.name ?? '—'}</div>
+    <div><b>Name:</b> ${esc(user.name) || '—'}</div>
+    <div><b>Employee Code:</b> ${esc(user.employeeCode) || '—'}</div>
+    <div><b>Designation:</b> ${esc(plan.designationSnap ?? user.designation) || '—'}</div>
+    <div><b>Department:</b> ${esc(plan.departmentSnap ?? user.department?.name) || '—'}</div>
     <div><b>Date of Joining:</b> ${fmtDate(plan.dateOfJoiningSnap)}</div>
     <div><b>Total Experience:</b> ${plan.totalExperienceSnap != null ? `${plan.totalExperienceSnap} years` : '—'}</div>
   </div>
@@ -505,16 +514,16 @@ export function renderFpgpHtml(plan: any, template: any[]): string {
   }).join('')}
 
   <div class="sig-grid">
-    <div class="sig-box">${plan.facultySignedAt ? `Signed ${fmtDate(plan.facultySignedAt)}` : 'Not signed'}<br /><b>Signature of Faculty</b><br />${user.name ?? ''}</div>
-    <div class="sig-box">${plan.hodSignedAt ? `Signed ${fmtDate(plan.hodSignedAt)}<br />${plan.hodSigner?.name ?? ''}` : 'Pending'}<br /><b>Signature of HoD</b></div>
+    <div class="sig-box">${plan.facultySignedAt ? `Signed ${fmtDate(plan.facultySignedAt)}` : 'Not signed'}<br /><b>Signature of Faculty</b><br />${esc(user.name)}</div>
+    <div class="sig-box">${plan.hodSignedAt ? `Signed ${fmtDate(plan.hodSignedAt)}<br />${esc(plan.hodSigner?.name)}` : 'Pending'}<br /><b>Signature of HoD</b></div>
   </div>
 
   ${plan.reviews?.length ? `
     <h2>HoD Feedback</h2>
     ${plan.reviews.map((r: any) => `
       <div style="border-left: 3px solid #e9a93a; padding: 4px 10px; margin-bottom: 8px; background: #fdf6e4;">
-        <div>${r.comments}</div>
-        <div style="font-size:8pt;color:#64748b;margin-top:4px">— ${r.reviewer?.name ?? 'Reviewer'} · ${fmtDate(r.reviewedAt)}</div>
+        <div>${esc(r.comments)}</div>
+        <div style="font-size:8pt;color:#64748b;margin-top:4px">— ${esc(r.reviewer?.name) || 'Reviewer'} · ${fmtDate(r.reviewedAt)}</div>
       </div>
     `).join('')}
   ` : ''}

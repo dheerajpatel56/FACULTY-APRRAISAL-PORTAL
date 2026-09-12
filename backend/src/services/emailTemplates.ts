@@ -156,8 +156,8 @@ function legacyNarrative(p: any): string {
     return '<p style="color:#64748b;font-size:13px">Keep up your work this quarter — detailed guidance will follow at the annual review.</p>';
   }
   return `<div style="margin:12px 0;font-size:13px;line-height:1.5">
-    ${p.strengths ? `<p style="margin:0 0 6px"><strong style="color:#065f46">Strengths</strong><br />${String(p.strengths).replace(/\n/g, '<br />')}</p>` : ''}
-    ${p.improvements ? `<p style="margin:8px 0 6px"><strong style="color:#991b1b">Areas to improve</strong><br />${String(p.improvements).replace(/\n/g, '<br />')}</p>` : ''}
+    ${p.strengths ? `<p style="margin:0 0 6px"><strong style="color:#065f46">Strengths</strong><br />${esc(p.strengths).replace(/\n/g, '<br />')}</p>` : ''}
+    ${p.improvements ? `<p style="margin:8px 0 6px"><strong style="color:#991b1b">Areas to improve</strong><br />${esc(p.improvements).replace(/\n/g, '<br />')}</p>` : ''}
   </div>`;
 }
 
@@ -174,14 +174,14 @@ function commentsBlock(p: any): string {
   if (!filled.length) return '';
   return `<div style="margin-top:12px"><strong>Reviewer Feedback</strong></div>
   <table cellpadding="4" cellspacing="0" style="width:100%;font-size:13px;margin-top:4px">
-    ${filled.map(([k, v]) => `<tr><td style="padding:4px 0;color:#64748b;width:120px;vertical-align:top">${k}:</td><td style="padding:4px 0;color:#0f172a">${v}</td></tr>`).join('')}
+    ${filled.map(([k, v]) => `<tr><td style="padding:4px 0;color:#64748b;width:120px;vertical-align:top">${esc(k)}:</td><td style="padding:4px 0;color:#0f172a">${esc(v)}</td></tr>`).join('')}
   </table>`;
 }
 
 const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
   submission_received: (p) => layout('Submission Received', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">Submission Received</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Your Faculty Appraisal for <strong>${p.year}</strong> (Submission #${p.submissionNumber}) was received on <strong>${p.submittedAt}</strong>.</p>
     <p><strong>Status:</strong> <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">SUBMITTED</span></p>
     ${scoreTable(p)}
@@ -191,7 +191,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   submission_approved: (p) => layout('Appraisal Approved', `
     <h2 style="margin:0 0 8px;color:#059669">Appraisal Approved</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Your Faculty Appraisal for <strong>${p.year}</strong> has been <strong style="color:#059669">APPROVED</strong> by ${p.reviewerName ?? 'the reviewer'} on ${p.reviewedAt}.</p>
     ${scoreTable(p)}
     ${commentsBlock(p)}
@@ -200,7 +200,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   submission_rejected: (p) => layout('Appraisal Rejected', `
     <h2 style="margin:0 0 8px;color:#dc2626">Appraisal Rejected</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Your Faculty Appraisal for <strong>${p.year}</strong> has been <strong style="color:#dc2626">REJECTED</strong> by ${p.reviewerName ?? 'the reviewer'} on ${p.reviewedAt}.</p>
     ${scoreTable(p)}
     ${commentsBlock(p)}
@@ -210,14 +210,14 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   submission_unlocked: (p) => layout('Submission Unlocked', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">Submission Unlocked</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Your Faculty Appraisal for <strong>${p.year}</strong> (Submission #${p.submissionNumber}) has been unlocked by the admin. You can now edit and resubmit.</p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}/edit" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">Edit Submission</a></p>
   `),
 
   draft_reminder: (p) => layout('Complete Your Appraisal', `
     <h2 style="margin:0 0 8px;color:#d97706">Reminder — Submission Pending</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Your Faculty Appraisal for <strong>${p.year}</strong> is currently in <strong>DRAFT</strong> status.</p>
     ${p.windowCloses ? `<p>Submission window closes on <strong>${p.windowCloses}</strong>${p.daysLeft != null ? ` (<strong>${p.daysLeft} day(s) remaining</strong>)` : ''}.</p>` : ''}
     <p>Complete and submit before the deadline.</p>
@@ -227,15 +227,15 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   fpgp_signed: (p) => layout('FPGP Reviewed by HoD', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">FPGP Reviewed</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
-    <p>Your Faculty Performance Growth Plan for <strong>${p.year}</strong> has been signed and reviewed by <strong>${p.hodName}</strong> on ${p.signedAt}.</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
+    <p>Your Faculty Performance Growth Plan for <strong>${p.year}</strong> has been signed and reviewed by <strong>${esc(p.hodName)}</strong> on ${p.signedAt}.</p>
     <p>Status: <span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">REVIEWED</span></p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/fpgp/${p.planId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Plan</a></p>
   `),
 
   fpgp_evaluated: (p) => layout('FPGP Target Evaluation', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">FPGP Target Evaluation</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Your FPGP for <strong>${p.year}</strong> has been evaluated against your appraisal achievements.</p>
     <p>Status: <span style="background:${p.autoAccepted ? '#d1fae5;color:#065f46' : '#fef3c7;color:#92400e'};padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">${p.autoAccepted ? 'ACCEPTED' : 'NEEDS REVIEW'}</span></p>
     ${Array.isArray(p.items) && p.items.length ? `
@@ -248,7 +248,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   password_otp: (p) => layout('Password OTP', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">Password Change Request</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>You requested to change your password. Use the OTP below to confirm:</p>
     <div style="background:#f8fafc;border:2px solid #1e3a5f;border-radius:6px;padding:18px;text-align:center;margin:16px 0">
       <div style="color:#64748b;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Your OTP</div>
@@ -260,7 +260,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   reviewer_daily_digest: (p) => layout('Pending Reviews', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">Daily Review Queue</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>You have <strong>${p.pendingCount}</strong> appraisal(s) pending review.</p>
     ${Array.isArray(p.items) && p.items.length ? `
       <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
@@ -272,12 +272,12 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   proof_rejected: (p) => layout('Proof Rejected — Action Needed', `
     <h2 style="margin:0 0 8px;color:#dc2626">Proof Rejected</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>A proof on your Faculty Appraisal for <strong>${p.year}</strong> (Submission #${p.submissionNumber}) was <strong style="color:#dc2626">rejected</strong>, and your submission is now <strong>ON HOLD</strong>.</p>
     <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
-      <tr><td style="color:#64748b;width:120px">Section</td><td style="color:#0f172a">${p.section}</td></tr>
-      <tr><td style="color:#64748b">Item</td><td style="color:#0f172a">${p.item}${p.field ? ` (${p.field})` : ''}</td></tr>
-      ${p.comment ? `<tr><td style="color:#64748b;vertical-align:top">Reason</td><td style="color:#dc2626">${p.comment}</td></tr>` : ''}
+      <tr><td style="color:#64748b;width:120px">Section</td><td style="color:#0f172a">${esc(p.section)}</td></tr>
+      <tr><td style="color:#64748b">Item</td><td style="color:#0f172a">${esc(p.item)}${p.field ? ` (${esc(p.field)})` : ''}</td></tr>
+      ${p.comment ? `<tr><td style="color:#64748b;vertical-align:top">Reason</td><td style="color:#dc2626">${esc(p.comment)}</td></tr>` : ''}
     </table>
     <p style="color:#64748b;font-size:13px">Please re-upload the correct proof (a file or a valid share link). Your HoD will clear the hold once the corrected proof is verified.</p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}/edit" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">Fix Proof</a></p>
@@ -285,12 +285,12 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   proof_rejected_hod: (p) => layout('Red List — Submission Held', `
     <h2 style="margin:0 0 8px;color:#dc2626">Submission Added to Red List</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
-    <p><strong>${p.facultyName}</strong> (${p.employeeCode}) has a rejected proof on their <strong>${p.year}</strong> appraisal (Submission #${p.submissionNumber}); the submission is now on hold.</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
+    <p><strong>${esc(p.facultyName)}</strong> (${esc(p.employeeCode)}) has a rejected proof on their <strong>${p.year}</strong> appraisal (Submission #${p.submissionNumber}); the submission is now on hold.</p>
     <table cellpadding="6" cellspacing="0" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;margin:12px 0;font-size:13px">
-      <tr><td style="color:#64748b;width:120px">Section</td><td style="color:#0f172a">${p.section}</td></tr>
-      <tr><td style="color:#64748b">Item</td><td style="color:#0f172a">${p.item}${p.field ? ` (${p.field})` : ''}</td></tr>
-      ${p.comment ? `<tr><td style="color:#64748b;vertical-align:top">Reason</td><td style="color:#dc2626">${p.comment}</td></tr>` : ''}
+      <tr><td style="color:#64748b;width:120px">Section</td><td style="color:#0f172a">${esc(p.section)}</td></tr>
+      <tr><td style="color:#64748b">Item</td><td style="color:#0f172a">${esc(p.item)}${p.field ? ` (${esc(p.field)})` : ''}</td></tr>
+      ${p.comment ? `<tr><td style="color:#64748b;vertical-align:top">Reason</td><td style="color:#dc2626">${esc(p.comment)}</td></tr>` : ''}
     </table>
     <p style="color:#64748b;font-size:13px">Clear the hold from the Red List once the faculty re-uploads and the proof is verified.</p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/red-list" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">Open Red List</a></p>
@@ -298,14 +298,14 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   hold_cleared: (p) => layout('Hold Cleared', `
     <h2 style="margin:0 0 8px;color:#059669">Hold Cleared</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>The hold on your Faculty Appraisal for <strong>${p.year}</strong> (Submission #${p.submissionNumber}) has been cleared. Your submission is back <strong>under review</strong>.</p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Submission</a></p>
   `),
 
   quarterly_feedback: (p) => layout('Quarterly Feedback', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">${p.quarter} Progress — ${p.year}</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Here is a short summary of your progress this quarter, with a few pointers for the months ahead.</p>
     ${categoryRemarksBlock(p.categories)}
     ${p.targets ? targetStatusBlock(p.targets, p.year, p.evidence) : legacyNarrative(p)}
@@ -315,7 +315,7 @@ const TEMPLATES: Record<EmailTemplateKey, (p: any) => string> = {
 
   feedback_issued: (p) => layout('Appraisal Feedback', `
     <h2 style="margin:0 0 8px;color:#1e3a5f">Your Feedback is Ready</h2>
-    <p>Dear <strong>${p.name}</strong>,</p>
+    <p>Dear <strong>${esc(p.name)}</strong>,</p>
     <p>Your HoD has issued the annual feedback for your <strong>${p.year}</strong> appraisal — including personalised growth guidance.</p>
     <p style="margin-top:16px"><a href="${FRONTEND_URL}/appraisal/${p.submissionId}" style="background:#1e3a5f;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600">View Feedback</a></p>
   `),
