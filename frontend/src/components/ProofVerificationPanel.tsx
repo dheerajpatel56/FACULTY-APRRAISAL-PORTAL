@@ -40,8 +40,8 @@ export default function ProofVerificationPanel({
   const [data, setData] = useState<ProofListResponse | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const { hasRole } = useAuthStore();
-  // Only HoD or incharge (REVIEWER) may change approve/reject.
-  const canEdit = !readOnly && (hasRole('HOD') || hasRole('REVIEWER'));
+  // Admin (dean), HoD or incharge (REVIEWER) may change approve/reject.
+  const canEdit = !readOnly && (hasRole('ADMIN') || hasRole('HOD') || hasRole('REVIEWER'));
 
   const load = useCallback(() => {
     verificationApi

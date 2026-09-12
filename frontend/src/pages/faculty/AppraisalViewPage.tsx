@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { appraisalApi } from '../../api/appraisals';
 import toast from 'react-hot-toast';
@@ -7,6 +7,7 @@ import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import StatusBadge from '../../components/StatusBadge';
 import FeedbackSection from '../../components/FeedbackSection';
+import RejectedProofsCard from '../../components/RejectedProofsCard';
 
 export default function AppraisalViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,7 +16,7 @@ export default function AppraisalViewPage() {
   const [score, setScore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     Promise.all([
       appraisalApi.get(id!),
       appraisalApi.getScore(id!),
@@ -24,6 +25,8 @@ export default function AppraisalViewPage() {
       setScore(sc);
     }).catch(() => toast.error('Failed to load')).finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { load(); }, [load]);
 
   const downloadPdf = async () => {
     try {
@@ -92,6 +95,9 @@ export default function AppraisalViewPage() {
           </div>
         }
       />
+
+      {/* Rejected proofs: replace before the deadline or lose those marks */}
+      {submission.status !== 'DRAFT' && <RejectedProofsCard submissionId={id!} onChanged={load} />}
 
       {/* Score Summary */}
       {score && (

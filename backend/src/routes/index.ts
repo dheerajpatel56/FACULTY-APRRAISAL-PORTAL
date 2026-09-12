@@ -126,8 +126,12 @@ router.get('/final-reviews/pending', authenticate, finalReview.getPendingFinalRe
 router.post('/appraisals/:id/final-review', authenticate, finalReview.submitFinalReview);
 
 // W2 — proof verification + red-list
-router.get('/appraisals/:id/proofs', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.listProofs);
+// Owner may read their own list (it drives the "Rejected proofs" card);
+// listProofs checks owner / same-dept HoD or incharge / admin itself.
+router.get('/appraisals/:id/proofs', authenticate, verification.listProofs);
 router.post('/appraisals/:id/proofs/verify', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.verifyProof);
+// Faculty replaces a rejected proof before the correction deadline (owner-only).
+router.post('/appraisals/:id/proofs/replace', authenticate, verification.replaceProof);
 // Faculty-wise uploads overview (counts per faculty) for the Uploads page.
 router.get('/proofs/overview', authenticate, roleGuard([RoleType.HOD, RoleType.REVIEWER, RoleType.ADMIN]), verification.proofsOverview);
 router.get('/red-list', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), verification.listRedList);

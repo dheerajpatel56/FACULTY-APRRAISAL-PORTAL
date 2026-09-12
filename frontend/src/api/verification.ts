@@ -22,6 +22,8 @@ export interface ProofListResponse {
     redListed: boolean;
     holdReason: string | null;
     heldAt: string | null;
+    proofDeadlineAt?: string | null;
+    voidedSources?: string[];
     submissionNumber: number;
     year: string;
     faculty: { id: string; name: string; employeeCode: string; department?: { name: string; code: string } | null };
@@ -62,6 +64,9 @@ export const verificationApi = {
     api.get(`/appraisals/${submissionId}/proofs`).then((r) => r.data),
   verifyProof: (submissionId: string, url: string, status: 'VERIFIED' | 'REJECTED', comment?: string) =>
     api.post(`/appraisals/${submissionId}/proofs/verify`, { url, status, comment }).then((r) => r.data),
+  // Faculty only: swap a REJECTED proof for a corrected one while on hold.
+  replaceProof: (submissionId: string, url: string, newUrl: string) =>
+    api.post(`/appraisals/${submissionId}/proofs/replace`, { url, newUrl }).then((r) => r.data),
   redList: (): Promise<RedListRow[]> => api.get('/red-list').then((r) => r.data),
   clearHold: (submissionId: string) => api.post(`/appraisals/${submissionId}/clear-hold`).then((r) => r.data),
 };

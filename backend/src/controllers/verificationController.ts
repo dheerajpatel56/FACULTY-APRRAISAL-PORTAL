@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
+import path from 'path';
 import { z } from 'zod';
 import { RoleType, SubmissionStatus } from '@prisma/client';
 import prisma from '../utils/prismaClient';
 import { canViewUserResource } from '../utils/access';
-import { syncProofVerifications, enumerateProofs, PROOF_INCLUDE } from '../services/proofService';
+import { syncProofVerifications, enumerateProofs, PROOF_INCLUDE, PROOF_SOURCES } from '../services/proofService';
 import { enqueueEmail } from '../services/emailService';
 
 // How long a faculty has to replace a rejected proof before the daily job
@@ -17,10 +18,12 @@ export function proofDeadlineFrom(heldAt: Date): Date {
   return d;
 }
 
-// Who may CHANGE a proof's approve/reject status: HoD or incharge (REVIEWER)
-// of the faculty's department only — never the owner, and not a plain admin.
+// Who may CHANGE a proof's approve/reject status: the admin (dean), or the HoD
+// or incharge (REVIEWER) of the faculty's department — never the owner.
+// Admin added 2026-09-11 at the owner's request.
 function canVerifyProof(user: NonNullable<Request['user']>, ownerId: string, ownerDept: string | null): boolean {
   if (user.id === ownerId) return false;
+  if (user.roles.some((r) => r.role === RoleType.ADMIN)) return true;
   return user.roles.some(
     (r) => (r.role === RoleType.HOD || r.role === RoleType.REVIEWER) && r.departmentId != null && r.departmentId === ownerDept
   );
@@ -64,6 +67,8 @@ export async function listProofs(req: Request, res: Response) {
       redListed: sub.redListed,
       holdReason: sub.holdReason,
       heldAt: sub.heldAt,
+      proofDeadlineAt: sub.proofDeadlineAt,
+      voidedSources: sub.voidedSources,
       submissionNumber: sub.submissionNumber,
       year: sub.academicYear.label,
       faculty: { id: sub.user.id, name: sub.user.name, employeeCode: sub.user.employeeCode, department: sub.user.department },
@@ -91,7 +96,7 @@ export async function verifyProof(req: Request, res: Response) {
   });
   if (!sub) return res.status(404).json({ error: 'Not found' });
   if (!canVerifyProof(req.user!, sub.userId, sub.user.departmentId)) {
-    return res.status(403).json({ error: 'Only the HoD or incharge can verify uploads' });
+    return res.status(403).json({ error: 'Only the admin, HoD or incharge can verify uploads' });
   }
 
   const { url, status, comment } = verifySchema.parse(req.body);
@@ -171,6 +176,119 @@ export async function verifyProof(req: Request, res: Response) {
   }
 
   return res.json({ message: `Proof ${status.toLowerCase()}` });
+}
+
+// Prisma model behind each proof source (PROOF_SOURCES keys are relation names).
+const SOURCE_MODEL: Record<string, string> = {
+  cat1EContent: 'cat1EContent', cat1ICT: 'cat1ICT',
+  cat2Journals: 'cat2Journal', cat2Conferences: 'cat2Conference', cat2ConfBookChapters: 'cat2ConfBookChapter',
+  cat2BookChapters: 'cat2BookChapter', cat2Books: 'cat2Book', cat2Patents: 'cat2Patent', cat2Projects: 'cat2Project',
+  cat2Consultancy: 'cat2Consultancy', cat2Guidance: 'cat2Guidance', cat2ResearchGroups: 'cat2ResearchGroup',
+  cat2Linkages: 'cat2Linkage', cat2IndustryLinkages: 'cat2IndustryLinkage', cat2Startups: 'cat2Startup',
+  cat3AdvQual: 'cat3AdvQual', cat3Organised: 'cat3OrganisedProgram', cat3ConferencesAttended: 'cat3ConferenceAttended',
+  cat3ResourcePerson: 'cat3ResourcePerson', cat3Editorial: 'cat3Editorial', cat3IntlTravel: 'cat3IntlTravel',
+  cat3Training: 'cat3Training', cat4AdminResp: 'cat4AdminResp', cat4StudentAct: 'cat4StudentActivity',
+  cat5Memberships: 'cat5Membership', cat5Awards: 'cat5Award', cat5Differentiators: 'cat5Differentiator',
+  cat5Internships: 'cat5Internship',
+};
+
+const replaceSchema = z.object({
+  url: z.string().min(1),
+  newUrl: z.string().trim().min(1),
+});
+
+// POST /appraisals/:id/proofs/replace — the faculty swaps a REJECTED proof for
+// a corrected file or link, while the appraisal is on HOLD and before the
+// correction deadline. Only the proof URL on the row changes; the new proof is
+// PENDING for the HoD / incharge. Once no rejected proof is left the appraisal
+// goes back to the review queue. The red-list flag stays for the HoD to clear.
+// A proof still rejected at the deadline loses its source's marks
+// (cron/proofDeadline) — the rule the owner set on 2026-09-11.
+export async function replaceProof(req: Request, res: Response) {
+  const sub = await prisma.appraisalSubmission.findUnique({ where: { id: req.params.id } });
+  if (!sub) return res.status(404).json({ error: 'Not found' });
+  if (sub.userId !== req.user!.id) {
+    return res.status(403).json({ error: 'Only the faculty who filed this appraisal can replace its proofs' });
+  }
+  if (sub.status !== SubmissionStatus.HOLD) {
+    return res.status(400).json({ error: 'Proofs can only be replaced while the appraisal is on hold for a rejected proof' });
+  }
+  if (sub.proofDeadlineAt && sub.proofDeadlineAt.getTime() <= Date.now()) {
+    return res.status(400).json({ error: 'The correction deadline has passed — the marks for the rejected proof are cut' });
+  }
+
+  const { url, newUrl } = replaceSchema.parse(req.body);
+  if (newUrl.includes('/uploads/')) {
+    // Only a file this faculty actually uploaded.
+    const record = await prisma.uploadedFile.findUnique({ where: { filename: path.basename(newUrl) } });
+    if (!record || record.uploaderId !== req.user!.id) {
+      return res.status(400).json({ error: 'Upload the corrected file first, then replace' });
+    }
+  } else if (!/^https?:\/\/[^\s/]+\.[^\s/]+/i.test(newUrl)) {
+    return res.status(400).json({ error: 'Enter a valid link (https://…) or upload a file' });
+  }
+
+  await syncProofVerifications(sub.id);
+  const pv = await prisma.proofVerification.findUnique({
+    where: { submissionId_url: { submissionId: sub.id, url } },
+  });
+  if (!pv || pv.status !== 'REJECTED') {
+    return res.status(400).json({ error: 'Only a rejected proof can be replaced' });
+  }
+  const taken = await prisma.proofVerification.findUnique({
+    where: { submissionId_url: { submissionId: sub.id, url: newUrl } },
+  });
+  if (taken) return res.status(400).json({ error: 'That proof is already attached to this appraisal' });
+
+  const src = PROOF_SOURCES.find((s) => s.section === pv.section);
+  const model = src ? SOURCE_MODEL[src.key] : undefined;
+  if (!src || !model) return res.status(400).json({ error: 'Unknown proof section' });
+
+  let remaining = 0;
+  try {
+    remaining = await prisma.$transaction(async (tx) => {
+      let swapped = 0;
+      for (const [field] of src.fields) {
+        const r = await (tx as any)[model].updateMany({
+          where: { submissionId: sub.id, [field]: url },
+          data: { [field]: newUrl },
+        });
+        swapped += r.count;
+      }
+      if (!swapped) throw new Error('PROOF_ROW_NOT_FOUND');
+
+      await tx.proofVerification.update({
+        where: { id: pv.id },
+        data: { url: newUrl, status: 'PENDING', verifiedById: null, verifiedAt: null, comment: null },
+      });
+      const left = await tx.proofVerification.count({ where: { submissionId: sub.id, status: 'REJECTED' } });
+      if (left === 0) {
+        await tx.appraisalSubmission.update({ where: { id: sub.id }, data: { status: SubmissionStatus.SUBMITTED } });
+      }
+      await tx.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'PROOF_REPLACED',
+          entityType: 'ProofVerification',
+          entityId: pv.id,
+          metadata: { submissionId: sub.id, section: pv.section, oldUrl: url, newUrl },
+        },
+      });
+      return left;
+    });
+  } catch (e: any) {
+    if (e?.message === 'PROOF_ROW_NOT_FOUND') {
+      return res.status(409).json({ error: 'That proof is no longer on the form' });
+    }
+    throw e;
+  }
+
+  return res.json({
+    message: remaining
+      ? `Proof replaced — ${remaining} rejected proof(s) still to replace`
+      : 'Proof replaced — your appraisal is back with the reviewer',
+    remainingRejected: remaining,
+  });
 }
 
 // GET /red-list — held/red-listed submissions the caller may manage.

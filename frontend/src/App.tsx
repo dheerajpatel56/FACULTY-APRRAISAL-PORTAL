@@ -46,7 +46,7 @@ export default function App() {
         {/* Dean-assigned final review (above the HoD) — any user may be assigned. */}
         <Route path="/final-review" element={<ProtectedRoute><FinalReviewPage /></ProtectedRoute>} />
 
-        {/* Faculty-wise uploads (HoD / incharge verify here; admin views) */}
+        {/* Faculty-wise uploads (admin / HoD / incharge verify here) */}
         <Route path="/uploads" element={
           <ProtectedRoute roles={['HOD', 'REVIEWER', 'ADMIN']}><UploadsPage /></ProtectedRoute>
         } />
