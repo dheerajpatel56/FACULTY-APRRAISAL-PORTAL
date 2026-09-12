@@ -166,7 +166,8 @@ router.post('/admin/appraisals/:id/unlock', authenticate, roleGuard([RoleType.AD
 router.post('/admin/appraisals/:id/reopen-review', authenticate, roleGuard([RoleType.ADMIN]), review.adminReopenReview);
 router.post('/admin/appraisals/:id/assign-reviewer', authenticate, roleGuard([RoleType.ADMIN]), review.adminAssignReviewer);
 
-// FPGP v2 — routes retired (module off; controller + data kept, unreachable).
+// FPGP v2 — feature retired; controller/service/UI code removed 2026-09-13.
+// The DB models (FPGPPlan etc.) are kept so historical data survives.
 
 // Reports
 router.get('/reports/department', authenticate, roleGuard([RoleType.HOD, RoleType.ADMIN]), report.getDeptReport);

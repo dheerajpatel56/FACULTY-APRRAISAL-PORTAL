@@ -8,7 +8,6 @@ const ALL_KEYS: EmailTemplateKey[] = [
   'submission_rejected',
   'submission_unlocked',
   'draft_reminder',
-  'fpgp_signed',
   'reviewer_daily_digest',
   'password_otp',
   'proof_rejected',

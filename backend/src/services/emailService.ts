@@ -27,8 +27,6 @@ export type EmailTemplateKey =
   | 'submission_rejected'
   | 'submission_unlocked'
   | 'draft_reminder'
-  | 'fpgp_signed'
-  | 'fpgp_evaluated'
   | 'reviewer_daily_digest'
   | 'password_otp'
   | 'proof_rejected'

@@ -83,7 +83,7 @@ if (process.env.NODE_ENV !== 'test') {
     startEmailWorker();
     startReminderCrons();
     startQuarterlySnapshotCron();
-    // FPGP evaluation cron disabled — module retired (data kept).
+    // FPGP retired 2026-09-13 — code removed, DB data kept.
   });
 }
 
