@@ -1,596 +1,344 @@
-# Deployment Guide — Faculty Appraisal System
+# Deployment Guide — VNRVJIET Faculty Appraisal System
 
-This guide covers deploying the Faculty Appraisal System to production. The stack consists of:
-- **Backend**: Node.js + Express + Prisma (TypeScript)
-- **Frontend**: React + Vite (TypeScript)
-- **Database**: PostgreSQL
-- **File Storage**: Local disk (or S3/object storage)
-- **Observability**: Prometheus + Loki + Grafana (optional but recommended)
+How to put the portal on a server and keep it running. The target is **one
+Docker host running `docker compose`, behind the campus reverse proxy that
+terminates TLS, on a subdomain** (e.g. `appraisal.vnrvjiet.in`). A subdomain
+needs no code changes.
 
----
+Related documents:
+- [IT_HANDOFF.md](IT_HANDOFF.md) — one-page brief for college IT
+- [SECRETS.md](SECRETS.md) — every secret and setting, what reads it, how to generate it
+- [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) — sign-off list
+- [OBSERVABILITY.md](OBSERVABILITY.md) — metrics, logs, dashboards
 
-## Prerequisites
-
-- **Node.js** >= 18.x
-- **PostgreSQL** >= 14
-- **Docker** & **Docker Compose** (for containerized deployment)
-- **Git** (for pulling the repo)
-- **SSL/TLS certificate** (for HTTPS in production)
+Every variable name in this guide is the one the **code actually reads**
+(`process.env.*`). If an example file disagrees, the code wins.
 
 ---
 
-## Part 1: Environment Setup
+## 1. What runs
 
-### 1.1 Clone the repository
-
-```bash
-git clone https://github.com/dheerajpatel56/FACULTY-APPRAISAL-PORTAL.git
-cd FACULTY-APPRAISAL-PORTAL
+```
+Browser ──HTTPS──▶ campus proxy (TLS) ──HTTP──▶ frontend (nginx :80)
+                                                   ├─ /          → React app (static files)
+                                                   ├─ /api/      → backend :5000
+                                                   └─ /uploads/  → backend :5000
+                                               backend (Node 20 + Express) ──▶ postgres :5432
 ```
 
-### 1.2 Create `.env` files
+| Service | Built from | Port in container | Public? |
+|---|---|---|---|
+| `frontend` | `./frontend` (Vite build served by nginx) | 80 | Yes, through the campus proxy only |
+| `backend` | `./backend` (Node 20, Prisma, system Chromium for PDFs) | 5000 | No |
+| `postgres` | `postgres:15-alpine` | 5432 | No |
+| `prometheus`, `loki`, `grafana` | upstream images | 9090 / 3100 / 3000 | No (optional stack) |
 
-> **Docker Compose users:** you do NOT hand-write `backend/.env`. Compose injects
-> the backend's runtime env from the **root `.env`** (see `.env.example`). The keys
-> below are the exact names the backend code reads — use these names, not aliases.
+The frontend needs no API URL: it calls the relative path `/api`, and its nginx
+forwards `/api/` and `/uploads/` to the backend. `VITE_API_URL` is not used
+(ignore `frontend/.env.example`).
 
-#### Backend runtime env (exact keys the code reads)
-
-```bash
-# Database
-DATABASE_URL=postgresql://appraisal_user:secure_password@localhost:5432/faculty_appraisal
-
-# JWT & refresh tokens (note: JWT_EXPIRES_IN, not JWT_EXPIRE)
-JWT_SECRET=your-super-secret-jwt-key-min-32-chars
-JWT_EXPIRES_IN=8h
-REFRESH_TOKEN_SECRET=your-refresh-secret-min-32-chars
-REFRESH_TOKEN_EXPIRES_IN=7d
-
-# CORS — public origin of the frontend. REQUIRED, else the browser is blocked.
-FRONTEND_URL=https://your-domain.com
-
-# Email (note: SMTP_PASS, not SMTP_PASSWORD)
-EMAIL_DISABLED=false
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-specific-password
-SMTP_FROM=noreply@vnrvjiet.in
-
-# Server
-PORT=5000
-NODE_ENV=production
-LOG_LEVEL=info
-```
-
-#### Frontend
-
-No env needed. The app calls the relative path `/api`; nginx proxies `/api` and
-`/uploads` to the backend (see `frontend/nginx.conf`). `VITE_API_URL` is not used.
-
-### 1.3 Create `.env.example` files (safe to commit)
-
-These go into git so your team knows what env vars are needed.
-
-**backend/.env.example**
-```bash
-DATABASE_URL=postgresql://user:password@host:5432/dbname
-JWT_SECRET=change-me-in-production
-JWT_EXPIRE=24h
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=email@example.com
-SMTP_PASSWORD=app-password
-SMTP_FROM=noreply@vnrvjiet.in
-MAX_FILE_SIZE=5242880
-UPLOAD_DIR=./uploads
-PORT=5000
-NODE_ENV=production
-LOG_LEVEL=info
-```
-
-**frontend/.env.example**
-```bash
-VITE_API_URL=https://your-domain.com/api
-```
+The backend also runs the scheduled jobs itself (email sending, reminders,
+review-window mail, proof deadlines) — see §9. **Run exactly one backend
+container**; two would run every job twice.
 
 ---
 
-## Part 2: Backend Deployment
+## 2. Requirements
 
-### 2.1 Install dependencies
-
-```bash
-cd backend
-npm install
-```
-
-### 2.2 Database setup
-
-#### Option A: Local PostgreSQL
-
-```bash
-# Create database and user
-psql -U postgres
-CREATE USER appraisal_user WITH PASSWORD 'secure_password';
-CREATE DATABASE faculty_appraisal OWNER appraisal_user;
-GRANT ALL PRIVILEGES ON DATABASE faculty_appraisal TO appraisal_user;
-\q
-```
-
-#### Option B: AWS RDS / Cloud-hosted PostgreSQL
-
-Use your cloud provider's managed PostgreSQL service. The `DATABASE_URL` in `.env` should point to your cloud database.
-
-### 2.3 Run database migrations
-
-```bash
-cd backend
-npm run prisma:push
-```
-
-### 2.4 Seed the database (optional — for initial setup)
-
-```bash
-npm run prisma:seed
-```
-
-This creates:
-- Default admin account
-- Sample departments
-- Sample academic years
-- Seeded test users (see README.md for credentials)
-
-### 2.5 Build backend
-
-```bash
-npm run build
-```
-
-### 2.6 Start backend
-
-**Development**:
-```bash
-npm run dev
-```
-
-**Production**:
-```bash
-npm start
-```
-
-The backend listens on port `5000` (configurable via `PORT` env var).
+- Linux host with Docker Engine and the Compose plugin (`docker compose`).
+- About 2 vCPU / 4 GB RAM. PDF export runs headless Chromium inside the backend.
+- Disk for the database plus proof files (each upload is capped at 5 MB by default).
+- A DNS name pointing at the host, and the campus proxy set up to terminate TLS.
+- A sending mailbox with an app password (Gmail) or institute SMTP credentials,
+  and outbound access to its port (587 or 465).
+- Node.js is **not** needed on the host — the images build everything.
+- Port 5432 free on the host, or change the published port (§4). A host that
+  already runs PostgreSQL will clash with the compose `postgres` service.
 
 ---
 
-## Part 3: Frontend Deployment
-
-### 3.1 Install dependencies
+## 3. Get the code and configure it
 
 ```bash
-cd frontend
-npm install
+git clone https://github.com/dheerajpatel56/FACULTY-APRRAISAL-PORTAL.git faculty-appraisal
+cd faculty-appraisal
+cp .env.example .env
+chmod 600 .env
 ```
 
-### 3.2 Build frontend
+(The repository name really is spelled `APRRAISAL`.)
 
-```bash
-npm run build
-```
+Edit `.env`. Compose reads it and injects the backend's settings — you do not
+write a `backend/.env` on the server.
 
-This creates a `dist/` directory with static files.
+| Key | Value | Notes |
+|---|---|---|
+| `DB_PASSWORD` | `openssl rand -base64 24` | Compose builds `DATABASE_URL` from it (host = `postgres`). |
+| `JWT_SECRET` | `openssl rand -hex 32` | At least 32 characters. Rotating it logs everyone out. |
+| `REFRESH_TOKEN_SECRET` | `openssl rand -hex 32` | Must differ from `JWT_SECRET`. |
+| `JWT_EXPIRES_IN` / `REFRESH_TOKEN_EXPIRES_IN` | `8h` / `7d` | Defaults in compose. |
+| `FRONTEND_URL` | `https://appraisal.vnrvjiet.in` | **Required.** CORS allowlist, comma-separated. The **first** origin is also the base of every link in emails and PDFs, so put the real public URL first. |
+| `EMAIL_DISABLED` | `false` in production | `false` sends real mail to real people — read §8 first. Use `true` on staging. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | `smtp.gmail.com` / `587` / `false` (or `465` / `true`) | Port and `SECURE` must match: 587 → `false`, 465 → `true`. |
+| `SMTP_USER` | the sending mailbox | |
+| `SMTP_PASS` | Gmail 16-character **app password** | Not `SMTP_PASSWORD`, and not the account password. |
+| `SMTP_FROM` | `"VNRVJIET Faculty Portal <addr@vnrvjiet.in>"` | Contains `<` `>` — keep it quoted. |
+| `GRAFANA_PASSWORD` | `openssl rand -base64 24` | Only if you run the monitoring stack. |
 
-### 3.3 Serve frontend
+Generate every secret fresh. **Nothing from the development machine goes to
+production** — not the JWT secrets, not the SMTP credentials.
 
-**Option A: Nginx (recommended)**
+### Settings compose does not pass through yet
 
-```nginx
-# /etc/nginx/sites-available/appraisal-portal
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    root /path/to/frontend/dist;
-    index index.html;
-
-    # Serve static files with caching
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|woff|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Fallback to index.html for SPA routing
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Proxy API requests to backend
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Observability endpoints (internal network only)
-    location /health {
-        proxy_pass http://localhost:5000;
-    }
-    location /metrics {
-        proxy_pass http://localhost:5000;
-        # Restrict access to internal IPs
-        allow 10.0.0.0/8;
-        allow 172.16.0.0/12;
-        deny all;
-    }
-}
-```
-
-Enable the site:
-```bash
-sudo ln -s /etc/nginx/sites-available/appraisal-portal /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-**Option B: Apache**
-
-```apache
-<VirtualHost *:80>
-    ServerName your-domain.com
-    DocumentRoot /path/to/frontend/dist
-
-    <Directory /path/to/frontend/dist>
-        RewriteEngine On
-        RewriteBase /
-        RewriteRule ^index\.html$ - [L]
-        RewriteCond %{REQUEST_FILENAME} !-f
-        RewriteCond %{REQUEST_FILENAME} !-d
-        RewriteRule . /index.html [L]
-    </Directory>
-
-    ProxyPreserveHost On
-    ProxyPass /api http://localhost:5000/api
-    ProxyPassReverse /api http://localhost:5000/api
-
-    ProxyPass /health http://localhost:5000/health
-    ProxyPassReverse /health http://localhost:5000/health
-</VirtualHost>
-```
-
-**Option C: Node.js (simple serve)**
-
-```bash
-npm install -g serve
-serve -s dist -l 3000
-```
-
-Then reverse-proxy from Nginx/Apache to `:3000`.
-
----
-
-## Part 4: Docker Deployment (Recommended)
-
-### 4.1 Backend Dockerfile
-
-**backend/Dockerfile**
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY prisma ./prisma
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy source
-COPY . .
-
-# Build app
-RUN npm run build
-
-# Expose port
-EXPOSE 5000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
-
-CMD ["npm", "start"]
-```
-
-### 4.2 Frontend Dockerfile
-
-**frontend/Dockerfile**
-
-```dockerfile
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-# Production stage
-FROM nginx:alpine
-
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-**frontend/nginx.conf**
-
-```nginx
-events {
-    worker_connections 1024;
-}
-
-http {
-    server {
-        listen 80;
-        root /usr/share/nginx/html;
-        index index.html;
-
-        location / {
-            try_files $uri $uri/ /index.html;
-        }
-
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
-    }
-}
-```
-
-### 4.3 Docker Compose
-
-**docker-compose.prod.yml**
+`docker-compose.prod.yml` does not forward these to the backend, so putting them
+in `.env` alone does nothing. Add them under `services.backend.environment` if
+you need them:
 
 ```yaml
-version: '3.8'
+      # Kill switch for the daily review-window mail to all faculty (see §8)
+      QUARTERLY_AUTOSEND: ${QUARTERLY_AUTOSEND:-true}
+      # Per-file upload limit in MB (links are exempt)
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-5}
+      # Password given to faculty created by CSV bulk import. The code uses it
+      # as-is, so an empty value would mean an empty password — :? refuses that.
+      DEFAULT_IMPORT_PASSWORD: ${DEFAULT_IMPORT_PASSWORD:?set DEFAULT_IMPORT_PASSWORD in .env}
+      # Run the scheduled jobs on Indian time (see §9)
+      TZ: Asia/Kolkata
+```
 
-services:
+Do **not** add `SEED_*_PW` here — they are passed only for the one seed run (§6).
+
+---
+
+## 4. Close the ports before the first start
+
+As written, `docker-compose.prod.yml` publishes **5432, 5000, 9090, 3100 and
+3000 on every interface**. Only the frontend should be reachable, and only by
+the campus proxy. Edit the `ports:` entries before starting:
+
+```yaml
   postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: appraisal_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: faculty_appraisal
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appraisal_user"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+      - "127.0.0.1:5433:5432"   # loopback only; 5433 avoids a host PostgreSQL on 5432
   backend:
-    build: ./backend
-    environment:
-      DATABASE_URL: postgresql://appraisal_user:${DB_PASSWORD}@postgres:5432/faculty_appraisal
-      JWT_SECRET: ${JWT_SECRET}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM: ${SMTP_FROM}
-      NODE_ENV: production
-      LOG_LEVEL: info
-      PORT: 5000
     ports:
-      - "5000:5000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./backend/uploads:/app/uploads
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
+      - "127.0.0.1:5000:5000"   # loopback only: health checks and debugging
   frontend:
-    build: ./frontend
     ports:
-      - "80:80"
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    restart: unless-stopped
-
-  loki:
-    image: grafana/loki:latest
-    ports:
-      - "3100:3100"
-    volumes:
-      - loki_data:/loki
-    command: -config.file=/etc/loki/local-config.yaml
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-      GF_AUTH_ANONYMOUS_ENABLED: "false"
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-      - loki
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-  prometheus_data:
-  loki_data:
-  grafana_data:
+      - "127.0.0.1:8080:80"     # proxy on this host; use "80:80" + firewall if the proxy is elsewhere
 ```
 
-### 4.4 Deploy with Docker Compose
+Do the same for prometheus, loki and grafana if you run them. Then allow only
+80/443 through the host firewall.
+
+---
+
+## 5. Build and start
 
 ```bash
-# Create .env for compose
-cat > .env << EOF
-DB_PASSWORD=your-secure-password
-JWT_SECRET=your-jwt-secret-here
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_FROM=noreply@vnrvjiet.in
-GRAFANA_PASSWORD=secure-grafana-password
-EOF
+# App only (add prometheus loki grafana to also start the monitoring stack)
+docker compose -f docker-compose.prod.yml up -d --build postgres backend frontend
 
-# Build and start
-docker-compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml logs -f backend
+```
 
-# Run migrations on first startup
-docker-compose -f docker-compose.prod.yml exec backend npm run prisma:push
+On every start the backend runs `prisma db push`, which creates the schema on an
+empty database and applies additive changes later. It runs **without**
+`--accept-data-loss`, so a change that would drop data stops the boot instead
+(§11).
 
-# Seed database (optional)
-docker-compose -f docker-compose.prod.yml exec backend npm run prisma:seed
+Check it:
+
+```bash
+curl -s http://127.0.0.1:5000/health          # {"status":"ok"}
+curl -s http://127.0.0.1:5000/health/ready    # includes the database check
+curl -sI http://127.0.0.1:8080/               # 200 from nginx (the frontend)
 ```
 
 ---
 
-## Part 5: SSL/TLS (HTTPS)
+## 6. Accounts and data
 
-### Using Let's Encrypt with Certbot
+Pick one.
+
+### A. Fresh install
 
 ```bash
-# Install certbot
-sudo apt-get install certbot python3-certbot-nginx
-
-# Obtain certificate
-sudo certbot certonly --nginx -d your-domain.com
-
-# Update Nginx config
-sudo nano /etc/nginx/sites-available/appraisal-portal
+docker compose -f docker-compose.prod.yml exec \
+  -e SEED_ADMIN_PW='<strong admin password>' \
+  -e SEED_HOD_PW='<random>' \
+  -e SEED_FACULTY_PW='<random>' \
+  backend npm run seed:prod
 ```
 
-Add to server block:
-```nginx
-listen 443 ssl http2;
-ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+Use `seed:prod` (compiled JS). Plain `npm run seed` needs dev tools the image
+does not have. Without the `-e` values the seed falls back to the passwords
+committed in the repository (`admin123` / `hod123` / `faculty123`), which are
+public. The seed refuses to run on a database that already holds users it did
+not create.
+
+The seed creates `ADMIN001`, sample departments and academic years, **plus
+sample accounts** (`HOD001`–`HOD003`, `FAC11`–`FAC35` on `@college.edu`
+addresses). On a real install, log in as `ADMIN001` and deactivate those sample
+accounts (deleting a user is a deactivation — nothing is erased).
+
+Then, in the admin UI:
+1. Departments — only CSE is active today; EEE/ECE/ME are switched off by design.
+2. Academic year — create it and open submissions.
+3. Cadre targets and review windows.
+4. Bulk-import faculty from CSV. They receive `DEFAULT_IMPORT_PASSWORD`; make
+   them reset it on first login.
+5. Assign each department's HoD and incharges (the REVIEWER role). A role only
+   works inside its own department.
+
+### B. Move existing data from another machine
+
+Take a backup on the source machine with `scripts/backup.sh` (§10; on a dev
+machine set `DATABASE_URL` and `PG_BIN`), copy the whole `backups/<stamp>/`
+folder to the server, then restore **before** the backend starts:
+
+```bash
+B=backups/<stamp>
+docker compose -f docker-compose.prod.yml up -d postgres
+docker compose -f docker-compose.prod.yml exec -T postgres \
+  pg_restore -U appraisal_user -d faculty_appraisal --clean --if-exists --no-owner < $B/db.dump
+mkdir -p backend/uploads && tar -xzf $B/uploads.tar.gz -C backend/uploads
+docker compose -f docker-compose.prod.yml up -d --build backend frontend
 ```
 
-Redirect HTTP to HTTPS:
+Compare user and appraisal counts with the source afterwards. Accounts, password
+hashes and proof files all come across.
+
+### Either way
+
+- Change the admin password on first login.
+- The ~73 imported CSE accounts still on the old import password `Welcome@123`
+  need a forced reset.
+
+---
+
+## 7. Reverse proxy and TLS
+
+Point the campus proxy at the frontend (`127.0.0.1:8080` in §4's example, or the
+host's port 80) and terminate TLS there. An nginx example for the proxy:
+
 ```nginx
 server {
+    listen 443 ssl http2;
+    server_name appraisal.vnrvjiet.in;
+    ssl_certificate     /etc/letsencrypt/live/appraisal.vnrvjiet.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/appraisal.vnrvjiet.in/privkey.pem;
+
+    client_max_body_size 10m;   # proof uploads; the app caps files at MAX_UPLOAD_MB
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+server {
     listen 80;
-    server_name your-domain.com;
-    return 301 https://$server_name$request_uri;
+    server_name appraisal.vnrvjiet.in;
+    return 301 https://$host$request_uri;
 }
 ```
 
-Auto-renew:
+Set `FRONTEND_URL=https://appraisal.vnrvjiet.in` to match, then
+`docker compose -f docker-compose.prod.yml up -d backend` to apply it.
+
+> **Known gap — rate limits behind two proxies.** The backend trusts one proxy
+> hop (`app.set('trust proxy', 1)`). With the campus proxy *and* the frontend
+> nginx in front of it, every request appears to come from the campus proxy, so
+> the limits are shared by the whole college: 120 API requests per minute, and
+> 10 failed logins per 15 minutes. Expect "Too many requests" during a deadline
+> rush. The fix is a one-line change before go-live: set `trust proxy` to `2`,
+> or have the frontend nginx pass the proxy's `X-Forwarded-For` through
+> unchanged.
+
+A subpath (`vnrvjiet.in/appraisal`) instead of a subdomain needs a frontend
+rebuild (Vite `base` + router `basename`) — ask the developer.
+
+---
+
+## 8. Email — read before setting `EMAIL_DISABLED=false`
+
+With email enabled the portal sends real mail to real faculty. A background
+worker sends queued mail every 30 seconds and retries a failure up to 3 times.
+Failed rows show on the admin **Emails** page.
+
+Two things send to many people at once:
+1. **The admin "Run quarterly snapshot" button** — a dry run that only counts
+   recipients until you confirm it.
+2. **The daily 09:00 review-window job** — when a review window ends it mails
+   every opted-in faculty **with nobody clicking anything**. Stop it with
+   `QUARTERLY_AUTOSEND=false` (after adding it to compose, §3).
+
+On staging, keep `EMAIL_DISABLED=true` or point SMTP at a catch-all mailbox.
+
+To test mail after deploying, use **Forgot password** on the login page for an
+account whose inbox you control. It sends a one-time code by email.
+
+Gmail limits how much one account may send per day; for a whole college, prefer
+the institute's SMTP relay.
+
+---
+
+## 9. Scheduled jobs
+
+These start with the backend — there is nothing to add to the host's cron:
+
+| Schedule | Job |
+|---|---|
+| Every 30 s | Send queued emails |
+| Daily 09:00 | Reminders |
+| Daily 09:00 | Review-window mail to faculty (kill switch `QUARTERLY_AUTOSEND`) |
+| Daily 09:00 | Proof deadlines: a rejected proof not replaced within **14 days** loses its subsection's marks, and the appraisal goes back to the HoD on the reduced marks. The faculty stays on the red list. |
+
+**Timezone.** The jobs use the container's local time, which is UTC unless you
+set `TZ`. Without it, "09:00" runs at **14:30 IST**. Set `TZ: Asia/Kolkata`
+(§3) and check it from inside the container:
+
 ```bash
-sudo certbot renew --dry-run
-sudo systemctl enable certbot.timer
+docker compose -f docker-compose.prod.yml exec backend node -e "console.log(new Date().toString())"
 ```
 
 ---
 
-## Part 6: Observability Stack
+## 10. Backups and restore
 
-### 6.1 Prometheus configuration
-
-**prometheus.yml**
-
-```yaml
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: 'faculty-appraisal-api'
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['localhost:5000']
-    # Only allow internal scraping
-    scrape_interval: 15s
-```
-
-### 6.2 Access Grafana
-
-- **URL**: `http://your-domain.com:3000`
-- **Default credentials**: `admin` / `admin` (or `$GRAFANA_PASSWORD`)
-- **Add Prometheus datasource**: `http://prometheus:9090`
-- **Add Loki datasource**: `http://loki:3100`
-
-### 6.3 Create dashboards
-
-Import pre-built dashboards from Grafana marketplace or create custom ones for:
-- HTTP request latency histogram
-- Error rates by endpoint
-- Database query performance
-- Server CPU/memory usage
-
----
-
-## Backups and restore
-
-Proof files are stored on disk in `backend/uploads` (the backend's
-`UPLOAD_DIR`, mounted at `/app/uploads`), **not** in Postgres. A database dump
-on its own restores rows that point at files which no longer exist, so back
-both up together:
+Proof files live on disk in `backend/uploads` (mounted at `/app/uploads`,
+`UPLOAD_DIR`), **not** in PostgreSQL. A database dump on its own restores rows
+pointing at files that no longer exist, so back both up together:
 
 ```bash
 scripts/backup.sh
 ```
 
-This writes `backups/<timestamp>/` holding `db.dump` (pg_dump custom format),
+This writes `backups/<timestamp>/` containing `db.dump` (pg_dump custom format),
 `uploads.tar.gz`, and a `MANIFEST` with checksums plus a cross-check of every
-proof row against the archived files. It refuses to run if the uploads folder
-is missing, never leaves a half-written backup under a final name, and prunes
+proof row against the archived files. It refuses to run if the uploads folder is
+missing, never leaves a half-written backup under a final name, and prunes
 backups older than `KEEP_DAYS` (default 14) only after a successful run. The
-other settings are listed at the top of the script.
+other settings (`BACKUP_DIR`, `UPLOADS_PATH`, `COMPOSE_FILE`, `DATABASE_URL`,
+`PG_BIN`) are at the top of the script.
 
 Schedule it nightly on the host:
 
 ```cron
-0 2 * * * /srv/p1/scripts/backup.sh >> /srv/p1/backups/backup.log 2>&1
+0 2 * * * /srv/faculty-appraisal/scripts/backup.sh >> /srv/faculty-appraisal/backups/backup.log 2>&1
 ```
 
-`backups/` is git-ignored — it holds every account's password hash. Copy it
-off the machine as well; a backup on the same disk does not survive the disk.
+`backups/` is git-ignored — it holds every account's password hash. **Copy it
+off the machine** as well; a backup on the same disk does not survive the disk.
 
-### Restore drill (does not touch the live database)
+> The script's compose mode and the commands below have not yet been run on a
+> Docker host (only the direct-database mode was tested). Do the drill once
+> before relying on them.
 
-Do this once after setting up backups, and again after changing them:
+### Restore drill (does not touch live data)
 
 ```bash
 B=backups/<timestamp>
@@ -601,8 +349,8 @@ docker compose -f docker-compose.prod.yml exec -T postgres dropdb -U appraisal_u
 tar -tzf $B/uploads.tar.gz | head
 ```
 
-The user count should match the live database, and the archive should list
-the files under `./appraisals/`.
+The user count should match the live database, and the archive should list files
+under `./appraisals/`.
 
 ### Real restore (replaces live data)
 
@@ -614,87 +362,111 @@ tar -xzf $B/uploads.tar.gz -C backend/uploads
 docker compose -f docker-compose.prod.yml start backend
 ```
 
----
-
-## Part 7: Production Checklist
-
-- [ ] Environment variables set securely (`.env` NOT in git)
-- [ ] Database backed up before first deployment
-- [ ] SSL/TLS certificate installed
-- [ ] `/metrics` endpoint restricted to internal IPs only
-- [ ] Rate limiting configured in `backend/src/middleware/rateLimit.ts`
-- [ ] CORS properly configured for your domain
-- [ ] Email service tested (send test email via `/api/emails/test`)
-- [ ] File upload directory writable and on persistent storage
-- [ ] Database connection pooling configured (Prisma defaults to 10 connections)
-- [ ] Logs aggregated and monitored
-- [ ] Health checks working (`/health` and `/health/ready`)
-- [ ] Backups scheduled — `scripts/backup.sh` in cron (database + uploads together), copied off the host, restore drill done once
-- [ ] Error tracking set up (Sentry optional)
-- [ ] Performance monitoring active
-- [ ] Admin user created and password changed
-- [ ] Test end-to-end flow: login → create appraisal → submit → review
+`tar -x` adds and overwrites files but does not delete uploads made after the
+backup; those remain as unreferenced files.
 
 ---
 
-## Part 8: Monitoring & Troubleshooting
-
-### Check backend logs
+## 11. Updating
 
 ```bash
-# Docker
-docker-compose -f docker-compose.prod.yml logs -f backend
-
-# Direct
-npm start 2>&1 | tee logs/app.log
+scripts/backup.sh                                   # always first
+git pull
+docker compose -f docker-compose.prod.yml up -d --build backend frontend
+docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
-### Database health
+The entrypoint re-syncs the schema. If it stops with a data-loss warning, the
+update contains a destructive schema change: roll back to the previous commit
+and plan that change with the developer. Do **not** add `--accept-data-loss` to
+get past it.
+
+Never run `prisma migrate` against this database — the schema is managed by
+`db push` and has drifted from the migration history, so `migrate` offers to
+reset the database. `npm run prisma:migrate` is wired to refuse.
+
+---
+
+## 12. Health, logs and monitoring
+
+| Endpoint (backend :5000) | Purpose |
+|---|---|
+| `/health` | Liveness — used by the container healthcheck |
+| `/health/ready` | Readiness, including a database ping |
+| `/metrics` | Prometheus metrics |
+
+These sit on the backend port, which the frontend nginx does not proxy, so they
+stay private as long as port 5000 is not public (§4).
+
+Logs are JSON on stdout:
 
 ```bash
-psql -U appraisal_user -d faculty_appraisal -c "SELECT 1;"
-curl http://localhost:5000/health/ready
+docker compose -f docker-compose.prod.yml logs -f --tail=200 backend
 ```
 
-### Metrics endpoint
+Optional stack: start `prometheus loki grafana`, log in to Grafana with
+`GRAFANA_PASSWORD`, and add the data sources `http://prometheus:9090` and
+`http://loki:3100`.
 
-```bash
-curl http://localhost:5000/metrics | head -30
-```
+> **Known gap:** `prometheus.yml` scrapes `localhost:5000`. Inside the
+> Prometheus container that is Prometheus itself, so nothing is collected.
+> Change the target to `backend:5000`.
 
-### Common issues
-
-| Issue | Solution |
-|-------|----------|
-| `ECONNREFUSED` to database | Verify `DATABASE_URL`, check PostgreSQL is running |
-| Email not sending | Verify SMTP credentials, check firewall port 587 |
-| Frontend blank page | Check `VITE_API_URL`, verify backend is reachable |
-| High memory usage | Check for memory leaks, restart containers |
-| `/metrics` accessible from internet | Update Nginx to restrict by IP |
+See [OBSERVABILITY.md](OBSERVABILITY.md) for dashboards.
 
 ---
 
-## Part 9: Scaling
+## 13. Troubleshooting
 
-For high-traffic deployments:
-
-1. **Database**: Use managed PostgreSQL (AWS RDS, Azure Database, etc.)
-2. **File storage**: Migrate from local disk to S3/Azure Blob Storage
-3. **Backend**: Deploy multiple instances behind a load balancer
-4. **Frontend**: Serve from CDN (Cloudflare, AWS CloudFront)
-5. **Caching**: Add Redis for session/cache layer
-6. **Job queue**: Use Bull/BullMQ for email jobs instead of in-process
-
----
-
-## Support & Questions
-
-For issues:
-1. Check logs: `docker-compose logs backend`
-2. Verify health: `curl http://localhost:5000/health/ready`
-3. Review OBSERVABILITY.md for monitoring setup
-4. Check GitHub issues or contact the development team
+| Symptom | Likely cause and fix |
+|---|---|
+| Login page loads but every call fails with a CORS error | `FRONTEND_URL` does not match the address in the browser (scheme, host and port must match exactly). |
+| Links in emails point to the wrong site | The first entry in `FRONTEND_URL` is the link base — put the public URL first. |
+| No emails arrive | Check `EMAIL_DISABLED=false`, the key is `SMTP_PASS` (app password), and port/secure pairs (587 + `false`, 465 + `true`). Failed rows show on the admin Emails page. |
+| "Too many requests" for many users at once | Shared IP behind two proxies (§7). |
+| Jobs run at 14:30 instead of 09:00 | `TZ` not set (§9). |
+| Upload rejected as too large | File exceeds `MAX_UPLOAD_MB` (default 5), or a proxy's `client_max_body_size` is lower than 10m. |
+| Proof files missing after a redeploy | `backend/uploads` was not on the host volume, or a restore skipped `uploads.tar.gz`. |
+| PDF download fails | Backend image must keep `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser`; check memory, then `docker compose restart backend`. |
+| Backend exits on start with a Prisma data-loss message | A destructive schema change — see §11. |
+| `port is already allocated` for 5432 | PostgreSQL already runs on the host — publish postgres on another port (§4). |
+| Imported faculty cannot log in | They use `DEFAULT_IMPORT_PASSWORD` (or `Welcome@123` for accounts imported before it was set). |
 
 ---
 
-**Last updated**: 2026-06-16
+## 14. Known gaps (as of 2026-09-11)
+
+Fix or accept these before go-live:
+
+- [ ] `trust proxy` behind two proxies — shared rate limits (§7).
+- [ ] Compose does not pass `QUARTERLY_AUTOSEND`, `MAX_UPLOAD_MB`,
+      `DEFAULT_IMPORT_PASSWORD`, `TZ` (§3).
+- [ ] Compose publishes every port on all interfaces (§4).
+- [ ] `prometheus.yml` scrapes the wrong target (§12).
+- [ ] `frontend/.env.example` still lists `VITE_API_URL`, which nothing reads.
+- [ ] The backup script's compose mode and the restore commands are untested on Docker (§10).
+- [ ] Hosting prerequisites (not code): the repository is on a personal GitHub
+      account, not the Vignana-Jyothi organisation; the domain
+      (`appraisal.vnrvjiet.in` vs the granted `vjstartup.com`) is unresolved; the
+      VJ Shield scan has not been run; there has been no user-testing period.
+
+---
+
+## 15. Go-live checklist
+
+- [ ] `.env` filled with fresh secrets, `chmod 600`, not in git
+- [ ] Ports closed (§4); only 80/443 public, via the campus proxy
+- [ ] TLS on the proxy; `FRONTEND_URL` = the public HTTPS URL, first in the list
+- [ ] `TZ=Asia/Kolkata` set and checked
+- [ ] Admin password changed; seed sample accounts deactivated
+- [ ] `DEFAULT_IMPORT_PASSWORD` set; imported accounts forced to reset
+- [ ] Test email received (Forgot password)
+- [ ] `QUARTERLY_AUTOSEND` decided, and review windows checked before their end dates
+- [ ] `scripts/backup.sh` in cron, copied off the host, restore drill done once
+- [ ] `/health/ready` green; logs readable
+- [ ] End-to-end run: faculty fills → uploads a proof → submits → HoD/incharge
+      verifies → HoD approves → faculty sees the reviewed score /500
+
+---
+
+**Last updated:** 2026-09-11
