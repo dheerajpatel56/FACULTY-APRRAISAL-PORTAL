@@ -105,9 +105,16 @@ export async function refresh(req: Request, res: Response) {
 // session generation, so a stolen access/refresh token stops working now
 // rather than living out its expiry.
 export async function logout(req: Request, res: Response) {
-  if (req.user?.id) {
+  // Resolve the user from the access token if still valid, else from the
+  // refresh cookie — so logout can revoke even after the access token expired.
+  let userId = req.user?.id;
+  if (!userId) {
+    const rt = readCookie(req, REFRESH_COOKIE);
+    if (rt) { try { userId = verifyRefreshToken(rt).userId; } catch { /* ignore */ } }
+  }
+  if (userId) {
     await prisma.user.update({
-      where: { id: req.user.id },
+      where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
     }).catch(() => {});
   }

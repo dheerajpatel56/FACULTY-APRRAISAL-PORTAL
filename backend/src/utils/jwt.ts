@@ -32,10 +32,11 @@ export function signRefreshToken(payload: TokenPayload): string {
   return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES_IN } as jwt.SignOptions);
 }
 
+// algorithms pinned so a token can't be verified under an unexpected algorithm.
 export function verifyAccessToken(token: string): TokenPayload {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as TokenPayload;
 }
 
 export function verifyRefreshToken(token: string): TokenPayload {
-  return jwt.verify(token, REFRESH_SECRET) as TokenPayload;
+  return jwt.verify(token, REFRESH_SECRET, { algorithms: ['HS256'] }) as TokenPayload;
 }

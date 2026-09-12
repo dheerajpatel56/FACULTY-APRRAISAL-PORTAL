@@ -50,7 +50,9 @@ router.get('/config/uploads', authenticate, (_req, res) =>
 // Auth
 router.post('/auth/login', authLimiter, auth.login);
 router.post('/auth/refresh', auth.refresh);
-router.post('/auth/logout', authenticate, auth.logout);
+// No `authenticate`: logout must work with an expired access token — it
+// resolves the user from the refresh cookie and revokes the session itself.
+router.post('/auth/logout', auth.logout);
 router.post('/auth/forgot-password', otpLimiter, auth.forgotPassword);
 router.post('/auth/reset-password', authLimiter, auth.resetPassword);
 
