@@ -18,6 +18,9 @@ export async function ready(_req: Request, res: Response) {
     await prisma.$queryRaw`SELECT 1`;
     return res.json({ status: 'ready', db: 'up' });
   } catch (e: any) {
-    return res.status(503).json({ status: 'not_ready', db: 'down', error: e?.message });
+    // Log the detail server-side; the response stays generic so a probe cannot
+    // leak DB host/driver internals to an unauthenticated caller.
+    console.error('[health] readiness DB check failed:', e?.message ?? e);
+    return res.status(503).json({ status: 'not_ready', db: 'down' });
   }
 }
